@@ -91,7 +91,10 @@
 
 <header>
   <div class="logo">🟡 <span>발주 자동화</span></div>
-  <div style="font-size:11px;color:var(--text3)">발주처 × 별칭 자동 분리</div>
+  <div style="display:flex;align-items:center;gap:12px">
+    <span id="syncStatus" style="font-size:11px;color:var(--text3)">⏳ 동기화 중...</span>
+    <button class="btn btn-sm" onclick="manualSync()" id="syncBtn" style="font-size:11px;padding:4px 10px">🔄 재동기화</button>
+  </div>
 </header>
 
 <div class="tab-nav">
@@ -1508,6 +1511,10 @@ function saveExpHist(a){ localStorage.setItem(LS_EXPHIST, JSON.stringify(a)); }
 function initExpenseTab() {
   // 오늘 날짜 기본값
   document.getElementById('expDate').value = new Date().toISOString().slice(0,10);
+  // 계좌가 하나도 없으면 기본 계좌 자동 등록 (새 기기·브라우저 첫 실행 시)
+  if (loadBankInfo().length === 0 && typeof DEFAULT_BANKS !== 'undefined') {
+    saveBankInfo(JSON.parse(JSON.stringify(DEFAULT_BANKS)));
+  }
   renderBankList();
   renderExpHistList();
   updateVendorSelect();
@@ -2030,30 +2037,56 @@ function importData(event) {
   reader.readAsText(file);
 }
 
-// 클라우드에서 최신 데이터 불러오기 (앱 시작 시)
-async function syncFromCloud() {
+// 클라우드에서 최신 데이터 불러오기 (앱 시작 시 + 수동)
+async function syncFromCloud(isManual = false) {
+  const statusEl = document.getElementById('syncStatus');
+  const btnEl = document.getElementById('syncBtn');
+  if (statusEl) statusEl.textContent = '⏳ 동기화 중...';
+  if (statusEl) statusEl.style.color = 'var(--text3)';
+  if (btnEl) btnEl.disabled = true;
+
   const keys = ['codes','optmap','banks','exphist'];
   const lsKeys = [LS_CODES, LS_OPTMAP, LS_BANK, LS_EXPHIST];
   let updated = false;
+  let anySuccess = false;
+
   for (let i = 0; i < keys.length; i++) {
     try {
       const cloudData = await loadFromCloud(keys[i]);
       if (cloudData && Array.isArray(cloudData) && cloudData.length > 0) {
+        anySuccess = true;
         const localData = JSON.parse(localStorage.getItem(lsKeys[i]) || '[]');
-        // 클라우드 데이터가 더 많으면 클라우드 우선
+        // 클라우드 데이터가 더 많거나 같으면 클라우드 우선
         if (cloudData.length >= localData.length) {
           localStorage.setItem(lsKeys[i], JSON.stringify(cloudData));
           updated = true;
         }
       }
-    } catch(e) {}
+    } catch(e) { console.warn('동기화 오류:', keys[i], e); }
   }
+
   if (updated) {
     renderCodeList();
     renderOptMapList();
     if (document.getElementById('bankList')) renderBankList();
   }
+
+  if (statusEl) {
+    if (anySuccess) {
+      statusEl.textContent = '✅ 동기화 완료';
+      statusEl.style.color = 'var(--success)';
+    } else {
+      statusEl.textContent = '❌ 네트워크 오류 (로컬 데이터 사용 중)';
+      statusEl.style.color = 'var(--danger)';
+    }
+  }
+  if (btnEl) btnEl.disabled = false;
+
+  if (isManual && anySuccess) alert('✅ 클라우드에서 최신 데이터를 불러왔습니다!');
+  if (isManual && !anySuccess) alert('❌ 구글 시트 연결 실패\n회사 네트워크에서 막혀 있을 수 있어요.\n현재 로컬에 저장된 데이터를 사용합니다.');
 }
+
+function manualSync() { syncFromCloud(true); }
 
 // 초기화
 renderCodeList();renderOptMapList();showLastFileCard();
