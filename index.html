@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>발주 자동화</title>
+<title>발주 자동화 v2.2</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap');
@@ -1524,28 +1524,43 @@ function invLoadTracks(files) {
         // rawRows 방식: 20행 스캔하여 헤더 행 자동 탐지
         const rawRows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
         const norm = c => String(c).replace(/\s/g,'').toLowerCase();
-        const isTrackCol = c => /운송장|송장|배송번호|등기번호|추적번호/.test(norm(c));
-        const isNameCol  = c => /받는분성명|수취인명|수령자|수취인|받는분이름|받는사람|수신자|수령인/.test(norm(c));
-        let trackIdx = -1, nameIdx = -1, hdrRow = -1;
+        const isTrackCol   = c => /운송장|송장|배송번호|등기번호|추적번호/.test(norm(c));
+        const isNameCol    = c => /받는분성명|수취인명|수령자|수취인|받는분이름|받는사람|수신자|수령인/.test(norm(c));
+        const isCourierCol = c => /택배사|배송사|운송사|courier/.test(norm(c));
+        let trackIdx = -1, nameIdx = -1, courierIdx = -1, hdrRow = -1;
         for (let ri = 0; ri < Math.min(20, rawRows.length); ri++) {
           const row = rawRows[ri];
           const ti = row.findIndex(isTrackCol);
           const ni = row.findIndex(isNameCol);
-          if (ti >= 0 && ni >= 0) { trackIdx = ti; nameIdx = ni; hdrRow = ri; break; }
+          if (ti >= 0 && ni >= 0) {
+            trackIdx = ti; nameIdx = ni; hdrRow = ri;
+            courierIdx = row.findIndex(isCourierCol);
+            break;
+          }
         }
         if (trackIdx < 0 || nameIdx < 0) {
-          invShowTrackError(file.name, '수취인/운송장 컬럼을 찾을 수 없어요 (운송장번호·등기번호·배송번호 등의 열이 필요합니다)');
+          const hdrSample = rawRows.length > 0 ? rawRows[0].filter(c=>c).slice(0,8).join(' / ') : '(행 없음)';
+          invShowTrackError(file.name,
+            (trackIdx < 0 ? '❌운송장 컬럼 없음' : '✅운송장OK') + ' | ' +
+            (nameIdx  < 0 ? '❌수령인 컬럼 없음' : '✅수령인OK') +
+            '\n읽힌 헤더: ' + hdrSample +
+            ' (총 ' + (rawRows[0]||[]).length + '열, ' + rawRows.length + '행)');
           return;
         }
+        // map: 수령인 → {no: 운송장번호, courier: 택배사(있으면)}
         const map = {};
         rawRows.slice(hdrRow + 1).forEach(row => {
           const name = String(row[nameIdx]||'').trim();
           const no   = String(row[trackIdx]||'').trim();
-          if (name && no) map[name] = no;
+          if (name && no) {
+            const courier = courierIdx >= 0 ? String(row[courierIdx]||'').trim() : '';
+            map[name] = {no, courier};
+          }
         });
+        const hasCourier   = courierIdx >= 0;
         const vendorGuess  = invGuessVendor(file.name);
         const courierGuess = VENDOR_COURIER_DEFAULT[vendorGuess] || '롯데택배';
-        invTrackFiles.push({fileName: file.name, vendorName: vendorGuess, courierName: courierGuess, map});
+        invTrackFiles.push({fileName: file.name, vendorName: vendorGuess, courierName: courierGuess, hasCourier, map});
         invRenderTrackList();
         invRenderVendorCard();
         invCheckReady();
@@ -1577,6 +1592,7 @@ function invRenderTrackList() {
     '<span style="color:var(--success)">✅</span>' +
     '<span>' + escHtml(t.fileName) + '</span>' +
     '<span style="color:var(--text3)">— ' + Object.keys(t.map).length + '건</span>' +
+    (t.hasCourier ? '<span style="color:var(--success);font-size:11px;margin-left:4px">택배사자동</span>' : '') +
     '<button class="btn btn-danger btn-sm" onclick="invRemoveTrack(' + i + ')">✕</button>' +
     '</div>'
   ).join('');
@@ -1644,12 +1660,15 @@ function invProcess() {
       else if (code.includes('_') && !/^\d/.test(code)) vendor = code.split('_')[0].trim();
       let found = false;
       for (const tf of invTrackFiles) {
-        if (name && tf.map[name]) {
-          newRow[trackCol]   = tf.map[name];
-          newRow[courierCol] = tf.courierName;
+        const entry = tf.map[name];
+        if (name && entry) {
+          const trackNo  = typeof entry === 'object' ? entry.no      : entry;
+          const courier  = typeof entry === 'object' && entry.courier ? entry.courier : tf.courierName;
+          newRow[trackCol]   = trackNo;
+          newRow[courierCol] = courier;
           matched++;
           found = true;
-          preview.push({name, vendor, courier: tf.courierName, track: tf.map[name], prod: String(row[prodCol]||'').slice(0,30), status:'match'});
+          preview.push({name, vendor, courier, track: trackNo, prod: String(row[prodCol]||'').slice(0,30), status:'match'});
           break;
         }
       }
