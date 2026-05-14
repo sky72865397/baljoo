@@ -1446,12 +1446,21 @@ function invLoadOrder(file) {
   const reader = new FileReader();
   reader.onload = function(e) {
     try {
-      invOrderWb = XLSX.read(e.target.result, {type:'array'});
+      const arrayBuf = e.target.result;
+      invOrderWb = XLSX.read(arrayBuf, {type:'array'});
       const ws = invOrderWb.Sheets[invOrderWb.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(ws, {defval:''});
       invOrderData = rows;
-      document.getElementById('invOrderInfo').innerHTML =
-        '<span style="color:var(--success)">✅ ' + escHtml(file.name) + ' — ' + rows.length + '건 로드 완료</span>';
+      // localStorage 에 저장 (하루 유지)
+      try {
+        const bytes = new Uint8Array(arrayBuf);
+        let bin = '';
+        bytes.forEach(b => bin += String.fromCharCode(b));
+        localStorage.setItem('invOrderB64', btoa(bin));
+        localStorage.setItem('invOrderName', file.name);
+        localStorage.setItem('invOrderSavedAt', Date.now().toString());
+      } catch(se) {}
+      invShowOrderInfo(file.name, rows.length);
       invCheckReady();
     } catch(err) {
       document.getElementById('invOrderInfo').innerHTML =
@@ -1459,6 +1468,50 @@ function invLoadOrder(file) {
     }
   };
   reader.readAsArrayBuffer(file);
+}
+
+function invShowOrderInfo(fname, count) {
+  const savedAt = localStorage.getItem('invOrderSavedAt');
+  const timeStr = savedAt ? new Date(+savedAt).toLocaleString('ko-KR',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
+  document.getElementById('invOrderInfo').innerHTML =
+    '<span style="color:var(--success)">✅ ' + escHtml(fname) + ' — ' + count + '건 로드 완료</span>' +
+    (timeStr ? ' <span style="color:var(--text3);font-size:11px">(' + timeStr + ' 저장됨)</span>' : '') +
+    ' <button class="btn btn-sm" style="font-size:11px;padding:2px 8px;margin-left:6px" onclick="invClearSavedOrder()">🗑 삭제</button>';
+}
+
+function invClearSavedOrder() {
+  if (!confirm('저장된 주문파일을 삭제할까요?')) return;
+  localStorage.removeItem('invOrderB64');
+  localStorage.removeItem('invOrderName');
+  localStorage.removeItem('invOrderSavedAt');
+  invOrderData = null; invOrderWb = null; invOrderFileName = '';
+  document.getElementById('invOrderInfo').innerHTML = '';
+  invCheckReady();
+}
+
+function invRestoreOrder() {
+  const b64 = localStorage.getItem('invOrderB64');
+  const fname = localStorage.getItem('invOrderName');
+  const savedAt = localStorage.getItem('invOrderSavedAt');
+  if (!b64 || !fname) return;
+  // 24시간 이내만 복원
+  if (savedAt && Date.now() - +savedAt > 86400000) {
+    localStorage.removeItem('invOrderB64');
+    localStorage.removeItem('invOrderName');
+    localStorage.removeItem('invOrderSavedAt');
+    return;
+  }
+  try {
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    invOrderWb = XLSX.read(bytes.buffer, {type:'array'});
+    const ws = invOrderWb.Sheets[invOrderWb.SheetNames[0]];
+    invOrderData = XLSX.utils.sheet_to_json(ws, {defval:''});
+    invOrderFileName = fname;
+    invShowOrderInfo(fname, invOrderData.length);
+    invCheckReady();
+  } catch(e) { console.warn('주문파일 복원 실패:', e); }
 }
 
 function invLoadTracks(files) {
@@ -1472,7 +1525,7 @@ function invLoadTracks(files) {
         const rawRows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
         const norm = c => String(c).replace(/\s/g,'').toLowerCase();
         const isTrackCol = c => /운송장|송장|배송번호|등기번호|추적번호/.test(norm(c));
-        const isNameCol  = c => /받는분성명|수취인명|수령자|수취인|받는분이름|받는사람|수신자/.test(norm(c));
+        const isNameCol  = c => /받는분성명|수취인명|수령자|수취인|받는분이름|받는사람|수신자|수령인/.test(norm(c));
         let trackIdx = -1, nameIdx = -1, hdrRow = -1;
         for (let ri = 0; ri < Math.min(20, rawRows.length); ri++) {
           const row = rawRows[ri];
@@ -1575,7 +1628,7 @@ function invProcess() {
   try {
     if (!invOrderData || !invTrackFiles.length) return;
     const sample = invOrderData[0] || {};
-    const nameCol    = ['수령자','받는분성명','수취인명'].find(c => c in sample) || '수령자';
+    const nameCol    = ['수령자','받는분성명','수취인명','수령인'].find(c => c in sample) || '수령자';
     const codeCol    = ['판매자상품코드','상품코드'].find(c => c in sample) || '판매자상품코드';
     const courierCol = ['택배사'].find(c => c in sample) || '택배사';
     const trackCol   = ['송장번호','운송장번호'].find(c => c in sample) || '송장번호';
@@ -1688,7 +1741,7 @@ function switchTab(name){
     if(btnEl) btnEl.classList.add('active');
     if(name==='codes'){try{renderCodeList();}catch(e){console.error(e);}try{renderOptMapList();}catch(e){console.error(e);}try{renderUnmatchedHints();}catch(e){console.error(e);}try{renderOmPreview();}catch(e){console.error(e);}try{renderCodeMappingList();}catch(e){console.error(e);}}
     if(name==='expense'){try{initExpenseTab();}catch(e){console.error(e);}}
-    if(name==='invoice'){try{if(typeof invReset==='function')invReset();}catch(e){console.error(e);}}
+    if(name==='invoice'){try{if(typeof invRestoreOrder==='function')invRestoreOrder();}catch(e){console.error(e);}}
   }catch(e){console.error('switchTab 오류:',e);}
 }
 function switchSubTab(name){
