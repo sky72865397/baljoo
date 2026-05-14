@@ -523,15 +523,20 @@
   <div class="sub-content" id="expsubtab-list">
     <div class="card">
       <div class="card-title">📋 지출결의서 작성 이력</div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px">
-        <input id="expHistSearch" class="inp" type="text" placeholder="거래처·송금내역 검색..." oninput="renderExpHistList()" style="flex:1;min-width:160px;max-width:300px">
+      <!-- 필터/검색 -->
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+        <input id="expHistSearch" class="inp" type="text" placeholder="거래처·송금내역 검색..." oninput="renderExpHistList()" style="flex:1;min-width:160px;max-width:260px">
+        <input id="expHistMonth" class="inp" type="month" oninput="renderExpHistList()" style="width:140px">
         <div style="display:flex;gap:6px">
           <button class="sub-tab-btn active" id="expCoFilter-all"   onclick="setExpCoFilter('all')">전체</button>
           <button class="sub-tab-btn"        id="expCoFilter-yb"    onclick="setExpCoFilter('옐로우브릿지')">옐로우브릿지</button>
           <button class="sub-tab-btn"        id="expCoFilter-gr"    onclick="setExpCoFilter('그로븐')">그로븐</button>
         </div>
-        <button class="btn btn-sm" style="margin-left:auto" onclick="if(confirm('전체 이력을 삭제할까요?')){localStorage.removeItem('expHist');renderExpHistList();}">🗑 전체삭제</button>
+        <button class="btn btn-green btn-sm" style="margin-left:auto" onclick="exportExpHistXlsx()">📥 Excel 내보내기</button>
+        <button class="btn btn-sm" onclick="if(confirm('전체 이력을 삭제할까요?')){localStorage.removeItem('expHist');renderExpHistList();}">🗑 전체삭제</button>
       </div>
+      <!-- 합계 요약 -->
+      <div id="expHistSummary" style="margin-bottom:12px"></div>
       <div id="expHistList"><p style="font-size:13px;color:var(--text3)">저장된 이력이 없습니다.</p></div>
     </div>
   </div>
@@ -1794,9 +1799,12 @@ function renderExpHistList() {
 
   const q = (document.getElementById('expHistSearch')||{}).value?.trim().toLowerCase() || '';
 
+  const monthVal = (document.getElementById('expHistMonth')||{}).value || '';
+
   // 필터
   let filtered = hist.filter(d => {
     if (_expCoFilter !== 'all' && d.co !== _expCoFilter) return false;
+    if (monthVal && !(d.date||'').startsWith(monthVal)) return false;
     if (q && !(
       (d.vendor||'').toLowerCase().includes(q) ||
       (d.desc||'').toLowerCase().includes(q) ||
@@ -1804,6 +1812,21 @@ function renderExpHistList() {
     )) return false;
     return true;
   });
+
+  // 합계 요약
+  const sumEl = document.getElementById('expHistSummary');
+  if (sumEl && filtered.length) {
+    const totalSupply = filtered.reduce((s,d) => s + (Number(d.supply)||0), 0);
+    const totalVat    = filtered.reduce((s,d) => s + (Number(d.vat)||0), 0);
+    const totalAmt    = filtered.reduce((s,d) => s + (Number(d.total)||0), 0);
+    sumEl.innerHTML =
+      '<div style="display:flex;gap:16px;flex-wrap:wrap;padding:10px 14px;background:var(--bg);border-radius:8px;font-size:13px">' +
+      '<span>📊 <b>' + filtered.length + '건</b></span>' +
+      '<span>공급가액 합계 <b>' + totalSupply.toLocaleString() + '원</b></span>' +
+      '<span>세액 합계 <b>' + totalVat.toLocaleString() + '원</b></span>' +
+      '<span style="color:var(--primary)">총 합계 <b>' + totalAmt.toLocaleString() + '원</b></span>' +
+      '</div>';
+  } else if (sumEl) { sumEl.innerHTML = ''; }
 
   if (!filtered.length) { el.innerHTML = '<p style="font-size:13px;color:var(--text3)">검색 결과가 없습니다.</p>'; return; }
 
@@ -1827,11 +1850,12 @@ function renderExpHistList() {
 
     g.items.forEach((d, idx) => {
       const realIdx = hist.indexOf(d);
-      html += '<div style="display:grid;grid-template-columns:90px 1fr auto auto;gap:8px;align-items:center;padding:7px 8px;border-radius:6px;margin-bottom:4px;background:var(--surface)">' +
+      html += '<div style="display:grid;grid-template-columns:90px 1fr auto auto auto;gap:8px;align-items:center;padding:7px 8px;border-radius:6px;margin-bottom:4px;background:var(--surface);cursor:pointer" onclick="previewHistItem(' + realIdx + ')">' +
         '<span style="font-size:11px;color:var(--text3)">' + escHtml(d.date||'') + '</span>' +
         '<span style="font-size:13px">' + escHtml(d.desc||'') + '</span>' +
         '<span style="font-size:13px;font-weight:600;text-align:right">' + fmtNum(d.total) + '원</span>' +
-        '<button class="btn btn-sm" style="color:var(--danger);border-color:var(--danger);padding:2px 8px" onclick="deleteExpHist(' + realIdx + ')">삭제</button>' +
+        '<button class="btn btn-sm" style="padding:2px 8px" onclick="event.stopPropagation();saveExpImgFromHist(' + realIdx + ')">📷</button>' +
+        '<button class="btn btn-sm" style="color:var(--danger);border-color:var(--danger);padding:2px 8px" onclick="event.stopPropagation();deleteExpHist(' + realIdx + ')">삭제</button>' +
       '</div>';
     });
     html += '</div>';
@@ -1846,6 +1870,132 @@ function deleteExpHist(i) {
   hist.splice(i, 1);
   saveExpHist(hist);
   renderExpHistList();
+}
+
+function exportExpHistXlsx() {
+  const hist = loadExpHist();
+  if (!hist.length) { alert('저장된 이력이 없습니다.'); return; }
+
+  const q        = (document.getElementById('expHistSearch')||{}).value?.trim().toLowerCase() || '';
+  const monthVal = (document.getElementById('expHistMonth')||{}).value || '';
+
+  let filtered = hist.filter(d => {
+    if (_expCoFilter !== 'all' && d.co !== _expCoFilter) return false;
+    if (monthVal && !(d.date||'').startsWith(monthVal)) return false;
+    if (q && !((d.vendor||'').toLowerCase().includes(q)||(d.desc||'').toLowerCase().includes(q)||(d.date||'').includes(q))) return false;
+    return true;
+  });
+  if (!filtered.length) { alert('내보낼 항목이 없습니다.'); return; }
+
+  const evLabels = ['세금계산서','계산서','현금영수증','고지서','기타','사후첨부'];
+  const coLabel  = _expCoFilter === 'all' ? '전체' : (_expCoFilter || '전체');
+
+  // ── 장부 매입 시트 형식 그대로 ──
+  // 행1: 제목
+  const titleYear = monthVal ? monthVal.slice(0,4) : new Date().getFullYear();
+  const titleRow  = [titleYear + '년 ' + coLabel + ' 매입현황'];
+
+  // 행2: 합계 공식 행
+  const sumSupply = filtered.reduce((s,d)=>s+(Number(d.supply)||0),0);
+  const sumVat    = filtered.reduce((s,d)=>s+(Number(d.vat)||0),0);
+  const sumTotal  = filtered.reduce((s,d)=>s+(Number(d.total)||0),0);
+  const sumRow    = ['','','','','','','','매입 총합계(공급가) =','', sumSupply,'','','',''];
+
+  // 행3: 컬럼 헤더 (장부 매입 시트와 동일)
+  const headers = ['년','월','일','증  빙','분  류','내   용','업체명','공급가','세  액','합  계','주문건수','결제일','결제여부','비  고'];
+
+  const rows = [titleRow, sumRow, headers];
+
+  filtered.forEach(d => {
+    const ev = [d.ev1,d.ev2,d.ev3,d.ev4,d.ev5,d.ev6].map((v,i)=>v?evLabels[i]:'').filter(Boolean).join('/');
+    let yr = '', mo = '', day = '';
+    if (d.date) {
+      const dt = new Date(d.date);
+      yr  = dt.getFullYear();
+      mo  = dt.getMonth() + 1;
+      day = dt.getDate();
+    }
+    rows.push([
+      yr, mo, day,
+      ev,
+      '',                         // 분류 (장부에서 직접 입력)
+      d.desc||'',
+      d.vendor||'',
+      Number(d.supply)||0,
+      Number(d.vat)||0,
+      Number(d.total)||0,
+      '',                         // 주문건수
+      '',                         // 결제일
+      d.payType||'즉시결제',
+      d.note||''
+    ]);
+  });
+
+  // 합계 행
+  rows.push(['합계','','','','','','', sumSupply, sumVat, sumTotal,'','','','']);
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+
+  // 타이틀 셀 굵게
+  if (ws['A1']) ws['A1'].s = {font:{bold:true,sz:13}};
+  // 헤더 행 굵게 (행3 = 인덱스2)
+  headers.forEach((_,ci) => {
+    const addr = XLSX.utils.encode_cell({r:2, c:ci});
+    if (ws[addr]) ws[addr].s = {font:{bold:true}, fill:{fgColor:{rgb:'D9D9D9'}}};
+  });
+  // 합계 행 굵게
+  const lastR = rows.length - 1;
+  ['A','H','I','J'].forEach(col => {
+    const addr = col + (lastR+1);
+    if (ws[addr]) ws[addr].s = {font:{bold:true}};
+  });
+
+  ws['!cols'] = [
+    {wch:6},{wch:5},{wch:5},{wch:14},{wch:12},{wch:34},
+    {wch:20},{wch:13},{wch:11},{wch:13},{wch:9},{wch:11},{wch:10},{wch:20}
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '매입');
+  const label = coLabel + (monthVal?'_'+monthVal:'');
+  XLSX.writeFile(wb, '장부_매입내역_' + label + '.xlsx');
+}
+
+
+function previewHistItem(i) {
+  const hist = loadExpHist();
+  const d = hist[i];
+  if (!d) return;
+  _doPreviewExpense(d);
+}
+
+function saveExpImgFromHist(i) {
+  const hist = loadExpHist();
+  const d = hist[i];
+  if (!d) return;
+  // 숨겨진 임시 컨테이너에 렌더링 후 캡처
+  let tmp = document.getElementById('_expImgTmp');
+  if (!tmp) {
+    tmp = document.createElement('div');
+    tmp.id = '_expImgTmp';
+    tmp.style.cssText = 'position:fixed;left:-9999px;top:0;background:#fff;z-index:-1';
+    document.body.appendChild(tmp);
+  }
+  _expModalData = d;
+  // previewContent에 렌더링 후 바로 캡처
+  _doPreviewExpense(d);
+  setTimeout(() => {
+    const el = document.getElementById('expPrintArea');
+    if (!el) return;
+    html2canvas(el, { scale: 2, backgroundColor: '#fff', useCORS: true }).then(canvas => {
+      const a = document.createElement('a');
+      const dateStr = (d.date||'').replace(/-/g,'');
+      a.download = dateStr + '-지출결의서-' + (d.vendor||'') + '_' + (d.co||'') + '.png';
+      a.href = canvas.toDataURL('image/png');
+      a.click();
+      document.getElementById('expModal').style.display = 'none';
+    });
+  }, 100);
 }
 
 // ══════════════════════════════════════════════════════════
@@ -2229,8 +2379,10 @@ function fmtNum(n) {
 }
 function chk(v) { return v ? 'O' : ''; }
 
-function previewExpense() {
-  const d = getExpFormData();
+function previewExpense() { _doPreviewExpense(getExpFormData()); }
+let _expModalData = null;
+function _doPreviewExpense(d) {
+  _expModalData = d;
 
   // 날짜 한글 형식: 2026년 5월 8일 금요일
   const DAYS_KO = ['일','월','화','수','목','금','토'];
@@ -2379,11 +2531,11 @@ function previewExpense() {
 
 function saveExpImg() {
   const el = document.getElementById('expPrintArea');
+  const d = _expModalData || getExpFormData();
   html2canvas(el, { scale: 2, backgroundColor: '#fff', useCORS: true }).then(canvas => {
     const a = document.createElement('a');
-    const d = getExpFormData();
-    const dateStr = d.date.replace(/-/g,'');
-    a.download = `${dateStr}-지출결의서-${d.vendor}_${d.co}.png`;
+    const dateStr = (d.date||'').replace(/-/g,'');
+    a.download = `${dateStr}-지출결의서-${d.vendor||'미지정'}_${d.co||''}.png`;
     a.href = canvas.toDataURL('image/png');
     a.click();
   });
