@@ -2295,20 +2295,41 @@ function invLoadTracks(files) {
         const ws = wb.Sheets[wb.SheetNames[0]];
         const rows = XLSX.utils.sheet_to_json(ws, {defval:''});
 
-        // 운송장 컬럼 탐지: 키워드 포함 여부로 유연하게 탐지
-        const allCols = rows[0] ? Object.keys(rows[0]) : [];
-        const trackCol = allCols.find(c => /운송장|송장|배송번호|등기번호|추적번호/.test(c));
-        // 수취인 컬럼 탐지
-        const nameCol  = allCols.find(c => /받는분성명|수취인명|수령자|수취인|받는분이름|받는사람|수신자이름|수신자/.test(c));
+        // 운송장 컬럼 탐지: 공백 제거 후 키워드 포함 여부로 유연하게 탐지
+        // 첫 행이 타이틀인 경우 대비해 여러 행에서 헤더 탐지
+        const norm = c => String(c).replace(/\s/g,'');
+        const isTrackCol = c => /운송장|송장|배송번호|등기번호|추적번호/.test(norm(c));
+        const isNameCol  = c => /받는분성명|수취인명|수령자|수취인|받는분이름|받는사람|수신자이름|수신자/.test(norm(c));
+
+        // 헤더가 있는 행 탐지 (최대 5행 스캔)
+        let trackCol = null, nameCol = null, headerRowIdx = 0;
+        for (let ri = 0; ri < Math.min(5, rows.length); ri++) {
+          const cols = Object.keys(rows[ri] || {});
+          const tc = cols.find(isTrackCol);
+          const nc = cols.find(isNameCol);
+          if (tc && nc) { trackCol = tc; nameCol = nc; headerRowIdx = ri; break; }
+        }
+
+        // 헤더가 1행 이후에 있으면 해당 행부터 다시 파싱
+        let dataRows = rows;
+        if (headerRowIdx > 0) {
+          const wsRaw = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+          const hdr = wsRaw[headerRowIdx];
+          dataRows = wsRaw.slice(headerRowIdx + 1).map(r => {
+            const obj = {};
+            hdr.forEach((h, i) => { obj[h] = r[i] !== undefined ? r[i] : ''; });
+            return obj;
+          });
+        }
 
         if (!trackCol || !nameCol) {
-          const colList = allCols.join(', ') || '(컬럼 없음)';
-          invShowTrackError(file.name, '컬럼 자동감지 실패. 파일 컬럼목록: ' + colList);
+          const allCols = rows[0] ? Object.keys(rows[0]) : [];
+          invShowTrackError(file.name, '컬럼 자동감지 실패. 파일 컬럼: [' + allCols.join(', ') + ']');
           return;
         }
 
         const map = {};
-        rows.forEach(r => {
+        dataRows.forEach(r => {
           const name = String(r[nameCol]||'').trim();
           const no   = String(r[trackCol]||'').trim();
           if (name && no) map[name] = no;
