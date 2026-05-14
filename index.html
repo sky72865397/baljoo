@@ -1410,6 +1410,272 @@ function renderOmPreview(){
 }
 
 // ══════════════════════════════════════════════════════════
+// 송장입력 탭
+// ══════════════════════════════════════════════════════════
+let invOrderData = null;
+let invOrderWb   = null;
+let invOrderFileName = '';
+let invTrackFiles = [];
+let invResultData = null;
+
+const VENDOR_COURIER_DEFAULT = {
+  '푸드앤': '우체국택배', '푸드엔': '우체국택배',
+  '일비': '롯데택배',
+  '거풍푸드': 'CJ대한통운', '거풍': 'CJ대한통운',
+  '최고집': 'CJ대한통운',
+  '현해랑': '롯데택배',
+  '도매꾹': '롯데택배',
+  '늘푸른': '롯데택배',
+};
+
+function invDropOrder(e) {
+  e.preventDefault();
+  document.getElementById('invOrderZone').classList.remove('dragover');
+  const f = e.dataTransfer.files[0];
+  if (f) invLoadOrder(f);
+}
+function invDropTrack(e) {
+  e.preventDefault();
+  document.getElementById('invTrackZone').classList.remove('dragover');
+  invLoadTracks(e.dataTransfer.files);
+}
+
+function invLoadOrder(file) {
+  if (!file) return;
+  invOrderFileName = file.name;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      invOrderWb = XLSX.read(e.target.result, {type:'array'});
+      const ws = invOrderWb.Sheets[invOrderWb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, {defval:''});
+      invOrderData = rows;
+      document.getElementById('invOrderInfo').innerHTML =
+        '<span style="color:var(--success)">✅ ' + escHtml(file.name) + ' — ' + rows.length + '건 로드 완료</span>';
+      invCheckReady();
+    } catch(err) {
+      document.getElementById('invOrderInfo').innerHTML =
+        '<span style="color:var(--danger)">❌ 파일 읽기 실패: ' + escHtml(err.message) + '</span>';
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function invLoadTracks(files) {
+  Array.from(files).forEach(file => {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const wb = XLSX.read(e.target.result, {type:'array'});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        // rawRows 방식: 20행 스캔하여 헤더 행 자동 탐지
+        const rawRows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+        const norm = c => String(c).replace(/\s/g,'').toLowerCase();
+        const isTrackCol = c => /운송장|송장|배송번호|등기번호|추적번호/.test(norm(c));
+        const isNameCol  = c => /받는분성명|수취인명|수령자|수취인|받는분이름|받는사람|수신자/.test(norm(c));
+        let trackIdx = -1, nameIdx = -1, hdrRow = -1;
+        for (let ri = 0; ri < Math.min(20, rawRows.length); ri++) {
+          const row = rawRows[ri];
+          const ti = row.findIndex(isTrackCol);
+          const ni = row.findIndex(isNameCol);
+          if (ti >= 0 && ni >= 0) { trackIdx = ti; nameIdx = ni; hdrRow = ri; break; }
+        }
+        if (trackIdx < 0 || nameIdx < 0) {
+          invShowTrackError(file.name, '수취인/운송장 컬럼을 찾을 수 없어요 (운송장번호·등기번호·배송번호 등의 열이 필요합니다)');
+          return;
+        }
+        const map = {};
+        rawRows.slice(hdrRow + 1).forEach(row => {
+          const name = String(row[nameIdx]||'').trim();
+          const no   = String(row[trackIdx]||'').trim();
+          if (name && no) map[name] = no;
+        });
+        const vendorGuess  = invGuessVendor(file.name);
+        const courierGuess = VENDOR_COURIER_DEFAULT[vendorGuess] || '롯데택배';
+        invTrackFiles.push({fileName: file.name, vendorName: vendorGuess, courierName: courierGuess, map});
+        invRenderTrackList();
+        invRenderVendorCard();
+        invCheckReady();
+      } catch(err) {
+        invShowTrackError(file.name, err.message);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+function invGuessVendor(fname) {
+  const known = ['푸드앤','푸드엔','일비','거풍푸드','거풍','최고집','현해랑','도매꾹','늘푸른'];
+  for (const v of known) { if (fname.includes(v)) return v; }
+  const m = fname.match(/[가-힣]+/g);
+  return m ? m[0] : '미확인';
+}
+
+function invShowTrackError(fname, msg) {
+  const el = document.getElementById('invTrackList');
+  if (el) el.innerHTML += '<div style="color:var(--danger);font-size:13px;margin-top:6px">❌ ' + escHtml(fname) + ': ' + escHtml(msg) + '</div>';
+}
+
+function invRenderTrackList() {
+  const el = document.getElementById('invTrackList');
+  if (!el) return;
+  el.innerHTML = invTrackFiles.map((t,i) =>
+    '<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px">' +
+    '<span style="color:var(--success)">✅</span>' +
+    '<span>' + escHtml(t.fileName) + '</span>' +
+    '<span style="color:var(--text3)">— ' + Object.keys(t.map).length + '건</span>' +
+    '<button class="btn btn-danger btn-sm" onclick="invRemoveTrack(' + i + ')">✕</button>' +
+    '</div>'
+  ).join('');
+}
+
+function invRemoveTrack(i) {
+  invTrackFiles.splice(i, 1);
+  invRenderTrackList();
+  invRenderVendorCard();
+  invCheckReady();
+}
+
+function invRenderVendorCard() {
+  const card = document.getElementById('invVendorCard');
+  const rows = document.getElementById('invVendorRows');
+  if (!card || !rows) return;
+  if (!invTrackFiles.length) { card.style.display='none'; return; }
+  card.style.display='block';
+  const couriers = ['롯데택배','CJ대한통운','우체국택배','한진택배','로젠택배','경동택배'];
+  rows.innerHTML = invTrackFiles.map((t,i) =>
+    '<div style="display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)">' +
+    '<div>' +
+    '<div style="font-size:11px;color:var(--text3);margin-bottom:3px">거래처명</div>' +
+    '<input class="inp" value="' + escHtml(t.vendorName) + '" onchange="invTrackFiles[' + i + '].vendorName=this.value" style="font-size:13px">' +
+    '</div>' +
+    '<div>' +
+    '<div style="font-size:11px;color:var(--text3);margin-bottom:3px">택배사</div>' +
+    '<select class="inp" onchange="invTrackFiles[' + i + '].courierName=this.value" style="font-size:13px">' +
+    couriers.map(c => '<option value="' + c + '"' + (c===t.courierName?' selected':'') + '>' + c + '</option>').join('') +
+    '</select>' +
+    '</div>' +
+    '<div style="font-size:12px;color:var(--text3);padding-top:18px">' + Object.keys(t.map).length + '건</div>' +
+    '</div>'
+  ).join('');
+}
+
+function invAddVendorRow() {
+  invTrackFiles.push({fileName:'수동추가', vendorName:'', courierName:'롯데택배', map:{}});
+  invRenderVendorCard();
+}
+
+function invCheckReady() {
+  const ready = invOrderData && invTrackFiles.length > 0;
+  const btn = document.getElementById('invProcessBtn');
+  if (btn) btn.disabled = !ready;
+}
+
+function invProcess() {
+  try {
+    if (!invOrderData || !invTrackFiles.length) return;
+    const sample = invOrderData[0] || {};
+    const nameCol    = ['수령자','받는분성명','수취인명'].find(c => c in sample) || '수령자';
+    const codeCol    = ['판매자상품코드','상품코드'].find(c => c in sample) || '판매자상품코드';
+    const courierCol = ['택배사'].find(c => c in sample) || '택배사';
+    const trackCol   = ['송장번호','운송장번호'].find(c => c in sample) || '송장번호';
+    const prodCol    = ['상품명'].find(c => c in sample) || '상품명';
+    let matched = 0, unmatched = 0;
+    const preview = [];
+    invResultData = invOrderData.map(row => {
+      const newRow = {...row};
+      const name = String(row[nameCol]||'').trim();
+      const code = String(row[codeCol]||'');
+      let vendor = '';
+      if (code.includes(']')) vendor = code.split(']')[0].replace('[','').trim();
+      else if (code.includes('_') && !/^\d/.test(code)) vendor = code.split('_')[0].trim();
+      let found = false;
+      for (const tf of invTrackFiles) {
+        if (name && tf.map[name]) {
+          newRow[trackCol]   = tf.map[name];
+          newRow[courierCol] = tf.courierName;
+          matched++;
+          found = true;
+          preview.push({name, vendor, courier: tf.courierName, track: tf.map[name], prod: String(row[prodCol]||'').slice(0,30), status:'match'});
+          break;
+        }
+      }
+      if (!found && name) {
+        unmatched++;
+        preview.push({name, vendor, courier:'', track:'', prod: String(row[prodCol]||'').slice(0,30), status:'unmatch'});
+      }
+      return newRow;
+    });
+    const summaryEl = document.getElementById('invSummary');
+    if (summaryEl) summaryEl.innerHTML =
+      '<div style="display:flex;gap:12px;flex-wrap:wrap">' +
+      '<span class="badge badge-green">✅ 매칭 ' + matched + '건</span>' +
+      '<span class="badge badge-warn">❌ 미매칭 ' + unmatched + '건</span>' +
+      '<span class="badge badge-blue">총 ' + invOrderData.length + '건</span>' +
+      '</div>';
+    const tbody = document.getElementById('invPreviewBody');
+    if (tbody) tbody.innerHTML = preview.map(p =>
+      '<tr>' +
+      '<td>' + escHtml(p.name) + '</td>' +
+      '<td>' + escHtml(p.vendor) + '</td>' +
+      '<td>' + escHtml(p.courier||'—') + '</td>' +
+      '<td style="font-family:monospace;font-size:12px">' + escHtml(p.track||'—') + '</td>' +
+      '<td style="color:var(--text3)">' + escHtml(p.prod) + '</td>' +
+      '<td>' + (p.status==='match' ? '<span class="badge badge-green">✅ 완료</span>' : '<span class="badge badge-warn">⚠ 미매칭</span>') + '</td>' +
+      '</tr>'
+    ).join('');
+    const previewCard = document.getElementById('invPreviewCard');
+    if (previewCard) previewCard.style.display = 'block';
+    const dlBtn = document.getElementById('invDownloadBtn');
+    if (dlBtn) dlBtn.disabled = false;
+    const statusEl = document.getElementById('invStatus');
+    if (statusEl) { statusEl.textContent = '매칭 완료! 아래에서 결과를 확인 후 다운로드하세요.'; statusEl.style.color = 'var(--success)'; }
+  } catch(e) {
+    console.error('invProcess 오류:', e);
+    const statusEl = document.getElementById('invStatus');
+    if (statusEl) { statusEl.textContent = '❌ 오류: ' + e.message; statusEl.style.color = 'var(--danger)'; }
+  }
+}
+
+function invDownload() {
+  try {
+    if (!invResultData || !invOrderWb) return;
+    const wsOrig = invOrderWb.Sheets[invOrderWb.SheetNames[0]];
+    const header = XLSX.utils.sheet_to_json(wsOrig, {header:1})[0] || [];
+    const wbCopy = JSON.parse(JSON.stringify(invOrderWb));
+    const newWs = XLSX.utils.json_to_sheet(invResultData, {header: header.length ? header : undefined});
+    wbCopy.Sheets[wbCopy.SheetNames[0]] = newWs;
+    const fname = (invOrderFileName||'송장입력').replace(/\.(xls|xlsx)$/i, '') + '_송장입력.xlsx';
+    XLSX.writeFile(wbCopy, fname);
+    const statusEl = document.getElementById('invStatus');
+    if (statusEl) statusEl.textContent = '✅ 다운로드 완료: ' + fname;
+  } catch(e) {
+    console.error('invDownload 오류:', e);
+    const statusEl = document.getElementById('invStatus');
+    if (statusEl) { statusEl.textContent = '❌ 다운로드 오류: ' + e.message; statusEl.style.color = 'var(--danger)'; }
+  }
+}
+
+function invReset() {
+  try {
+    invOrderData = null; invOrderWb = null; invOrderFileName = '';
+    invTrackFiles = []; invResultData = null;
+    const ids = ['invOrderInfo','invTrackList','invSummary'];
+    ids.forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = ''; });
+    const vendorCard = document.getElementById('invVendorCard');
+    if (vendorCard) vendorCard.style.display = 'none';
+    const previewCard = document.getElementById('invPreviewCard');
+    if (previewCard) previewCard.style.display = 'none';
+    const processBtn = document.getElementById('invProcessBtn');
+    if (processBtn) processBtn.disabled = true;
+    const dlBtn = document.getElementById('invDownloadBtn');
+    if (dlBtn) dlBtn.disabled = true;
+    const statusEl = document.getElementById('invStatus');
+    if (statusEl) { statusEl.textContent = ''; statusEl.style.color = ''; }
+  } catch(e) { console.error('invReset 오류:', e); }
+}
+
+// ══════════════════════════════════════════════════════════
 // 탭 / 스텝 유틸
 // ══════════════════════════════════════════════════════════
 function switchTab(name){
@@ -1802,23 +2068,20 @@ function previewExpense() {
   }
 
   // 메모 줄 분리
-  const memoLines = (d.memo||'').split('\n').map(l=>l.trim()).filter(Boolean);
-  const leftMemo  = memoLines[0] || ('* ' + (d.desc||''));
+  const memoLines = (d.memo||'').split('\n').map(l=>l.trim()).filter(l=>l && l!=='*');
+  // 왼쪽 MEMO: 사용자 입력이 없으면 송금내역(desc)으로 채움
+  const leftMemo  = memoLines.length ? memoLines.join('\n') : (d.desc ? '* ' + d.desc : '');
   const rightLines = d.bank
     ? ['* ' + (d.desc||''), '* 예금주명 : ' + d.bank.holder, '* ' + d.bank.bank, '* 계좌번호 : ' + d.bank.acct, '* 송금 금액 : ' + fmtNum(d.total) + '원']
-    : memoLines.slice(0, 5);
+    : (memoLines.length ? memoLines.slice(0,5) : []);
+  const rightContent = rightLines.map(l => escHtml(l)).join('<br>');
 
-  // MEMO 영역 — 왼쪽은 rowspan으로 합쳐서 빈 줄 없애기
-  const memoRowCount = Math.max(3, rightLines.length);
-  let memoHtml = '<tr>' +
-    '<td rowspan="' + memoRowCount + '" style="width:50%;padding:6px 10px;font-size:11px;vertical-align:top;border-right:1px solid #000;border-bottom:1px solid #000">' +
-      escHtml(leftMemo) +
-    '</td>' +
-    '<td style="width:50%;padding:3px 10px;font-size:11px;vertical-align:top">' + escHtml(rightLines[0]||'') + '</td>' +
+  // MEMO 영역 — 좌우 단순 2열 (rowspan 없이 깔끔하게)
+  const memoHtml =
+    '<tr>' +
+      '<td style="width:50%;border:1px solid #000;padding:10px;font-size:11px;vertical-align:top;white-space:pre-wrap;min-height:80px;line-height:1.8">' + escHtml(leftMemo) + '</td>' +
+      '<td style="width:50%;border:1px solid #000;border-left:none;padding:10px;font-size:11px;vertical-align:top;line-height:1.9">' + rightContent + '</td>' +
     '</tr>';
-  for (let i = 1; i < memoRowCount; i++) {
-    memoHtml += '<tr><td style="width:50%;padding:3px 10px;font-size:11px;vertical-align:top">' + escHtml(rightLines[i]||'') + '</td></tr>';
-  }
 
   const B = 'border:1px solid #000';
   const co = d.co === '옐로우브릿지' ? 'YB' : 'GR';
@@ -1904,7 +2167,8 @@ function previewExpense() {
     '</table>' +
 
     // ── MEMO 영역 ──
-    '<table style="width:100%;border-collapse:collapse;margin-top:-1px">' +
+    '<table style="width:100%;border-collapse:collapse;margin-top:-1px;table-layout:fixed">' +
+    '<colgroup><col style="width:50%"><col style="width:50%"></colgroup>' +
     '<tr>' +
       '<td style="' + B + ';padding:5px 10px;font-size:11px;font-weight:600;background:#f5f5f5;width:50%">※ 송금내역 MEMO</td>' +
       '<td style="' + B + ';padding:5px 10px;font-size:11px;font-weight:600;background:#f5f5f5;width:50%">※ 재무회계과 MEMO</td>' +
@@ -2048,523 +2312,6 @@ function editBankInfo(i) {
 function removeBankInfo(i) {
   if (!confirm('삭제할까요?')) return;
   const banks = loadBankInfo(); banks.splice(i,1); saveBankInfo(banks); renderBankList();
-}
-
-// 지출결의서 이력
-function renderExpHistList() {
-  const hist = loadExpHist();
-  if (hist.length === 0) { document.getElementById('expHistList').innerHTML='<p style="font-size:13px;color:var(--text3)">작성된 이력이 없습니다.</p>'; return; }
-  let html = '';
-  hist.forEach((h,i) => {
-    const dateStr = h.date || '';
-    html += `<div style="display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--border);gap:10px;flex-wrap:wrap">
-      <div>
-        <span style="font-weight:700">${h.vendor}</span>
-        <span class="badge badge-purple" style="margin-left:6px">${h.co}</span>
-        <div style="font-size:12px;color:var(--text2);margin-top:3px">${dateStr} · ${h.desc} · ${fmtNum(h.total)}원</div>
-      </div>
-      <div style="display:flex;gap:6px">
-        <button class="btn btn-sm" onclick="loadExpHist2(${i})">불러오기</button>
-        <button class="btn btn-danger" onclick="removeExpHist(${i})">삭제</button>
-      </div>
-    </div>`;
-  });
-  document.getElementById('expHistList').innerHTML = html;
-}
-
-function loadExpHist2(i) {
-  const d = loadExpHist()[i];
-  selectExpCo(d.co);
-  document.getElementById('expDate').value   = d.date||'';
-  document.getElementById('expWriter').value = d.writer||'';
-  document.getElementById('expDesc').value   = d.desc||'';
-  document.getElementById('expSupply').value = d.supply||'';
-  document.getElementById('expVat').value    = d.vat||'';
-  document.getElementById('expTotal').value  = d.total||'';
-  document.getElementById('expMemo').value   = d.memo||'';
-  document.getElementById('expNote').value   = d.note||'';
-  if (d.payType) {
-    const r = document.querySelector(`input[name="expPayType"][value="${d.payType}"]`);
-    if (r) r.checked = true;
-  }
-  ['ev1','ev2','ev3','ev4','ev5','ev6'].forEach((id,idx)=>{
-    document.getElementById(id).checked = d[id]||false;
-  });
-  document.getElementById('expVendor').value = d.vendor||'';
-  const bank2 = loadBankInfo().find(b=>b.name===(d.vendor||''));
-  applyBankTemplate(bank2||null);
-  switchExpSubTab('write');
-}
-
-function removeExpHist(i) {
-  if (!confirm('삭제할까요?')) return;
-  const hist = loadExpHist(); hist.splice(i,1); saveExpHist(hist); renderExpHistList();
-}
-
-function switchExpSubTab(name) {
-  ['write','bank','list'].forEach(n=>{
-    document.getElementById('expsubtab-'+n).classList.toggle('active', n===name);
-    document.getElementById('stab-exp'+n).classList.toggle('active', n===name);
-  });
-  if (name==='bank') renderBankList();
-  if (name==='list') renderExpHistList();
-}
-
-// ══════════════════════════════════════════════════════════
-// 데이터 내보내기 / 가져오기
-// ══════════════════════════════════════════════════════════
-function exportData() {
-  const data = {
-    version: 1,
-    exportedAt: new Date().toISOString(),
-    codes:   loadCodes(),
-    optmap:  loadOptMap(),
-    banks:   loadBankInfo(),
-    exphist: loadExpHist(),
-  };
-  const json = JSON.stringify(data, null, 2);
-  const blob = new Blob([json], { type: 'application/json' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  const date = new Date().toISOString().slice(0,10).replace(/-/g,'');
-  a.href     = url;
-  a.download = `발주자동화_데이터_${date}.json`;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-function importData(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    try {
-      const data = JSON.parse(e.target.result);
-      if (!data.version) throw new Error('올바른 백업 파일이 아닙니다.');
-
-      const summary = [];
-      if (data.codes && data.codes.length) {
-        // 기존 코드와 합치기 (중복 제외)
-        const existing = loadCodes();
-        const existingKeys = new Set(existing.map(c => c.code));
-        const toAdd = data.codes.filter(c => !existingKeys.has(c.code));
-        saveCodes([...existing, ...toAdd]);
-        summary.push('코드 ' + toAdd.length + '개 추가');
-      }
-      if (data.optmap && data.optmap.length) {
-        const existing = loadOptMap();
-        const existingIds = new Set(existing.map(r => r.id));
-        const toAdd = data.optmap.filter(r => !existingIds.has(r.id));
-        saveOptMap([...existing, ...toAdd]);
-        summary.push('옵션변환규칙 ' + toAdd.length + '개 추가');
-      }
-      if (data.banks && data.banks.length) {
-        const existing = loadBankInfo();
-        const existingNames = new Set(existing.map(b => b.name));
-        const toAdd = data.banks.filter(b => !existingNames.has(b.name));
-        saveBankInfo([...existing, ...toAdd]);
-        summary.push('계좌 ' + toAdd.length + '개 추가');
-      }
-      if (data.exphist && data.exphist.length) {
-        const existing = loadExpHist();
-        const existingIds = new Set(existing.map(h => h.id));
-        const toAdd = data.exphist.filter(h => !existingIds.has(h.id));
-        saveExpHist([...existing, ...toAdd]);
-        summary.push('지출결의서 이력 ' + toAdd.length + '개 추가');
-      }
-
-      alert('✅ 가져오기 완료!\n' + summary.join('\n'));
-      renderCodeList();
-      renderOptMapList();
-      renderBankList();
-    } catch(err) {
-      alert('❌ 오류: ' + err.message);
-    }
-    event.target.value = '';
-  };
-  reader.readAsText(file);
-}
-
-// 클라우드에서 최신 데이터 불러오기 (앱 시작 시 + 수동)
-async function syncFromCloud(isManual = false) {
-  const statusEl = document.getElementById('syncStatus');
-  const btnEl = document.getElementById('syncBtn');
-  if (statusEl) statusEl.textContent = '⏳ 동기화 중...';
-  if (statusEl) statusEl.style.color = 'var(--text3)';
-  if (btnEl) btnEl.disabled = true;
-
-  const keys = ['codes','optmap','banks','exphist'];
-  const lsKeys = [LS_CODES, LS_OPTMAP, LS_BANK, LS_EXPHIST];
-  let updated = false;
-  let anySuccess = false;
-
-  for (let i = 0; i < keys.length; i++) {
-    try {
-      const cloudData = await loadFromCloud(keys[i]);
-      if (cloudData && Array.isArray(cloudData) && cloudData.length > 0) {
-        anySuccess = true;
-        const localData = JSON.parse(localStorage.getItem(lsKeys[i]) || '[]');
-        // 클라우드 데이터가 더 많거나 같으면 클라우드 우선
-        if (cloudData.length >= localData.length) {
-          localStorage.setItem(lsKeys[i], JSON.stringify(cloudData));
-          updated = true;
-        }
-      }
-    } catch(e) { console.warn('동기화 오류:', keys[i], e); }
-  }
-
-  if (updated) {
-    renderCodeList();
-    renderOptMapList();
-    if (document.getElementById('bankList')) renderBankList();
-  }
-
-  if (statusEl) {
-    if (anySuccess) {
-      statusEl.textContent = '✅ 동기화 완료';
-      statusEl.style.color = 'var(--success)';
-    } else {
-      statusEl.textContent = '❌ 네트워크 오류 (로컬 데이터 사용 중)';
-      statusEl.style.color = 'var(--danger)';
-    }
-  }
-  if (btnEl) btnEl.disabled = false;
-
-  if (isManual && anySuccess) alert('✅ 클라우드에서 최신 데이터를 불러왔습니다!');
-  if (isManual && !anySuccess) alert('❌ 구글 시트 연결 실패\n회사 네트워크에서 막혀 있을 수 있어요.\n현재 로컬에 저장된 데이터를 사용합니다.');
-}
-
-function manualSync() { syncFromCloud(true); }
-
-// 송장입력 탭
-// ══════════════════════════════════════════════════════════
-let invOrderData = null;   // 샵마인 주문 데이터 [{row원본}, ...]
-let invOrderWb   = null;   // 원본 워크북
-let invOrderFileName = '';
-let invTrackFiles = [];    // [{fileName, vendorName, courierName, map:{수령자→운송장}}]
-
-// 거래처별 기본 택배사
-const VENDOR_COURIER_DEFAULT = {
-  '푸드앤': '우체국택배', '푸드엔': '우체국택배',
-  '일비': '롯데택배',
-  '거풍푸드': 'CJ대한통운', '거풍': 'CJ대한통운',
-  '최고집': 'CJ대한통운',
-  '현해랑': '롯데택배',
-  '도매꾹': '롯데택배',
-  '늘푸른': '롯데택배',
-};
-
-function invDropOrder(e) {
-  e.preventDefault();
-  document.getElementById('invOrderZone').classList.remove('dragover');
-  const f = e.dataTransfer.files[0];
-  if (f) invLoadOrder(f);
-}
-function invDropTrack(e) {
-  e.preventDefault();
-  document.getElementById('invTrackZone').classList.remove('dragover');
-  invLoadTracks(e.dataTransfer.files);
-}
-
-function invLoadOrder(file) {
-  if (!file) return;
-  invOrderFileName = file.name;
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    try {
-      invOrderWb = XLSX.read(e.target.result, {type:'array'});
-      const ws = invOrderWb.Sheets[invOrderWb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(ws, {defval:''});
-      invOrderData = rows;
-      document.getElementById('invOrderInfo').innerHTML =
-        '<span style="color:var(--success)">✅ ' + file.name + ' — ' + rows.length + '건 로드 완료</span>';
-      invCheckReady();
-    } catch(err) {
-      document.getElementById('invOrderInfo').innerHTML = '<span style="color:var(--danger)">❌ 파일 읽기 실패: ' + err.message + '</span>';
-    }
-  };
-  reader.readAsArrayBuffer(file);
-}
-
-function invLoadTracks(files) {
-  Array.from(files).forEach(file => {
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      try {
-        const wb = XLSX.read(e.target.result, {type:'array'});
-        const ws = wb.Sheets[wb.SheetNames[0]];
-        // 원시 배열로 읽기 — 헤더 행 위치 무관하게 스캔
-        const rawRows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
-
-        const norm = c => String(c).replace(/\s/g,'');
-        const isTrackCol = c => /운송장|송장|배송번호|등기번호|추적번호/.test(norm(c));
-        const isNameCol  = c => /받는분성명|수취인명|수령자|수취인|받는분이름|받는사람|수신자이름|수신자/.test(norm(c));
-
-        // 헤더 행 탐색: 최대 20행까지 스캔
-        let trackIdx = -1, nameIdx = -1, hdrRow = -1;
-        for (let ri = 0; ri < Math.min(20, rawRows.length); ri++) {
-          const row = rawRows[ri];
-          const ti = row.findIndex(isTrackCol);
-          const ni = row.findIndex(isNameCol);
-          if (ti >= 0 && ni >= 0) { trackIdx = ti; nameIdx = ni; hdrRow = ri; break; }
-        }
-
-        if (hdrRow < 0) {
-          // 헤더를 못 찾으면 첫 5행 내용 노출
-          const preview = rawRows.slice(0,3).map(r=>r.slice(0,8).join('|')).join(' / ');
-          invShowTrackError(file.name, '헤더 탐지 실패. 파일 내용: ' + preview);
-          return;
-        }
-
-        // 헤더 아래 데이터 행에서 이름→운송장 map 생성
-        const trackCol = rawRows[hdrRow][trackIdx];
-        const nameCol  = rawRows[hdrRow][nameIdx];
-
-        const map = {};
-        rawRows.slice(hdrRow + 1).forEach(r => {
-          const name = String(r[nameIdx]||'').trim();
-          const no   = String(r[trackIdx]||'').trim();
-          if (name && no) map[name] = no;
-        });
-
-        // 파일명에서 거래처 추출
-        const vendorGuess = invGuessVendor(file.name);
-        const courierGuess = VENDOR_COURIER_DEFAULT[vendorGuess] || '롯데택배';
-
-        invTrackFiles.push({fileName: file.name, vendorName: vendorGuess, courierName: courierGuess, map});
-        invRenderTrackList();
-        invRenderVendorCard();
-        invCheckReady();
-      } catch(err) {
-        invShowTrackError(file.name, err.message);
-      }
-    };
-    reader.readAsArrayBuffer(file);
-  });
-}
-
-function invGuessVendor(fname) {
-  const known = ['푸드앤','푸드엔','일비','거풍푸드','거풍','최고집','현해랑','도매꾹','늘푸른'];
-  for (const v of known) {
-    if (fname.includes(v)) return v;
-  }
-  // 파일명에서 업체명 추출 시도
-  const m = fname.match(/[가-힣]+/g);
-  return m ? m[0] : '미확인';
-}
-
-function invShowTrackError(fname, msg) {
-  const el = document.getElementById('invTrackList');
-  el.innerHTML += '<div style="color:var(--danger);font-size:13px;margin-top:6px">❌ ' + fname + ': ' + msg + '</div>';
-}
-
-function invRenderTrackList() {
-  try {
-    const el = document.getElementById('invTrackList');
-    if (!el) return;
-    el.innerHTML = invTrackFiles.map((t,i) =>
-      '<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px">' +
-      '<span style="color:var(--success)">✅</span>' +
-      '<span>' + escHtml(t.fileName) + '</span>' +
-      '<span style="color:var(--text3)">— ' + Object.keys(t.map).length + '건</span>' +
-      '<button class="btn btn-danger btn-sm" onclick="invRemoveTrack(' + i + ')">✕</button>' +
-      '</div>'
-    ).join('');
-  } catch(e) { console.error('invRenderTrackList 오류:', e); }
-}
-
-function invRemoveTrack(i) {
-  invTrackFiles.splice(i, 1);
-  invRenderTrackList();
-  invRenderVendorCard();
-  invCheckReady();
-}
-
-function invRenderVendorCard() {
-  try {
-    const card = document.getElementById('invVendorCard');
-    const rows = document.getElementById('invVendorRows');
-    if (!card || !rows) return;
-    if (!invTrackFiles.length) { card.style.display='none'; return; }
-    card.style.display='block';
-
-    const couriers = ['롯데택배','CJ대한통운','우체국택배','한진택배','로젠택배','경동택배'];
-    rows.innerHTML = invTrackFiles.map((t,i) =>
-      '<div style="display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)">' +
-      '<div>' +
-      '<div style="font-size:11px;color:var(--text3);margin-bottom:3px">거래처명</div>' +
-      '<input class="inp" value="' + escHtml(t.vendorName) + '" data-idx="' + i + '" onchange="invTrackFiles[+this.dataset.idx].vendorName=this.value" style="font-size:13px">' +
-      '</div>' +
-      '<div>' +
-      '<div style="font-size:11px;color:var(--text3);margin-bottom:3px">택배사</div>' +
-      '<select class="inp" data-idx="' + i + '" onchange="invTrackFiles[+this.dataset.idx].courierName=this.value" style="font-size:13px">' +
-      couriers.map(c => '<option value="' + escHtml(c) + '"' + (c===t.courierName?' selected':'') + '>' + escHtml(c) + '</option>').join('') +
-      '</select>' +
-      '</div>' +
-      '<div style="font-size:12px;color:var(--text3);padding-top:18px">' + Object.keys(t.map).length + '건</div>' +
-      '</div>'
-    ).join('');
-  } catch(e) { console.error('invRenderVendorCard 오류:', e); }
-}
-
-function invAddVendorRow() {
-  invTrackFiles.push({fileName:'수동추가', vendorName:'', courierName:'롯데택배', map:{}});
-  invRenderVendorCard();
-}
-
-function invCheckReady() {
-  const ready = invOrderData && invTrackFiles.length > 0;
-  document.getElementById('invProcessBtn').disabled = !ready;
-}
-
-let invResultData = null;
-
-function invProcess() {
-  try {
-    if (!invOrderData || !invTrackFiles.length) return;
-
-    // 주문 데이터에서 수령자, 판매자상품코드, 택배사, 송장번호 컬럼 찾기
-    const sample = invOrderData[0] || {};
-    const nameCol    = ['수령자','받는분성명','수취인명'].find(c => c in sample) || '수령자';
-    const codeCol    = ['판매자상품코드','상품코드'].find(c => c in sample) || '판매자상품코드';
-    const courierCol = ['택배사'].find(c => c in sample) || '택배사';
-    const trackCol   = ['송장번호','운송장번호'].find(c => c in sample) || '송장번호';
-    const prodCol    = ['상품명'].find(c => c in sample) || '상품명';
-
-    let matched = 0, unmatched = 0;
-    const preview = [];
-
-    invResultData = invOrderData.map(row => {
-      const newRow = {...row};
-      const name = String(row[nameCol]||'').trim();
-
-      // 판매자상품코드에서 거래처명 추출
-      const code = String(row[codeCol]||'');
-      let vendor = '';
-      if (code.includes(']')) vendor = code.split(']')[0].trim();
-      else if (code.includes('_') && !/^\d/.test(code)) vendor = code.split('_')[0].trim();
-
-      // 매칭: 이름 기준
-      let found = false;
-      for (const tf of invTrackFiles) {
-        if (name && tf.map[name]) {
-          newRow[trackCol]   = tf.map[name];
-          newRow[courierCol] = tf.courierName;
-          matched++;
-          found = true;
-          preview.push({name, vendor, courier: tf.courierName, track: tf.map[name], prod: String(row[prodCol]||'').slice(0,30), status:'match'});
-          break;
-        }
-      }
-      if (!found && name) {
-        unmatched++;
-        preview.push({name, vendor, courier:'', track:'', prod: String(row[prodCol]||'').slice(0,30), status:'unmatch'});
-      }
-      return newRow;
-    });
-
-    // 요약
-    const summaryEl = document.getElementById('invSummary');
-    if (summaryEl) summaryEl.innerHTML =
-      '<div style="display:flex;gap:12px;flex-wrap:wrap">' +
-      '<span class="badge badge-green">✅ 매칭 ' + matched + '건</span>' +
-      '<span class="badge badge-warn">❌ 미매칭 ' + unmatched + '건</span>' +
-      '<span class="badge badge-blue">총 ' + invOrderData.length + '건</span>' +
-      '</div>';
-
-    // 미리보기 테이블 — escHtml로 안전하게 출력
-    const tbody = document.getElementById('invPreviewBody');
-    if (tbody) tbody.innerHTML = preview.map(p =>
-      '<tr>' +
-      '<td>' + escHtml(p.name) + '</td>' +
-      '<td>' + escHtml(p.vendor) + '</td>' +
-      '<td>' + escHtml(p.courier||'—') + '</td>' +
-      '<td style="font-family:monospace;font-size:12px">' + escHtml(p.track||'—') + '</td>' +
-      '<td style="color:var(--text3)">' + escHtml(p.prod) + '</td>' +
-      '<td>' + (p.status==='match' ? '<span class="badge badge-green">✅ 완료</span>' : '<span class="badge badge-warn">⚠ 미매칭</span>') + '</td>' +
-      '</tr>'
-    ).join('');
-
-    const previewCard = document.getElementById('invPreviewCard');
-    if (previewCard) previewCard.style.display = 'block';
-    const dlBtn = document.getElementById('invDownloadBtn');
-    if (dlBtn) dlBtn.disabled = false;
-    const statusEl = document.getElementById('invStatus');
-    if (statusEl) { statusEl.textContent = '매칭 완료! 아래에서 결과를 확인 후 다운로드하세요.'; statusEl.style.color = 'var(--success)'; }
-  } catch(e) {
-    console.error('invProcess 오류:', e);
-    const statusEl = document.getElementById('invStatus');
-    if (statusEl) { statusEl.textContent = '❌ 오류: ' + e.message; statusEl.style.color = 'var(--danger)'; }
-  }
-}
-
-function invDownload() {
-  try {
-    if (!invResultData || !invOrderWb) return;
-    const wsOrig = invOrderWb.Sheets[invOrderWb.SheetNames[0]];
-    const header = XLSX.utils.sheet_to_json(wsOrig, {header:1})[0] || [];
-
-    // 원본 워크북을 건드리지 않도록 deep copy 후 작업
-    const wbCopy = JSON.parse(JSON.stringify(invOrderWb));
-    const newWs = XLSX.utils.json_to_sheet(invResultData, {header: header.length ? header : undefined});
-    wbCopy.Sheets[wbCopy.SheetNames[0]] = newWs;
-
-    const fname = (invOrderFileName||'송장입력').replace(/\.(xls|xlsx)$/i, '') + '_송장입력.xlsx';
-    XLSX.writeFile(wbCopy, fname);
-    const statusEl = document.getElementById('invStatus');
-    if (statusEl) statusEl.textContent = '✅ 다운로드 완료: ' + fname;
-  } catch(e) {
-    console.error('invDownload 오류:', e);
-    const statusEl = document.getElementById('invStatus');
-    if (statusEl) { statusEl.textContent = '❌ 다운로드 오류: ' + e.message; statusEl.style.color = 'var(--danger)'; }
-  }
-}
-
-function invReset() {
-  try {
-    invOrderData = null; invOrderWb = null; invOrderFileName = '';
-    invTrackFiles = []; invResultData = null;
-    const ids = ['invOrderInfo','invTrackList','invStatus'];
-    ids.forEach(id => { const el=document.getElementById(id); if(el) el.innerHTML=''; });
-    const hides = ['invVendorCard','invPreviewCard'];
-    hides.forEach(id => { const el=document.getElementById(id); if(el) el.style.display='none'; });
-    const disables = ['invProcessBtn','invDownloadBtn'];
-    disables.forEach(id => { const el=document.getElementById(id); if(el) el.disabled=true; });
-    try{ const f=document.getElementById('invOrderFile'); if(f) f.value=''; }catch(e){}
-    try{ const f=document.getElementById('invTrackFile'); if(f) f.value=''; }catch(e){}
-  } catch(e) { console.error('invReset 오류:', e); }
-}
-
-// 초기화
-renderCodeList();renderOptMapList();showLastFileCard();
-// 클라우드 동기화 (백그라운드)
-syncFromCloud();
-
-// 기본 계좌 데이터 수동 등록
-const DEFAULT_BANKS = [
-  {name:'㈜푸드엔드베스트',         bank:'농협',  acct:'707016-55-000088',    holder:'㈜푸드엔드베스트',            tmemo:'', tnote:'* 주문 내역 첨부', tpayType:'즉시결제', tev1:false,tev2:false,tev3:false,tev4:false,tev5:false,tev6:false},
-  {name:'주식회사지앤지커머스(가상)',bank:'기업',  acct:'가상계좌번호',         holder:'주식회사지앤지커머스',        tmemo:'', tnote:'* 주문 내역 첨부', tpayType:'즉시결제', tev1:false,tev2:false,tev3:false,tev4:false,tev5:false,tev6:false},
-  {name:'공덕농협농산물가공사업소',  bank:'농협',  acct:'351-0852-6200-13',    holder:'공덕농협농산물가공사업소',    tmemo:'', tnote:'* 주문 내역 첨부', tpayType:'즉시결제', tev1:false,tev2:false,tev3:false,tev4:false,tev5:false,tev6:false},
-  {name:'주식회사지앤지커머스①',    bank:'기업',  acct:'48011768997629',      holder:'주식회사지앤지커머스',        tmemo:'', tnote:'* 주문 내역 첨부', tpayType:'즉시결제', tev1:false,tev2:false,tev3:false,tev4:false,tev5:false,tev6:false},
-  {name:'주식회사지앤지커머스②',    bank:'기업',  acct:'48012029897531',      holder:'주식회사지앤지커머스',        tmemo:'', tnote:'* 주문 내역 첨부', tpayType:'즉시결제', tev1:false,tev2:false,tev3:false,tev4:false,tev5:false,tev6:false},
-  {name:'농업회사법인㈜더자인',      bank:'농협',  acct:'301-0347-7156-01',    holder:'농업회사법인㈜더자인',        tmemo:'', tnote:'* 주문 내역 첨부', tpayType:'즉시결제', tev1:false,tev2:false,tev3:false,tev4:false,tev5:false,tev6:false},
-  {name:'도매꾹이머니충전',          bank:'국민',  acct:'401390-13-683328',    holder:'도매꾹이머니충전',            tmemo:'', tnote:'* 주문 내역 첨부', tpayType:'즉시결제', tev1:false,tev2:false,tev3:false,tev4:false,tev5:false,tev6:false},
-  {name:'김귀현(늘푸른우리)',        bank:'카카오',acct:'3333-3133-01762',     holder:'김귀현',                      tmemo:'', tnote:'* 주문 내역 첨부', tpayType:'즉시결제', tev1:false,tev2:false,tev3:false,tev4:false,tev5:false,tev6:false},
-  {name:'한상철(일해수산)',          bank:'농협',  acct:'302-0984-6683-31',    holder:'한상철',                      tmemo:'', tnote:'* 주문 내역 첨부', tpayType:'즉시결제', tev1:false,tev2:false,tev3:false,tev4:false,tev5:false,tev6:false},
-  {name:'㈜렉스팜',                 bank:'하나',  acct:'128-910026-24404',    holder:'㈜렉스팜',                    tmemo:'', tnote:'* 주문 내역 첨부', tpayType:'즉시결제', tev1:false,tev2:false,tev3:false,tev4:false,tev5:false,tev6:false},
-  {name:'충남마른김가공수산업협동조합',bank:'농협', acct:'301-02031-2984-21',  holder:'충남마른김가공수산업협동조합',tmemo:'', tnote:'* 주문 내역 첨부', tpayType:'즉시결제', tev1:false,tev2:false,tev3:false,tev4:false,tev5:false,tev6:false},
-  {name:'거풍푸드',                 bank:'광주',  acct:'1107-021-507090',     holder:'거풍푸드',                    tmemo:'', tnote:'* 주문 내역 첨부', tpayType:'즉시결제', tev1:false,tev2:false,tev3:false,tev4:false,tev5:false,tev6:false},
-  {name:'생선상륙(구인자)',          bank:'농협',  acct:'301-0330-4278-51',    holder:'구인자',                      tmemo:'', tnote:'* 주문 내역 첨부', tpayType:'즉시결제', tev1:false,tev2:false,tev3:false,tev4:false,tev5:false,tev6:false},
-];
-
-function seedBankDataManual() {
-  if (!confirm('기본 계좌 13개를 등록할까요? 이미 같은 이름의 계좌는 건너뜁니다.')) return;
-  const existing = loadBankInfo();
-  const existingNames = new Set(existing.map(b=>b.name));
-  const toAdd = DEFAULT_BANKS.filter(d => !existingNames.has(d.name));
-  saveBankInfo([...existing, ...toAdd]);
-  switchExpSubTab('bank');
-  renderBankList();
 }
 </script>
 </body>
