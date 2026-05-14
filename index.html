@@ -2139,20 +2139,26 @@ function previewExpense() {
     dateKo = dt.getFullYear() + '년 ' + (dt.getMonth()+1) + '월 ' + dt.getDate() + '일 ' + DAYS_KO[dt.getDay()] + '요일';
   }
 
-  // 메모 줄 분리
+  // ── MEMO 구성 ──
+  // 왼쪽(송금내역): 송금내역(desc) + 송금금액만
+  const leftLines = [];
+  if (d.desc)  leftLines.push('* ' + d.desc);
+  if (d.total) leftLines.push('* 송금 금액 : ' + fmtNum(d.total) + '원');
+  // 사용자가 메모 직접 입력한 경우엔 그걸 우선 사용
   const memoLines = (d.memo||'').split('\n').map(l=>l.trim()).filter(l=>l && l!=='*');
-  // 왼쪽 MEMO: 사용자 입력이 없으면 송금내역(desc)으로 채움
-  const leftMemo  = memoLines.length ? memoLines.join('\n') : (d.desc ? '* ' + d.desc : '');
+  const leftMemo = memoLines.length ? memoLines.join('\n') : leftLines.join('\n');
+
+  // 오른쪽(재무회계과): 예금주명·은행·계좌번호·송금금액
   const rightLines = d.bank
-    ? ['* ' + (d.desc||''), '* 예금주명 : ' + d.bank.holder, '* ' + d.bank.bank, '* 계좌번호 : ' + d.bank.acct, '* 송금 금액 : ' + fmtNum(d.total) + '원']
-    : (memoLines.length ? memoLines.slice(0,5) : []);
+    ? ['* 예금주명 : ' + d.bank.holder, '* ' + d.bank.bank, '* 계좌번호 : ' + d.bank.acct, '* 송금 금액 : ' + fmtNum(d.total) + '원']
+    : [];
   const rightContent = rightLines.map(l => escHtml(l)).join('<br>');
 
-  // MEMO 영역 — 좌우 단순 2열 (rowspan 없이 깔끔하게)
+  // MEMO 영역 — 좌우 단순 2열
   const memoHtml =
     '<tr>' +
-      '<td style="width:50%;border:1px solid #000;padding:10px;font-size:11px;vertical-align:top;white-space:pre-wrap;min-height:80px;line-height:1.8">' + escHtml(leftMemo) + '</td>' +
-      '<td style="width:50%;border:1px solid #000;border-left:none;padding:10px;font-size:11px;vertical-align:top;line-height:1.9">' + rightContent + '</td>' +
+      '<td style="width:50%;border:1px solid #000;padding:10px 12px;font-size:13px;vertical-align:top;white-space:pre-wrap;min-height:90px;line-height:2">' + escHtml(leftMemo) + '</td>' +
+      '<td style="width:50%;border:1px solid #000;border-left:none;padding:10px 12px;font-size:13px;vertical-align:top;line-height:2">' + rightContent + '</td>' +
     '</tr>';
 
   const B = 'border:1px solid #000';
