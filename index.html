@@ -2140,21 +2140,27 @@ function previewExpense() {
   }
 
   // ── MEMO 구성 ──
-  // 왼쪽(송금내역): 송금금액만
-  const memoLines = (d.memo||'').split('\n').map(l=>l.trim()).filter(l=>l && l!=='*');
-  const leftMemo = memoLines.length ? memoLines.join('\n') : ('* 송금 금액 : ' + fmtNum(d.total) + '원');
+  // 왼쪽(송금내역 MEMO): 공급가액 / 세액 / 합계
+  const leftContent =
+    escHtml('* 공급가액 : ' + fmtNum(d.supply) + '원') + '<br>' +
+    escHtml('* 세    액 : ' + fmtNum(d.vat)    + '원') + '<br>' +
+    escHtml('* 합    계 : ' + fmtNum(d.total)  + '원');
 
-  // 오른쪽(재무회계과): 예금주명·은행·계좌번호·송금금액
-  const rightLines = d.bank
-    ? ['* 예금주명 : ' + d.bank.holder, '* ' + d.bank.bank, '* 계좌번호 : ' + d.bank.acct, '* 송금 금액 : ' + fmtNum(d.total) + '원']
-    : [];
-  const rightContent = rightLines.map(l => escHtml(l)).join('<br>');
+  // 오른쪽(재무회계과 MEMO): 송금내역 / 예금주명 / 은행 / 계좌번호
+  const rightParts = [];
+  if (d.desc)           rightParts.push('* ' + d.desc);
+  if (d.bank) {
+    rightParts.push('* 예금주명 : ' + d.bank.holder);
+    rightParts.push('* ' + d.bank.bank);
+    rightParts.push('* 계좌번호 : ' + d.bank.acct);
+  }
+  const rightContent = rightParts.map(l => escHtml(l)).join('<br>');
 
   // MEMO 영역 — 좌우 단순 2열
   const memoHtml =
     '<tr>' +
-      '<td style="width:50%;border:1px solid #000;padding:10px 12px;font-size:13px;vertical-align:top;white-space:pre-wrap;min-height:90px;line-height:2">' + escHtml(leftMemo) + '</td>' +
-      '<td style="width:50%;border:1px solid #000;border-left:none;padding:10px 12px;font-size:13px;vertical-align:top;line-height:2">' + rightContent + '</td>' +
+      '<td style="width:50%;border:1px solid #000;padding:10px 12px;font-size:13px;vertical-align:top;line-height:2.2;min-height:90px">' + leftContent + '</td>' +
+      '<td style="width:50%;border:1px solid #000;border-left:none;padding:10px 12px;font-size:13px;vertical-align:top;line-height:2.2">' + rightContent + '</td>' +
     '</tr>';
 
   const B = 'border:1px solid #000';
