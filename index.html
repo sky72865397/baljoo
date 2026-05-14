@@ -2140,11 +2140,13 @@ function previewExpense() {
   }
 
   // ── MEMO 구성 ──
-  // 왼쪽(송금내역 MEMO): 공급가액 / 세액 / 합계
+  // 왼쪽(송금내역 MEMO): 공급가액 / 세액 / 합계 (금액 오른쪽 정렬)
   const leftContent =
-    escHtml('* 공급가액 : ' + fmtNum(d.supply) + '원') + '<br>' +
-    escHtml('* 세    액 : ' + fmtNum(d.vat)    + '원') + '<br>' +
-    escHtml('* 합    계 : ' + fmtNum(d.total)  + '원');
+    '<table style="width:100%;border-collapse:collapse">' +
+      '<tr><td style="font-size:13px;padding:3px 0;white-space:nowrap">　공급가액</td><td style="font-size:13px;padding:3px 4px;text-align:right;font-weight:normal">:</td><td style="font-size:13px;padding:3px 0;text-align:right">' + fmtNum(d.supply) + '</td><td style="font-size:13px;padding:3px 0 3px 3px">원</td></tr>' +
+      '<tr><td style="font-size:13px;padding:3px 0;white-space:nowrap">　세　　액</td><td style="font-size:13px;padding:3px 4px;text-align:right">:</td><td style="font-size:13px;padding:3px 0;text-align:right">' + fmtNum(d.vat) + '</td><td style="font-size:13px;padding:3px 0 3px 3px">원</td></tr>' +
+      '<tr><td style="font-size:13px;padding:3px 0;white-space:nowrap;font-weight:700">　합　　계</td><td style="font-size:13px;padding:3px 4px;text-align:right;font-weight:700">:</td><td style="font-size:13px;padding:3px 0;text-align:right;font-weight:700">' + fmtNum(d.total) + '</td><td style="font-size:13px;padding:3px 0 3px 3px;font-weight:700">원</td></tr>' +
+    '</table>';
 
   // 오른쪽(재무회계과 MEMO): 송금내역 / 예금주명 / 은행 / 계좌번호
   const rightParts = [];
@@ -2255,17 +2257,6 @@ function previewExpense() {
     '</tr>' +
     memoHtml +
 
-    // 공급가액/세액/합계
-    '<tr>' +
-      '<td style="' + B + ';padding:5px 10px;font-size:11px">' +
-        '<table style="width:100%;border-collapse:collapse">' +
-        '<tr><td style="padding:2px 0;font-size:11px">　공급가액 :</td><td style="text-align:right;padding:2px 0;font-size:11px">' + fmtNum(d.supply) + '</td><td style="font-size:11px;padding:2px 4px">원</td></tr>' +
-        '<tr><td style="padding:2px 0;font-size:11px">　세　　액 :</td><td style="text-align:right;padding:2px 0;font-size:11px">' + fmtNum(d.vat) + '</td><td style="font-size:11px;padding:2px 4px">원</td></tr>' +
-        '<tr><td style="padding:2px 0;font-size:11px;font-weight:700">　합　　계 :</td><td style="text-align:right;padding:2px 0;font-size:11px;font-weight:700">' + fmtNum(d.total) + '</td><td style="font-size:11px;padding:2px 4px;font-weight:700">원</td></tr>' +
-        '</table>' +
-      '</td>' +
-      '<td style="' + B + ';padding:5px 10px;font-size:11px;vertical-align:top"></td>' +
-    '</tr>' +
     '</table>' +
 
     // ── 최종결재자 MEMO ──
