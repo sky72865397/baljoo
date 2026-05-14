@@ -523,9 +523,17 @@
   <div class="sub-content" id="expsubtab-list">
     <div class="card">
       <div class="card-title">📋 지출결의서 작성 이력</div>
-      <div id="expHistList"><p style="font-size:13px;color:var(--text3)">작성된 이력이 없습니다.</p></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px">
+        <input id="expHistSearch" class="inp" type="text" placeholder="거래처·송금내역 검색..." oninput="renderExpHistList()" style="flex:1;min-width:160px;max-width:300px">
+        <div style="display:flex;gap:6px">
+          <button class="sub-tab-btn active" id="expCoFilter-all"   onclick="setExpCoFilter('all')">전체</button>
+          <button class="sub-tab-btn"        id="expCoFilter-yb"    onclick="setExpCoFilter('옐로우브릿지')">옐로우브릿지</button>
+          <button class="sub-tab-btn"        id="expCoFilter-gr"    onclick="setExpCoFilter('그로븐')">그로븐</button>
+        </div>
+        <button class="btn btn-sm" style="margin-left:auto" onclick="if(confirm('전체 이력을 삭제할까요?')){localStorage.removeItem('expHist');renderExpHistList();}">🗑 전체삭제</button>
+      </div>
+      <div id="expHistList"><p style="font-size:13px;color:var(--text3)">저장된 이력이 없습니다.</p></div>
     </div>
-    <div class="alert alert-info">💾 저장한 지출결의서 이력이 여기에 표시됩니다.</div>
   </div>
 
 </div>
@@ -1745,6 +1753,99 @@ function invReset() {
     const statusEl = document.getElementById('invStatus');
     if (statusEl) { statusEl.textContent = ''; statusEl.style.color = ''; }
   } catch(e) { console.error('invReset 오류:', e); }
+}
+
+// ══════════════════════════════════════════════════════════
+// 지출결의서 서브탭
+// ══════════════════════════════════════════════════════════
+let _expCoFilter = 'all';
+
+function switchExpSubTab(name) {
+  document.querySelectorAll('#tab-expense .sub-content').forEach(el => el.classList.remove('active'));
+  ['write','bank','list'].forEach(n => {
+    const btn = document.getElementById('stab-exp' + (n==='write'?'write':n==='bank'?'bank':'list'));
+    if (btn) btn.classList.remove('active');
+  });
+  const content = document.getElementById('expsubtab-' + name);
+  const btn = document.getElementById('stab-exp' + name);
+  if (content) content.classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (name === 'list') renderExpHistList();
+  if (name === 'bank') renderBankList();
+}
+
+function setExpCoFilter(co) {
+  _expCoFilter = co;
+  ['all','yb','gr'].forEach(k => {
+    const el = document.getElementById('expCoFilter-' + k);
+    if (el) el.classList.remove('active');
+  });
+  const keyMap = {'all':'all','옐로우브릿지':'yb','그로븐':'gr'};
+  const btn = document.getElementById('expCoFilter-' + (keyMap[co]||'all'));
+  if (btn) btn.classList.add('active');
+  renderExpHistList();
+}
+
+function renderExpHistList() {
+  const el = document.getElementById('expHistList');
+  if (!el) return;
+  const hist = loadExpHist();
+  if (!hist.length) { el.innerHTML = '<p style="font-size:13px;color:var(--text3)">저장된 이력이 없습니다.</p>'; return; }
+
+  const q = (document.getElementById('expHistSearch')||{}).value?.trim().toLowerCase() || '';
+
+  // 필터
+  let filtered = hist.filter(d => {
+    if (_expCoFilter !== 'all' && d.co !== _expCoFilter) return false;
+    if (q && !(
+      (d.vendor||'').toLowerCase().includes(q) ||
+      (d.desc||'').toLowerCase().includes(q) ||
+      (d.date||'').includes(q)
+    )) return false;
+    return true;
+  });
+
+  if (!filtered.length) { el.innerHTML = '<p style="font-size:13px;color:var(--text3)">검색 결과가 없습니다.</p>'; return; }
+
+  // 거래처별로 그룹핑
+  const groups = {};
+  filtered.forEach(d => {
+    const key = (d.co||'') + '|' + (d.vendor||'미지정');
+    if (!groups[key]) groups[key] = {co: d.co||'', vendor: d.vendor||'미지정', items: []};
+    groups[key].items.push(d);
+  });
+
+  let html = '';
+  Object.values(groups).forEach(g => {
+    const coColor = g.co === '옐로우브릿지' ? '#f59e0b' : '#3b82f6';
+    html += '<div style="margin-bottom:18px">' +
+      '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:2px solid var(--border2);margin-bottom:8px">' +
+        '<span style="font-size:11px;font-weight:700;color:#fff;background:' + coColor + ';padding:2px 8px;border-radius:10px">' + escHtml(g.co) + '</span>' +
+        '<span style="font-size:14px;font-weight:700">' + escHtml(g.vendor) + '</span>' +
+        '<span style="font-size:12px;color:var(--text3)">(' + g.items.length + '건)</span>' +
+      '</div>';
+
+    g.items.forEach((d, idx) => {
+      const realIdx = hist.indexOf(d);
+      html += '<div style="display:grid;grid-template-columns:90px 1fr auto auto;gap:8px;align-items:center;padding:7px 8px;border-radius:6px;margin-bottom:4px;background:var(--surface)">' +
+        '<span style="font-size:11px;color:var(--text3)">' + escHtml(d.date||'') + '</span>' +
+        '<span style="font-size:13px">' + escHtml(d.desc||'') + '</span>' +
+        '<span style="font-size:13px;font-weight:600;text-align:right">' + fmtNum(d.total) + '원</span>' +
+        '<button class="btn btn-sm" style="color:var(--danger);border-color:var(--danger);padding:2px 8px" onclick="deleteExpHist(' + realIdx + ')">삭제</button>' +
+      '</div>';
+    });
+    html += '</div>';
+  });
+
+  el.innerHTML = html;
+}
+
+function deleteExpHist(i) {
+  if (!confirm('이 항목을 삭제할까요?')) return;
+  const hist = loadExpHist();
+  hist.splice(i, 1);
+  saveExpHist(hist);
+  renderExpHistList();
 }
 
 // ══════════════════════════════════════════════════════════
