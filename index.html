@@ -2053,17 +2053,90 @@ function previewHistItem(i) {
 
 let _expSaveDirHandle = null;
 
+// ── IndexedDB 폴더 핸들 영속화 ──
+function _idbOpen() {
+  return new Promise((res, rej) => {
+    const req = indexedDB.open('expSaveDB', 1);
+    req.onupgradeneeded = e => e.target.result.createObjectStore('handles');
+    req.onsuccess = e => res(e.target.result);
+    req.onerror   = e => rej(e.target.error);
+  });
+}
+async function _idbPut(key, val) {
+  const db = await _idbOpen();
+  return new Promise((res, rej) => {
+    const tx = db.transaction('handles', 'readwrite');
+    tx.objectStore('handles').put(val, key);
+    tx.oncomplete = res; tx.onerror = e => rej(e.target.error);
+  });
+}
+async function _idbGet(key) {
+  const db = await _idbOpen();
+  return new Promise((res, rej) => {
+    const tx = db.transaction('handles', 'readonly');
+    const req = tx.objectStore('handles').get(key);
+    req.onsuccess = e => res(e.target.result);
+    req.onerror   = e => rej(e.target.error);
+  });
+}
+
+async function _updateFolderLabel() {
+  const nameEl = document.getElementById('expSaveFolderName');
+  if (!nameEl) return;
+  if (_expSaveDirHandle) {
+    nameEl.textContent = '📂 ' + _expSaveDirHandle.name + ' (옐로우브릿지·그로븐 서브폴더 자동 생성)';
+    nameEl.style.color = 'var(--primary)';
+  } else {
+    nameEl.textContent = '저장 폴더 미설정';
+    nameEl.style.color = '';
+  }
+}
+
+// 앱 시작 시 저장된 폴더 핸들 복원
+async function _restoreExpSaveFolder() {
+  try {
+    const handle = await _idbGet('expSaveDirHandle');
+    if (!handle) return;
+    // 권한 확인 (사용자 제스처 없이는 'prompt' 상태일 수 있음)
+    const perm = await handle.queryPermission({ mode: 'readwrite' });
+    if (perm === 'granted') {
+      _expSaveDirHandle = handle;
+      await _updateFolderLabel();
+    }
+    // 'prompt' 상태면 버튼 클릭 시 재요청
+  } catch(e) { /* 이전 핸들 없음 — 무시 */ }
+}
+
 async function pickExpSaveFolder() {
   try {
     if (!window.showDirectoryPicker) {
       alert('이 브라우저는 폴더 직접 저장을 지원하지 않습니다.\n파일이 Downloads 폴더에 저장됩니다.');
       return;
     }
-    _expSaveDirHandle = await window.showDirectoryPicker({ mode: 'readwrite', startIn: 'desktop' });
-    const nameEl = document.getElementById('expSaveFolderName');
-    if (nameEl) nameEl.textContent = '📂 ' + _expSaveDirHandle.name;
+    const handle = await window.showDirectoryPicker({ mode: 'readwrite', startIn: 'desktop' });
+    _expSaveDirHandle = handle;
+    await _idbPut('expSaveDirHandle', handle);
+    await _updateFolderLabel();
   } catch(e) {
     if (e.name !== 'AbortError') alert('폴더 선택 오류: ' + e.message);
+  }
+}
+
+// 회사별 서브폴더 핸들 반환 (없으면 자동 생성)
+async function _getSubDirHandle(co) {
+  if (!_expSaveDirHandle) return null;
+  try {
+    // 권한이 'prompt' 상태면 재요청
+    const perm = await _expSaveDirHandle.queryPermission({ mode: 'readwrite' });
+    if (perm === 'prompt') {
+      const granted = await _expSaveDirHandle.requestPermission({ mode: 'readwrite' });
+      if (granted !== 'granted') return null;
+    } else if (perm !== 'granted') return null;
+    const subName = co === '그로븐' ? '그로븐' : '옐로우브릿지';
+    return await _expSaveDirHandle.getDirectoryHandle(subName, { create: true });
+  } catch(e) {
+    console.warn('서브폴더 접근 실패:', e);
+    return null;
   }
 }
 
@@ -2118,10 +2191,11 @@ async function downloadSelectedExpImg() {
       const dateStr = (d.date||'').replace(/-/g,'');
       const fname   = dateStr + '-지출결의서-' + (d.vendor||'거래처') + '_' + (d.co||'') + '.png';
 
-      if (_expSaveDirHandle) {
-        // 폴더에 직접 저장
+      const subDir = await _getSubDirHandle(d.co);
+      if (subDir) {
+        // 회사별 서브폴더에 저장
         try {
-          const fileHandle = await _expSaveDirHandle.getFileHandle(fname, { create: true });
+          const fileHandle = await subDir.getFileHandle(fname, { create: true });
           const writable   = await fileHandle.createWritable();
           const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
           await writable.write(blob);
@@ -2136,7 +2210,7 @@ async function downloadSelectedExpImg() {
           ok++;
         }
       } else {
-        // 폴더 미설정: 일반 다운로드 (파일명에 지출결의서 포함)
+        // 폴더 미설정: 일반 다운로드
         const a = document.createElement('a');
         a.download = fname;
         a.href = canvas.toDataURL('image/png');
@@ -2155,8 +2229,10 @@ async function downloadSelectedExpImg() {
 
   if (btn) { btn.disabled = false; btn.textContent = '📷 선택 다운로드'; }
 
-  const msg = ok + '개 저장 완료' + (fail ? ', ' + fail + '개 실패' : '') +
-    (_expSaveDirHandle ? '\n📂 ' + _expSaveDirHandle.name + ' 폴더에 저장됨' : '\n(Downloads 폴더 확인)');
+  const folderMsg = _expSaveDirHandle
+    ? '\n📂 ' + _expSaveDirHandle.name + '/옐로우브릿지(그로븐) 서브폴더에 저장됨'
+    : '\n(Downloads 폴더 확인)';
+  const msg = ok + '개 저장 완료' + (fail ? ', ' + fail + '개 실패' : '') + folderMsg;
   alert(msg);
 }
 
@@ -2178,12 +2254,24 @@ function saveExpImgFromHist(i) {
   setTimeout(() => {
     const el = document.getElementById('expPrintArea');
     if (!el) return;
-    html2canvas(el, { scale: 2, backgroundColor: '#fff', useCORS: true }).then(canvas => {
-      const a = document.createElement('a');
+    html2canvas(el, { scale: 2, backgroundColor: '#fff', useCORS: true }).then(async canvas => {
       const dateStr = (d.date||'').replace(/-/g,'');
-      a.download = dateStr + '-지출결의서-' + (d.vendor||'') + '_' + (d.co||'') + '.png';
-      a.href = canvas.toDataURL('image/png');
-      a.click();
+      const fname   = dateStr + '-지출결의서-' + (d.vendor||'') + '_' + (d.co||'') + '.png';
+      const subDir  = await _getSubDirHandle(d.co);
+      if (subDir) {
+        try {
+          const fh = await subDir.getFileHandle(fname, { create: true });
+          const wr = await fh.createWritable();
+          const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+          await wr.write(blob); await wr.close();
+        } catch(fe) {
+          const a = document.createElement('a');
+          a.download = fname; a.href = canvas.toDataURL('image/png'); a.click();
+        }
+      } else {
+        const a = document.createElement('a');
+        a.download = fname; a.href = canvas.toDataURL('image/png'); a.click();
+      }
       document.getElementById('expModal').style.display = 'none';
     });
   }, 100);
@@ -2430,6 +2518,7 @@ function loadExpHist() { try{ return JSON.parse(localStorage.getItem(LS_EXPHIST)
 function saveExpHist(a){ localStorage.setItem(LS_EXPHIST, JSON.stringify(a)); }
 
 function initExpenseTab() {
+  _restoreExpSaveFolder(); // 저장된 폴더 핸들 복원
   // 오늘 날짜 기본값
   document.getElementById('expDate').value = new Date().toISOString().slice(0,10);
   // 작성자 기본값 불러오기
@@ -2764,12 +2853,24 @@ function _doPreviewExpense(d) {
 function saveExpImg() {
   const el = document.getElementById('expPrintArea');
   const d = _expModalData || getExpFormData();
-  html2canvas(el, { scale: 2, backgroundColor: '#fff', useCORS: true }).then(canvas => {
-    const a = document.createElement('a');
+  html2canvas(el, { scale: 2, backgroundColor: '#fff', useCORS: true }).then(async canvas => {
     const dateStr = (d.date||'').replace(/-/g,'');
-    a.download = `${dateStr}-지출결의서-${d.vendor||'미지정'}_${d.co||''}.png`;
-    a.href = canvas.toDataURL('image/png');
-    a.click();
+    const fname2  = `${dateStr}-지출결의서-${d.vendor||'미지정'}_${d.co||''}.png`;
+    const subDir2 = await _getSubDirHandle(d.co);
+    if (subDir2) {
+      try {
+        const fh2 = await subDir2.getFileHandle(fname2, { create: true });
+        const wr2 = await fh2.createWritable();
+        const blob2 = await new Promise(res => canvas.toBlob(res, 'image/png'));
+        await wr2.write(blob2); await wr2.close();
+      } catch(fe) {
+        const a = document.createElement('a');
+        a.download = fname2; a.href = canvas.toDataURL('image/png'); a.click();
+      }
+    } else {
+      const a = document.createElement('a');
+      a.download = fname2; a.href = canvas.toDataURL('image/png'); a.click();
+    }
   });
 }
 
