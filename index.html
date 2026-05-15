@@ -147,11 +147,19 @@
     </div>
     <div id="unmatchedAlert"></div>
     <div id="loadedFilesBar" style="margin-bottom:8px;font-size:12px;color:var(--text2)"></div>
+    <!-- Step2 추가 업로드 드래그앤드롭 -->
+    <div id="uploadZoneAdd"
+      style="border:2px dashed var(--border2);border-radius:var(--radius);padding:14px 18px;text-align:center;cursor:pointer;margin-bottom:12px;transition:background .15s;color:var(--text2);font-size:13px"
+      ondragover="event.preventDefault();this.style.background='var(--bg)'"
+      ondragleave="this.style.background=''"
+      ondrop="event.preventDefault();this.style.background='';handleFileAdd(event.dataTransfer.files[0])"
+      onclick="document.getElementById('fileInputAdd').click()">
+      ➕ 추가 파일을 끌어다 놓거나 클릭하여 선택 (기존 주문에 합산됩니다)
+    </div>
+    <input type="file" id="fileInputAdd" accept=".xlsx,.xls" style="display:none">
     <div class="btn-row">
       <button class="btn" onclick="goStep(1)" title="1단계로 돌아가기">🏠 처음으로</button>
       <button class="btn" onclick="goStep(1)">← 다시 업로드</button>
-      <button class="btn" onclick="document.getElementById('fileInputAdd').click()" title="기존 주문에 파일 추가">➕ 파일 추가</button>
-      <input type="file" id="fileInputAdd" accept=".xlsx,.xls" style="display:none">
       <button class="btn btn-primary" onclick="goStep(3)">발주서 생성 →</button>
     </div>
   </div>
@@ -783,16 +791,48 @@ function parseParts(vc, voc, productName, selectOpt, displayOpt) {
     }
   }
 
-  // ] 없는 경우 — 발주처별 자동 추출 시도
+  // ] 없는 경우 — prefix 감지 후 슬래시 파싱 (일비 괄호형과 동일 로직)
   const vendorKey2 = detectVendor(vendorCode);
-  const autoName = vendorKey2 ? autoExtractItemName(vendorCode, vendorKey2) : null;
-  if (autoName) {
-    const optStr = mapped ? mapped.result : (cleanSelectOpt(selectOpt) || cleanSelectOpt(displayOpt) || '');
-    return { itemName: autoName, optionName: optStr, optMapped: !!mapped, optNeedsCheck: !mapped && !optStr };
+  const plainPfxs  = vendorKey2
+    ? (VENDOR_PREFIXES[vendorKey2] || []).filter(p => !p.endsWith(']'))
+    : [];
+  let pfxRest = null;
+  for (const p of plainPfxs) {
+    if (vendorCode.toLowerCase().startsWith(p.toLowerCase())) {
+      pfxRest = vendorCode.slice(p.length);
+      break;
+    }
+  }
+  if (pfxRest !== null) {
+    // 슬래시 있으면: prefix_품목명/옵션-수량  예) 거풍_돌산갓김치/2kg  생선상륙_굴비/750g내외 10미-1
+    const si = pfxRest.indexOf('/');
+    let itemPart, optPart = '', codeQty2 = 1;
+    if (si >= 0) {
+      itemPart = pfxRest.slice(0, si).replace(/_/g,' ').trim();
+      const rawOpt = pfxRest.slice(si + 1).trim();
+      codeQty2 = extractCodeQty(rawOpt);
+      optPart  = stripCodeQty(rawOpt).replace(/_/g,' ').trim();
+    } else {
+      // 슬래시 없음: prefix_품목명-수량  예) 거풍_비트동치미-1
+      codeQty2 = extractCodeQty(pfxRest);
+      itemPart = stripCodeQty(pfxRest).replace(/_/g,' ').replace(/-/g,' ').trim();
+    }
+    if (!itemPart) itemPart = productName || vendorCode;
+    // 옵션: 변환규칙 > selectOpt(Q열) > displayOpt(R열) > 코드에서 뽑은 optPart
+    const optStr = mapped
+      ? mapped.result
+      : (cleanSelectOpt(selectOpt) || cleanSelectOpt(displayOpt) || optPart || '');
+    return {
+      itemName: itemPart,
+      optionName: optStr,
+      codeQty: codeQty2,
+      optMapped: !!mapped,
+      optNeedsCheck: !mapped && !optStr && !optPart
+    };
   }
 
-  // 완전 미매칭
-  const optStr = mapped ? mapped.result : (cleanSelectOpt(selectOpt) || displayOpt || '');
+  // 완전 미매칭 — P열(상품명)을 품목명으로, Q/R열을 옵션으로
+  const optStr = mapped ? mapped.result : (cleanSelectOpt(selectOpt) || cleanSelectOpt(displayOpt) || '');
   return { itemName: productName ? productName.substring(0,20) : vendorCode, optionName: optStr, codeQty: 1, unmatched: true, optMapped: !!mapped };
 }
 
