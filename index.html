@@ -700,17 +700,18 @@ function applyOptMap(productName, selectOpt) {
 // 형태: 발주처prefix-품목명_숫자코드 → 품목명만 추출
 function autoExtractItemName(vendorCode, vendorKey) {
   const c = String(vendorCode).trim();
-  // 늘푸른우리: 늘푸른-백찰옥수수_260413 → 백찰옥수수
-  if (vendorKey === '늘푸른우리') {
-    for (const p of ['늘푸른-','늘푸른_','늘푸른']) {
-      if (c.toLowerCase().startsWith(p.toLowerCase())) {
-        let rest = c.slice(p.length);
-        rest = rest.replace(/_\d+$/, '').replace(/_/g,' ').trim();
-        return rest || null;
-      }
+  // VENDOR_PREFIXES 에 등록된 모든 발주처 — prefix 뒤 텍스트를 품목명으로 추출
+  // 예) 거풍_비트동치미 → 비트동치미 / 늘푸른-백찰옥수수_260413 → 백찰옥수수
+  const prefixes = VENDOR_PREFIXES[vendorKey] || [];
+  // ] 로 끝나는 prefix(괄호형)는 건너뜀 — 괄호형은 bracketIdx 로 처리
+  const plainPrefixes = prefixes.filter(p => !p.endsWith(']'));
+  for (const p of plainPrefixes) {
+    if (c.toLowerCase().startsWith(p.toLowerCase())) {
+      let rest = c.slice(p.length);
+      rest = rest.replace(/_\d+$/, '').replace(/-\d+$/, '').replace(/_/g,' ').trim();
+      return rest || null;
     }
   }
-  // 다른 발주처도 같은 패턴이면 여기에 추가 가능
   return null;
 }
 
@@ -1293,20 +1294,33 @@ function removeCode(i){if(!confirm('삭제할까요?'))return;const codes=loadCo
 function renderUnmatchedHints(){
   const card=document.getElementById('unmatchedHintCard');
   const regenWrap=document.getElementById('regenBtnWrap');
-  // 주문 파일이 로드된 경우 재생성 버튼 표시
   if(regenWrap) regenWrap.style.display = allOrders.length > 0 ? 'block' : 'none';
-  if(unmatchedList.length===0){card.style.display='none';return;}
+
+  // 미매칭(완전 미인식) + 발주처는 인식됐지만 품목/옵션 확인 필요한 것도 함께 표시
+  const needsCheckList = allOrders.filter(o => !o.unmatched && o.opt_needs_check);
+  const allProblem = [...unmatchedList, ...needsCheckList];
+
+  if(allProblem.length===0){card.style.display='none';return;}
   card.style.display='block';
-  const unique=[...new Map(unmatchedList.map(o=>[o.vendor_code,o])).values()].slice(0,15);
-  let html='<div style="display:grid;grid-template-columns:1fr auto auto auto;gap:10px;padding-bottom:6px;border-bottom:2px solid var(--border);font-size:11px;font-weight:500;color:var(--text3)"><span>상품명</span><span>옵션</span><span>수량</span><span></span></div>';
+
+  const unique=[...new Map(allProblem.map(o=>[o.vendor_code,o])).values()].slice(0,20);
+  let html='<div style="display:grid;grid-template-columns:auto 1fr auto auto auto;gap:10px;padding-bottom:6px;border-bottom:2px solid var(--border);font-size:11px;font-weight:500;color:var(--text3)"><span>구분</span><span>상품명 (P열) / 코드</span><span>옵션(Q열)</span><span>수량</span><span></span></div>';
   unique.forEach(o=>{
-    const optText=(o.select_opt||'').trim()||'—';
+    const optText=(o.select_opt||o.option_name||'').trim()||'—';
     const qtyText=o.qty!=null?o.qty:'—';
-    html+=`<div style="display:grid;grid-template-columns:1fr auto auto auto;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)">
-      <span style="font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(o.product)}">${o.product}</span>
-      <span style="font-size:12px;color:var(--text2);white-space:nowrap">${optText.substring(0,20)}</span>
+    const tag = o.unmatched
+      ? '<span style="font-size:10px;background:var(--danger);color:#fff;border-radius:4px;padding:1px 5px">미인식</span>'
+      : '<span style="font-size:10px;background:#f59e0b;color:#fff;border-radius:4px;padding:1px 5px">옵션확인</span>';
+    const display = o.unmatched ? (o.product||o.vendor_code) : (o.item_name||o.product||o.vendor_code);
+    html+=`<div style="display:grid;grid-template-columns:auto 1fr auto auto auto;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)">
+      ${tag}
+      <div>
+        <div style="font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(o.vendor_code)}">${escHtml(display)}</div>
+        <div style="font-size:10px;color:var(--text3);font-family:monospace">${escHtml(o.vendor_code)}</div>
+      </div>
+      <span style="font-size:12px;color:var(--text2);white-space:nowrap">${escHtml(optText.substring(0,18))}</span>
       <span style="font-size:12px;font-weight:600;color:var(--accent);white-space:nowrap">${qtyText}</span>
-      <button class="btn btn-sm" onclick="prefill('${esc(o.vendor_code)}','${esc(o.product)}','${esc(optText)}')">+ 등록</button>
+      <button class="btn btn-sm" onclick="prefill('${esc(o.vendor_code)}','${esc(display)}','${esc(optText==='—'?'':optText)}')">+ 등록</button>
     </div>`;
   });
   document.getElementById('unmatchedHintList').innerHTML=html;
