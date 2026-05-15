@@ -146,9 +146,12 @@
       </div>
     </div>
     <div id="unmatchedAlert"></div>
+    <div id="loadedFilesBar" style="margin-bottom:8px;font-size:12px;color:var(--text2)"></div>
     <div class="btn-row">
       <button class="btn" onclick="goStep(1)" title="1단계로 돌아가기">🏠 처음으로</button>
       <button class="btn" onclick="goStep(1)">← 다시 업로드</button>
+      <button class="btn" onclick="document.getElementById('fileInputAdd').click()" title="기존 주문에 파일 추가">➕ 파일 추가</button>
+      <input type="file" id="fileInputAdd" accept=".xlsx,.xls" style="display:none">
       <button class="btn btn-primary" onclick="goStep(3)">발주서 생성 →</button>
     </div>
   </div>
@@ -535,6 +538,18 @@
         <button class="btn btn-green btn-sm" style="margin-left:auto" onclick="exportExpHistXlsx()">📥 Excel 내보내기</button>
         <button class="btn btn-sm" onclick="if(confirm('전체 이력을 삭제할까요?')){localStorage.removeItem('expHist');renderExpHistList();}">🗑 전체삭제</button>
       </div>
+      <!-- 선택 다운로드 툴바 -->
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;padding:8px 10px;background:var(--bg);border-radius:8px;border:1px solid var(--border)">
+        <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;font-weight:600">
+          <input type="checkbox" id="expHistSelectAll" onchange="toggleAllExpHist(this.checked)" style="width:15px;height:15px"> 전체선택
+        </label>
+        <span id="expHistSelCount" style="font-size:12px;color:var(--text3)">0건 선택됨</span>
+        <button class="btn btn-sm" style="background:#7c3aed;color:#fff;border:none" onclick="downloadSelectedExpImg()">📷 선택 다운로드</button>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:6px">
+          <span id="expSaveFolderName" style="font-size:11px;color:var(--text3);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">저장 폴더 미설정</span>
+          <button class="btn btn-sm" onclick="pickExpSaveFolder()" title="저장할 폴더를 선택합니다">📁 폴더 설정</button>
+        </div>
+      </div>
       <!-- 합계 요약 -->
       <div id="expHistSummary" style="margin-bottom:12px"></div>
       <div id="expHistList"><p style="font-size:13px;color:var(--text3)">저장된 이력이 없습니다.</p></div>
@@ -848,13 +863,17 @@ function extractAlias(raw) {
 // ══════════════════════════════════════════════════════════
 // 파일 파싱
 // ══════════════════════════════════════════════════════════
-let groupedOrders={}, totalCount=0, unmatchedList=[], allOrders=[];
+let groupedOrders={}, totalCount=0, unmatchedList=[], allOrders=[], loadedFileNames=[];
 
 const uz=document.getElementById('uploadZone');
 uz.addEventListener('dragover',e=>{e.preventDefault();uz.classList.add('dragover');});
 uz.addEventListener('dragleave',()=>uz.classList.remove('dragover'));
 uz.addEventListener('drop',e=>{e.preventDefault();uz.classList.remove('dragover');handleFile(e.dataTransfer.files[0]);});
 document.getElementById('fileInput').addEventListener('change',e=>handleFile(e.target.files[0]));
+document.addEventListener('DOMContentLoaded',()=>{
+  const fa=document.getElementById('fileInputAdd');
+  if(fa) fa.addEventListener('change',e=>{handleFileAdd(e.target.files[0]);fa.value='';});
+});
 
 function setSt(msg,err){const el=document.getElementById('status');el.textContent=msg;el.className=err?'error':'';}
 
@@ -872,7 +891,7 @@ function handleFile(file) {
       if(hr<0){setSt('헤더를 찾을 수 없습니다.',true);return;}
       const H=rows[hr],ci=n=>H.indexOf(n);
       const C={vc:ci('판매자상품코드'),vo:ci('판매자옵션코드'),al:ci('별칭(쇼핑몰계정)'),rn:ci('수령자'),rp:ci('수령자휴대전화'),zp:ci('우편번호'),ad:ci('주소'),mm:ci('배송메모'),pn:ci('상품명'),so:ci('선택사항'),dop:ci('노출옵션명(쿠팡)'),qt:ci('수량'),on:ci('주문번호'),by:ci('구매자'),bp:ci('구매자휴대전화'),ca:ci('택배사')};
-      groupedOrders={};unmatchedList=[];allOrders=[];totalCount=0;
+      groupedOrders={};unmatchedList=[];allOrders=[];totalCount=0;loadedFileNames=[];
       for(let i=hr+1;i<rows.length;i++){
         const r=rows[i];if(!r||r.every(c=>c===''))continue;totalCount++;
         const vc=r[C.vc]||'',vo=r[C.vo]||'',pn=r[C.pn]||'',so=r[C.so]||'',dop=r[C.dop]||'';
@@ -888,6 +907,8 @@ function handleFile(file) {
       if(autoAdded>0) rematchAllOrders();
       setSt('');renderStep2();goStep(2);renderUnmatchedHints();renderOmPreview();
       // 이력 저장
+      loadedFileNames.push(file.name);
+      renderLoadedFiles();
       saveToHistory(file.name, allOrders);
       saveLastFile(file.name);
       showLastFileCard();
@@ -968,35 +989,41 @@ function ilbiItem(o){
   if(o.item_name==='박대'||o.item_name==='박대/') return o.option_name||o.item_name;
   return o.option_name ? o.item_name+' '+o.option_name : o.item_name;
 }
-function buildRows(vk,orders){
+function getSender(alias){
+  if(String(alias).includes('로또상회'))
+    return {name:'로또상회',phone:'010-5853-8990',addr:'전라북도 군산시 산북로 130-1',zip:'36742'};
+  return {name:'자꾸가게',phone:'010-5853-8990',addr:'전라북도 군산시 산북로 130-1',zip:'36742'};
+}
+function buildRows(vk,orders,alias){
+  const s=getSender(alias);
   switch(vk){
     case '일비':case '일해수산':case '충남마른김수협':
       return [['받는분성명','받는분전화번호','받는분주소(전체, 분할)','품목명','수량','배송메세지','','택배사','보내는분성명','보내는분주소(전체, 분할)','보내는분전화번호'],
-        ...orders.map(o=>[o.recv_name,o.recv_phone,o.addr,ilbiItem(o),effQty(o),o.memo,'',o.carrier||'','자꾸가게','전라북도 군산시 산북로 130-1','010-5853-8990'])];
+        ...orders.map(o=>[o.recv_name,o.recv_phone,o.addr,ilbiItem(o),effQty(o),o.memo,'',o.carrier||'',s.name,s.addr,s.phone])];
     case '최고집':
       return [['업체주문번호','품목명','수량','주문자성명','주문자전화번호','받는분성명','받는분전화번호','받는분우편번호','받는분주소(전체, 분할)','배송메세지1','공급가','택배사','송장번호','코드','고객주문번호'],
-        ...orders.map(o=>['',combined(o),effQty(o),'자꾸가게','010-5853-8990',o.recv_name,o.recv_phone,o.zip,o.addr,o.memo,'',o.carrier||'','','',o.order_no])];
+        ...orders.map(o=>['',combined(o),effQty(o),s.name,s.phone,o.recv_name,o.recv_phone,o.zip,o.addr,o.memo,'',o.carrier||'','','',o.order_no])];
     case '늘푸른우리':
       return [['제품명','옵션명(옵션 없을시 공란)','수량','수령인','우편번호',' 주  소','전화번호','배송메세지','업체명(필수)','업체주소(필수)','업체전화(필수)','주문번호(없을시 공란)'],
-        ...orders.map(o=>[o.item_name,o.option_name,effQty(o),o.recv_name,o.zip,o.addr,o.recv_phone,o.memo,'자꾸가게','전북 군산시 산북로 130-1','010-5853-8990',o.order_no])];
+        ...orders.map(o=>[o.item_name,o.option_name,effQty(o),o.recv_name,o.zip,o.addr,o.recv_phone,o.memo,s.name,s.addr,s.phone,o.order_no])];
     case '거풍푸드':
       return [['구매자','구매자전화번호','보내는분주소','노출상품명(옵션명)','수량','수취인','수취인전화번호','수취인 주소','배송메세지'],
-        ...orders.map(o=>['자꾸가게','010-5853-8990','전북 군산시 산북로 130-1',combined(o),effQty(o),o.recv_name,o.recv_phone,o.addr,o.memo])];
+        ...orders.map(o=>[s.name,s.phone,s.addr,combined(o),effQty(o),o.recv_name,o.recv_phone,o.addr,o.memo])];
     case '생선상륙':
       return [['상품명 ','수량','수화인','수화인전번','수화인주소','배송메모','지불조건','운임타입','송화인','송화인전번','송화인주소'],
-        ...orders.map(o=>[combined(o),effQty(o),o.recv_name,o.recv_phone,o.addr,o.memo,'','','자꾸가게','010-5853-8990','전북 군산시 산북로 130-1'])];
+        ...orders.map(o=>[combined(o),effQty(o),o.recv_name,o.recv_phone,o.addr,o.memo,'','',s.name,s.phone,s.addr])];
     case '공덕농협':
       return [['고객주문번호','품목명','박스수량','주문자성명','주문자전화번호','주문자주소(전체, 분할)','받는분성명','받는분전화번호','받는분기타연락처','받는분주소(전체, 분할)','배송메세지1','박스타입'],
-        ...orders.map(o=>[o.order_no,combined(o),effQty(o),'자꾸가게','010-5853-8990','전북 군산시 산북로 130-1',o.recv_name,o.recv_phone,'',o.addr,o.memo,''])];
+        ...orders.map(o=>[o.order_no,combined(o),effQty(o),s.name,s.phone,s.addr,o.recv_name,o.recv_phone,'',o.addr,o.memo,''])];
     case '푸드엔드베스트':
       return [['예약구분','집하예정일','보내는분성명','보내는분전화번호','보내는분기타연락처','보내는분우편번호','보내는분주소(전체, 분할)','받는분성명','받는분전화번호','받는분기타연락처','받는분우편번호','받는분주소(전체, 분할)','운송장번호','고객주문번호','품목명','박스수량','박스타입','기본운임','배송메세지1','배송메세지2','운임구분'],
-        ...orders.map(o=>['','','자꾸가게','010-5853-8990','','36742','전북 군산시 산북로 130-1',o.recv_name,o.recv_phone,'',o.zip,o.addr,'',o.order_no,combined(o),effQty(o),'','',o.memo,'',''])];
+        ...orders.map(o=>['','',s.name,s.phone,'',s.zip,s.addr,o.recv_name,o.recv_phone,'',o.zip,o.addr,'',o.order_no,combined(o),effQty(o),'','',o.memo,'',''])];
     case '한마당식품':
       return [['주문번호','주문상품고유번호','주문일','주문자명','주문자연락처','수령인명','수령인연락처','우편번호','주소','상품코드','상품명','고객선택옵션','주문수량','','','','배송비타입','배송비','추가배송비','배송시요청사항','추가구성상품','택배사**','배송번호','송하인정보','송하인전화번호','송하인 주소','묶음설정','패키지명','관리자메모'],
-        ...orders.map(o=>[o.order_no,'','','자꾸가게','010-5853-8990',o.recv_name,o.recv_phone,o.zip,o.addr,'',o.item_name,o.option_name,effQty(o),'','','','','0','0',o.memo,'','','','자꾸가게','010-5853-8990','전북 군산시 산북로 130-1','','',''])];
+        ...orders.map(o=>[o.order_no,'','',s.name,s.phone,o.recv_name,o.recv_phone,o.zip,o.addr,'',o.item_name,o.option_name,effQty(o),'','','','','0','0',o.memo,'','','',s.name,s.phone,s.addr,'','',''])];
     case '해담별':
       return [['주문번호','주문일','주문자명','주문자연락처','수령인명','수령인연락처','우편번호','주소','상품코드','판매사상품명','주문수량','배송시 요청사항','택배사**','배송번호','판매사','판매사연락처','보내는주소'],
-        ...orders.map(o=>[o.order_no,'','자꾸가게','010-5853-8990',o.recv_name,o.recv_phone,o.zip,o.addr,'',o.item_name,effQty(o),o.memo,'','','자꾸가게','010-5853-8990','전북 군산시 산북로 130-1'])];
+        ...orders.map(o=>[o.order_no,'',s.name,s.phone,o.recv_name,o.recv_phone,o.zip,o.addr,'',o.item_name,effQty(o),o.memo,'','',s.name,s.phone,s.addr])];
     case '도매꾹': {
       // 형식: 도매꾹]상품번호/옵션코드:옵션명-수량
       //  - ] 없으면 전체 코드가 상품번호
@@ -1077,7 +1104,7 @@ function autoColWidth(ws, rows) {
 function dlOne(gk){
   const [v,a]=gk.split('|');
   const wb=XLSX.utils.book_new();
-  const rows=buildRows(v,groupedOrders[gk]);
+  const rows=buildRows(v,groupedOrders[gk],a);
   const ws=XLSX.utils.aoa_to_sheet(rows);
   autoColWidth(ws, rows);
   XLSX.utils.book_append_sheet(wb,ws,'Sheet1');
@@ -1850,12 +1877,13 @@ function renderExpHistList() {
 
     g.items.forEach((d, idx) => {
       const realIdx = hist.indexOf(d);
-      html += '<div style="display:grid;grid-template-columns:90px 1fr auto auto auto;gap:8px;align-items:center;padding:7px 8px;border-radius:6px;margin-bottom:4px;background:var(--surface);cursor:pointer" onclick="previewHistItem(' + realIdx + ')">' +
-        '<span style="font-size:11px;color:var(--text3)">' + escHtml(d.date||'') + '</span>' +
-        '<span style="font-size:13px">' + escHtml(d.desc||'') + '</span>' +
-        '<span style="font-size:13px;font-weight:600;text-align:right">' + fmtNum(d.total) + '원</span>' +
-        '<button class="btn btn-sm" style="padding:2px 8px" onclick="event.stopPropagation();saveExpImgFromHist(' + realIdx + ')">📷</button>' +
-        '<button class="btn btn-sm" style="color:var(--danger);border-color:var(--danger);padding:2px 8px" onclick="event.stopPropagation();deleteExpHist(' + realIdx + ')">삭제</button>' +
+      html += '<div id="exphi_' + realIdx + '" style="display:grid;grid-template-columns:24px 90px 1fr auto auto auto;gap:8px;align-items:center;padding:7px 8px;border-radius:6px;margin-bottom:4px;background:var(--surface)">' +
+        '<input type="checkbox" class="exp-hist-chk" data-idx="' + realIdx + '" style="width:15px;height:15px;cursor:pointer" onchange="updateExpHistSelCount()">' +
+        '<span style="font-size:11px;color:var(--text3);cursor:pointer" onclick="previewHistItem(' + realIdx + ')">' + escHtml(d.date||'') + '</span>' +
+        '<span style="font-size:13px;cursor:pointer" onclick="previewHistItem(' + realIdx + ')">' + escHtml(d.desc||'') + '</span>' +
+        '<span style="font-size:13px;font-weight:600;text-align:right;cursor:pointer" onclick="previewHistItem(' + realIdx + ')">' + fmtNum(d.total) + '원</span>' +
+        '<button class="btn btn-sm" style="padding:2px 8px" onclick="saveExpImgFromHist(' + realIdx + ')">📷</button>' +
+        '<button class="btn btn-sm" style="color:var(--danger);border-color:var(--danger);padding:2px 8px" onclick="deleteExpHist(' + realIdx + ')">삭제</button>' +
       '</div>';
     });
     html += '</div>';
@@ -1969,6 +1997,115 @@ function previewHistItem(i) {
   _doPreviewExpense(d);
 }
 
+let _expSaveDirHandle = null;
+
+async function pickExpSaveFolder() {
+  try {
+    if (!window.showDirectoryPicker) {
+      alert('이 브라우저는 폴더 직접 저장을 지원하지 않습니다.\n파일이 Downloads 폴더에 저장됩니다.');
+      return;
+    }
+    _expSaveDirHandle = await window.showDirectoryPicker({ mode: 'readwrite', startIn: 'desktop' });
+    const nameEl = document.getElementById('expSaveFolderName');
+    if (nameEl) nameEl.textContent = '📂 ' + _expSaveDirHandle.name;
+  } catch(e) {
+    if (e.name !== 'AbortError') alert('폴더 선택 오류: ' + e.message);
+  }
+}
+
+function updateExpHistSelCount() {
+  const chks = document.querySelectorAll('.exp-hist-chk:checked');
+  const el = document.getElementById('expHistSelCount');
+  if (el) el.textContent = chks.length + '건 선택됨';
+  const allChk = document.getElementById('expHistSelectAll');
+  const total  = document.querySelectorAll('.exp-hist-chk').length;
+  if (allChk) allChk.indeterminate = chks.length > 0 && chks.length < total;
+  if (allChk && chks.length === total && total > 0) allChk.checked = true;
+  if (allChk && chks.length === 0) allChk.checked = false;
+}
+
+function toggleAllExpHist(checked) {
+  document.querySelectorAll('.exp-hist-chk').forEach(c => c.checked = checked);
+  updateExpHistSelCount();
+}
+
+async function downloadSelectedExpImg() {
+  const chks = [...document.querySelectorAll('.exp-hist-chk:checked')];
+  if (!chks.length) { alert('다운로드할 항목을 선택해 주세요.'); return; }
+  const hist = loadExpHist();
+
+  // 진행 상태 표시
+  const btn = document.querySelector('button[onclick="downloadSelectedExpImg()"]');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ 처리 중...'; }
+
+  let ok = 0, fail = 0;
+
+  // html2canvas 렌더링을 위한 숨김 컨테이너
+  let tmp = document.getElementById('_expImgTmp');
+  if (!tmp) {
+    tmp = document.createElement('div');
+    tmp.id = '_expImgTmp';
+    tmp.style.cssText = 'position:fixed;left:-9999px;top:0;background:#fff;z-index:-1;width:900px';
+    document.body.appendChild(tmp);
+  }
+
+  for (const chk of chks) {
+    const i = parseInt(chk.dataset.idx);
+    const d = hist[i];
+    if (!d) { fail++; continue; }
+
+    try {
+      // 지출결의서 렌더링
+      _doPreviewExpense(d);
+      await new Promise(r => setTimeout(r, 120));
+      const el = document.getElementById('expPrintArea');
+      if (!el) { fail++; continue; }
+      const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#fff', useCORS: true });
+      const dateStr = (d.date||'').replace(/-/g,'');
+      const fname   = dateStr + '-지출결의서-' + (d.vendor||'거래처') + '_' + (d.co||'') + '.png';
+
+      if (_expSaveDirHandle) {
+        // 폴더에 직접 저장
+        try {
+          const fileHandle = await _expSaveDirHandle.getFileHandle(fname, { create: true });
+          const writable   = await fileHandle.createWritable();
+          const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+          await writable.write(blob);
+          await writable.close();
+          ok++;
+        } catch(fe) {
+          // 폴더 저장 실패 시 일반 다운로드로 폴백
+          const a = document.createElement('a');
+          a.download = fname;
+          a.href = canvas.toDataURL('image/png');
+          a.click();
+          ok++;
+        }
+      } else {
+        // 폴더 미설정: 일반 다운로드 (파일명에 지출결의서 포함)
+        const a = document.createElement('a');
+        a.download = fname;
+        a.href = canvas.toDataURL('image/png');
+        a.click();
+        ok++;
+      }
+      await new Promise(r => setTimeout(r, 180));
+    } catch(e) {
+      console.error('이미지 생성 오류:', e);
+      fail++;
+    }
+  }
+
+  // 모달 닫기
+  document.getElementById('expModal').style.display = 'none';
+
+  if (btn) { btn.disabled = false; btn.textContent = '📷 선택 다운로드'; }
+
+  const msg = ok + '개 저장 완료' + (fail ? ', ' + fail + '개 실패' : '') +
+    (_expSaveDirHandle ? '\n📂 ' + _expSaveDirHandle.name + ' 폴더에 저장됨' : '\n(Downloads 폴더 확인)');
+  alert(msg);
+}
+
 function saveExpImgFromHist(i) {
   const hist = loadExpHist();
   const d = hist[i];
@@ -2043,6 +2180,47 @@ function makeFileName(vendor, alias) {
   const today = new Date().toISOString().slice(0,10).replace(/-/g,'');
   const store = aliasToStore(alias);
   return `${today}-${vendor}-발주서_${store}.xlsx`;
+}
+function renderLoadedFiles(){
+  const bar=document.getElementById('loadedFilesBar');
+  if(!bar) return;
+  if(!loadedFileNames.length){bar.innerHTML='';return;}
+  bar.innerHTML='📁 <b>업로드된 파일:</b> '+loadedFileNames.map(n=>'<span style="background:var(--bg2);border-radius:4px;padding:2px 7px;margin:0 3px">'+escHtml(n)+'</span>').join('');
+}
+function handleFileAdd(file){
+  if(!file) return;
+  setSt('파일 추가 중...');
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:'array',cellDates:true});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+      let hr=-1;
+      for(let i=0;i<Math.min(5,rows.length);i++){if(rows[i].indexOf('판매자상품코드')>=0){hr=i;break;}}
+      if(hr<0){setSt('헤더를 찾을 수 없습니다.',true);return;}
+      const H=rows[hr],ci=n=>H.indexOf(n);
+      const C={vc:ci('판매자상품코드'),vo:ci('판매자옵션코드'),al:ci('별칭(쇼핑몰계정)'),rn:ci('수령자'),rp:ci('수령자휴대전화'),zp:ci('우편번호'),ad:ci('주소'),mm:ci('배송메모'),pn:ci('상품명'),so:ci('선택사항'),dop:ci('노출옵션명(쿠팡)'),qt:ci('수량'),on:ci('주문번호'),by:ci('구매자'),bp:ci('구매자휴대전화'),ca:ci('택배사')};
+      let added=0;
+      for(let i=hr+1;i<rows.length;i++){
+        const r=rows[i];if(!r||r.every(c=>c===''))continue;totalCount++;added++;
+        const vc=r[C.vc]||'',vo=r[C.vo]||'',pn=r[C.pn]||'',so=r[C.so]||'',dop=r[C.dop]||'';
+        const vk=detectVendor(vc),alias=extractAlias(r[C.al]);
+        const parsed=parseParts(vc,vo,pn,so,dop);
+        const order={vendor_code:vc,vendor_opt:vo,vendor_key:vk,alias,item_name:parsed.itemName,option_name:parsed.optionName,opt_mapped:parsed.optMapped||false,opt_needs_check:parsed.optNeedsCheck||false,unmatched:parsed.unmatched||false,recv_name:r[C.rn]||'',recv_phone:r[C.rp]||'',zip:String(r[C.zp]||''),addr:r[C.ad]||'',memo:r[C.mm]||'',product:pn,select_opt:so,qty:r[C.qt]||1,code_qty:parsed.codeQty||1,order_no:r[C.on]||'',buyer:r[C.by]||'',buyer_phone:r[C.bp]||'',carrier:r[C.ca]||''};
+        allOrders.push(order);
+        if(vk){const gk=vk+'|'+alias;if(!groupedOrders[gk])groupedOrders[gk]=[];groupedOrders[gk].push(order);}
+        else unmatchedList.push(order);
+      }
+      const autoAdded=autoRegisterBracketCodes(allOrders);
+      if(autoAdded>0) rematchAllOrders();
+      setSt('');
+      loadedFileNames.push(file.name+'(+'+added+'건)');
+      renderLoadedFiles();
+      renderStep2();renderStep3();renderUnmatchedHints();renderOmPreview();
+    }catch(err){setSt('오류: '+err.message,true);console.error(err);}
+  };
+  reader.readAsArrayBuffer(file);
 }
 function ekey(s){return s.replace(/[^a-zA-Z0-9가-힣]/g,'_');}
 function esc(s){return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
