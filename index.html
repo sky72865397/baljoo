@@ -780,15 +780,16 @@ function parseParts(vc, voc, productName, selectOpt, displayOpt) {
       let optStr = '';
       if (mapped) {
         optStr = mapped.result;
+      } else if (afterSlash) {
+        // 코드 슬래시 뒤 옵션 우선 (판매자옵션코드보다 발주코드 기준이 정확함)
+        optStr = cleanDash(afterSlash);
       } else if (optCode && optCode !== '알수없음') {
         optStr = cleanDash(optCode);
-      } else if (afterSlash) {
-        optStr = cleanDash(afterSlash);
       }
       return { itemName: itemPart, optionName: optStr, optMapped: !!mapped };
     } else {
       const optStr = mapped ? mapped.result
-        : (optCode && optCode !== '알수없음' ? cleanDash(optCode) : (cleanSelectOpt(selectOpt) || displayOpt || ''));
+        : (cleanSelectOpt(selectOpt) || displayOpt || (optCode && optCode !== '알수없음' ? cleanDash(optCode) : ''));
       return { itemName: after.trim() || productName.substring(0,20), optionName: optStr, optMapped: !!mapped };
     }
   }
@@ -820,10 +821,11 @@ function parseParts(vc, voc, productName, selectOpt, displayOpt) {
       itemPart = stripCodeQty(pfxRest).replace(/_/g,' ').replace(/-/g,' ').trim();
     }
     if (!itemPart) itemPart = productName || vendorCode;
-    // 옵션: 변환규칙 > selectOpt(Q열) > displayOpt(R열) > 코드에서 뽑은 optPart
+    // 옵션: 변환규칙 > 코드슬래시옵션(optPart) > selectOpt(Q열) > displayOpt(R열)
+    // 코드에 슬래시로 옵션이 명시된 경우 발주코드가 가장 정확함
     const optStr = mapped
       ? mapped.result
-      : (cleanSelectOpt(selectOpt) || cleanSelectOpt(displayOpt) || optPart || '');
+      : (optPart || cleanSelectOpt(selectOpt) || cleanSelectOpt(displayOpt) || '');
     return {
       itemName: itemPart,
       optionName: optStr,
