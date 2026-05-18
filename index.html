@@ -2131,11 +2131,16 @@ function exportExpHistXlsx() {
 }
 
 
-function previewHistItem(i) {
+async function previewHistItem(i) {
   const hist = loadExpHist();
   const d = hist[i];
   if (!d) return;
-  _doPreviewExpense(d);
+  let attachImgUrl = null;
+  if (d.hasAttach && d.id) {
+    const attach = await _idbGetAttach(d.id);
+    if (attach && (attach.type||'').startsWith('image/')) attachImgUrl = attach.data;
+  }
+  _doPreviewExpense(d, attachImgUrl);
 }
 
 let _expSaveDirHandle = null;
@@ -2414,10 +2419,16 @@ async function downloadSelectedExpImg() {
   alert(msg);
 }
 
-function saveExpImgFromHist(i) {
+async function saveExpImgFromHist(i) {
   const hist = loadExpHist();
   const d = hist[i];
   if (!d) return;
+  // 첨부 이미지 로드
+  let attachImgUrl = null;
+  if (d.hasAttach && d.id) {
+    const attach = await _idbGetAttach(d.id);
+    if (attach && (attach.type||'').startsWith('image/')) attachImgUrl = attach.data;
+  }
   // 숨겨진 임시 컨테이너에 렌더링 후 캡처
   let tmp = document.getElementById('_expImgTmp');
   if (!tmp) {
@@ -2428,7 +2439,7 @@ function saveExpImgFromHist(i) {
   }
   _expModalData = d;
   // previewContent에 렌더링 후 바로 캡처
-  _doPreviewExpense(d);
+  _doPreviewExpense(d, attachImgUrl);
   setTimeout(() => {
     const el = document.getElementById('expPrintArea');
     if (!el) return;
@@ -2886,9 +2897,20 @@ function fmtNum(n) {
 }
 function chk(v) { return v ? 'O' : ''; }
 
-function previewExpense() { _doPreviewExpense(getExpFormData()); }
+async function previewExpense() {
+  const d   = getExpFormData();
+  const inp = document.getElementById('expAttachFile');
+  const file = inp && inp.files && inp.files[0];
+  if (file && file.type.startsWith('image/')) {
+    const reader = new FileReader();
+    reader.onload = e => _doPreviewExpense(d, e.target.result);
+    reader.readAsDataURL(file);
+  } else {
+    _doPreviewExpense(d, null);
+  }
+}
 let _expModalData = null;
-function _doPreviewExpense(d) {
+function _doPreviewExpense(d, attachImgUrl) {
   _expModalData = d;
 
   // 날짜 한글 형식: 2026년 5월 8일 금요일
@@ -3025,9 +3047,12 @@ function _doPreviewExpense(d) {
     '<tr><td style="' + B + ';padding:5px 10px;font-size:11px;font-weight:600;background:#f5f5f5">최종결재자 MEMO</td></tr>' +
     '<tr><td style="' + B + ';height:55px;padding:5px 10px"></td></tr>' +
 
-    // 특이사항
+    // 특이사항 (첨부 이미지 있으면 함께 표시)
     '<tr><td style="' + B + ';padding:5px 10px;font-size:11px;font-weight:600;background:#f5f5f5">특이사항 및 메모</td></tr>' +
-    '<tr><td style="' + B + ';padding:8px 10px;font-size:11px;min-height:36px">' + (d.note||'* 주문 내역 첨부') + '</td></tr>' +
+    '<tr><td style="' + B + ';padding:8px 10px;font-size:11px;min-height:36px">' +
+      (d.note ? escHtml(d.note) : '* 주문 내역 첨부') +
+      (attachImgUrl ? '<br><img src="' + attachImgUrl + '" style="max-width:100%;margin-top:8px;display:block;border:1px solid #e0e0e0;border-radius:3px">' : '') +
+    '</td></tr>' +
     '</table>' +
 
     '</div>';
