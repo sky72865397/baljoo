@@ -570,38 +570,6 @@
 </div>
 </div>
 
-<!-- 발주서 미리보기 모달 -->
-<div id="orderPreviewModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:1500;overflow-y:auto;padding:20px">
-  <div style="background:var(--card);border-radius:var(--radius);max-width:960px;margin:0 auto;padding:24px;position:relative">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;gap:12px;flex-wrap:wrap">
-      <div>
-        <div id="pvTitle" style="font-size:16px;font-weight:700"></div>
-        <div id="pvSub" style="font-size:12px;color:var(--text2);margin-top:3px"></div>
-      </div>
-      <div style="display:flex;gap:8px;flex-shrink:0">
-        <button class="btn btn-primary" id="pvDlBtn">⬇ 엑셀 다운로드</button>
-        <button class="btn" style="background:var(--border);color:var(--text)" onclick="closeOrderPreview()">✕ 닫기</button>
-      </div>
-    </div>
-    <div style="overflow-x:auto">
-      <table style="width:100%;border-collapse:collapse;font-size:13px">
-        <thead>
-          <tr style="background:var(--bg);border-bottom:2px solid var(--border);text-align:left">
-            <th style="padding:8px 10px;white-space:nowrap;color:var(--text2);font-weight:600">#</th>
-            <th style="padding:8px 10px;white-space:nowrap;color:var(--text2);font-weight:600">품목명</th>
-            <th style="padding:8px 10px;white-space:nowrap;color:var(--text2);font-weight:600">옵션</th>
-            <th style="padding:8px 10px;white-space:nowrap;color:var(--text2);font-weight:600;text-align:center">수량</th>
-            <th style="padding:8px 10px;white-space:nowrap;color:var(--text2);font-weight:600">수령인</th>
-            <th style="padding:8px 10px;white-space:nowrap;color:var(--text2);font-weight:600">발주코드</th>
-            <th style="padding:8px 10px;white-space:nowrap;color:var(--text2);font-weight:600">주소</th>
-          </tr>
-        </thead>
-        <tbody id="pvTableBody"></tbody>
-      </table>
-    </div>
-  </div>
-</div>
-
 <!-- 지출결의서 미리보기 모달 -->
 <div id="expModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:1000;overflow:auto;padding:20px">
   <div style="max-width:800px;margin:0 auto;background:#fff;border-radius:var(--radius);padding:24px">
@@ -1051,10 +1019,7 @@ function renderStep3(){
         <span class="badge badge-purple" style="margin-left:6px;vertical-align:middle">${a}</span>
         <div style="font-size:12px;color:var(--text2);margin-top:3px">${makeFileName(v,a)} · ${cnt}건</div>
       </div>
-      <div style="display:flex;gap:6px">
-        <button class="btn btn-sm" style="background:var(--border);color:var(--text)" onclick="previewVendor('${esc(gk)}')">👁 미리보기</button>
-        <button class="btn btn-sm" onclick="dlOne('${esc(gk)}')">⬇ 다운로드</button>
-      </div>
+      <button class="btn btn-sm" onclick="dlOne('${esc(gk)}')">⬇ 다운로드</button>
     </div>`;
   }
   document.getElementById('genListArea').innerHTML=html;
@@ -1186,42 +1151,6 @@ function autoColWidth(ws, rows) {
   ws['!cols'] = colWidths.map(w => ({ wch: Math.min(Math.max(w + 2, 8), 50) }));
 }
 
-// ══════════════════════════════════════════════════════════
-// 발주서 미리보기
-// ══════════════════════════════════════════════════════════
-function previewVendor(gk) {
-  const [v, a] = gk.split('|');
-  const orders = groupedOrders[gk] || [];
-  document.getElementById('pvTitle').textContent = v + ' — ' + a;
-  document.getElementById('pvSub').textContent = '총 ' + orders.length + '건 · ' + makeFileName(v, a);
-  document.getElementById('pvDlBtn').onclick = () => { dlOne(gk); };
-
-  let rows = '';
-  orders.forEach((o, i) => {
-    const itemHtml = '<span style="font-weight:600">' + escHtml(o.item_name || '') + '</span>';
-    const optHtml  = o.option_name
-      ? '<span style="color:var(--accent)">' + escHtml(o.option_name) + '</span>' : '<span style="color:var(--text3)">—</span>';
-    const codeHtml = '<span style="font-family:monospace;font-size:11px;color:var(--text3)">' + escHtml((o.vendor_code||'').slice(0,30)) + '</span>';
-    const addrHtml = escHtml((o.addr||'').slice(0,28)) + ((o.addr||'').length>28?'…':'');
-    rows += '<tr style="border-bottom:1px solid var(--border)">' +
-      '<td style="padding:7px 10px;color:var(--text3);font-size:12px">' + (i+1) + '</td>' +
-      '<td style="padding:7px 10px">' + itemHtml + '</td>' +
-      '<td style="padding:7px 10px">' + optHtml + '</td>' +
-      '<td style="padding:7px 10px;text-align:center">' + effQty(o) + '</td>' +
-      '<td style="padding:7px 10px;white-space:nowrap">' + escHtml(o.recv_name||'') + '</td>' +
-      '<td style="padding:7px 10px">' + codeHtml + '</td>' +
-      '<td style="padding:7px 10px;font-size:12px;color:var(--text2)">' + addrHtml + '</td>' +
-    '</tr>';
-  });
-  document.getElementById('pvTableBody').innerHTML = rows || '<tr><td colspan="7" style="padding:20px;text-align:center;color:var(--text3)">주문 없음</td></tr>';
-  document.getElementById('orderPreviewModal').style.display = 'block';
-  document.body.style.overflow = 'hidden';
-}
-function closeOrderPreview() {
-  document.getElementById('orderPreviewModal').style.display = 'none';
-  document.body.style.overflow = '';
-}
-
 function dlOne(gk){
   const [v,a]=gk.split('|');
   const wb=XLSX.utils.book_new();
@@ -1248,7 +1177,6 @@ function renderStep4(){
       <div><strong>${v}</strong> <span class="badge badge-purple">${a}</span>
         <div style="font-size:12px;color:var(--text2);margin-top:3px">${makeFileName(v,a)} · ${cnt}건</div></div>
       <div style="display:flex;align-items:center;gap:8px">
-        <button class="btn btn-sm" style="background:var(--border);color:var(--text)" onclick="previewVendor('${esc(gk)}')">👁 미리보기</button>
         <button class="btn btn-sm" onclick="dlOne('${esc(gk)}')">재다운로드</button>
         <span class="badge badge-green">✓ 완료</span></div>
     </div>`;
