@@ -561,6 +561,11 @@
           <button class="sub-tab-btn"        id="expCoFilter-yb"    onclick="setExpCoFilter('옐로우브릿지')">옐로우브릿지</button>
           <button class="sub-tab-btn"        id="expCoFilter-gr"    onclick="setExpCoFilter('그로븐')">그로븐</button>
         </div>
+        <div style="display:flex;gap:4px;margin-left:4px">
+          <button class="btn btn-sm active" id="expPaidFilter-all"    onclick="setExpPaidFilter('all')"    style="white-space:nowrap">전체</button>
+          <button class="btn btn-sm"        id="expPaidFilter-unpaid" onclick="setExpPaidFilter('unpaid')" style="white-space:nowrap">⏳ 미송금</button>
+          <button class="btn btn-sm"        id="expPaidFilter-paid"   onclick="setExpPaidFilter('paid')"   style="white-space:nowrap">✅ 송금완료</button>
+        </div>
         <button class="btn btn-green btn-sm" style="margin-left:auto" onclick="exportExpHistXlsx()">📥 Excel 내보내기</button>
         <button class="btn btn-sm" onclick="if(confirm('전체 이력을 삭제할까요?')){localStorage.removeItem('expHist');renderExpHistList();}">🗑 전체삭제</button>
       </div>
@@ -791,9 +796,11 @@ function parseParts(vc, voc, productName, selectOpt, displayOpt) {
         ilbiOpt = stripCodeQty(cleanedOpt);
       }
       // 옵션 없으면 voc(판매자옵션코드) > 선택사항(S) > 노출옵션명(T) 순으로 폴백
-      // 지마켓/옥션: vc=일비]박대/ (슬래시뒤 빈값) + voc=3P-2 → cleanDash(voc)=3P 사용
+      // 지마켓/옥션: vc=일비]박대/ (슬래시뒤 빈값) + voc=3P-2 → cleanDash(voc)=3P, 수량도 voc에서 추출
       if (!ilbiOpt) {
         ilbiOpt = mapped ? mapped.result : (cleanDash(optCode) || cleanSelectOpt(selectOpt) || displayOpt || '');
+        // optCode가 옵션 소스인 경우 → optCode의 수량(-숫자)도 함께 추출 (예: 3P-2 → qty=2)
+        if (!mapped && cleanDash(optCode)) ilbiQty = extractCodeQty(optCode) || ilbiQty;
       } else if (mapped) {
         ilbiOpt = mapped.result;
       }
@@ -1897,8 +1904,31 @@ function invReset() {
 // ══════════════════════════════════════════════════════════
 // 지출결의서 서브탭
 // ══════════════════════════════════════════════════════════
-let _expCoFilter = 'all';
-let _expTodayOnly = false;
+let _expCoFilter   = 'all';
+let _expTodayOnly  = false;
+let _expPaidFilter = 'all'; // 'all' | 'unpaid' | 'paid'
+
+function setExpPaidFilter(val) {
+  _expPaidFilter = val;
+  ['all','unpaid','paid'].forEach(v => {
+    const btn = document.getElementById('expPaidFilter-' + v);
+    if (!btn) return;
+    if (v === val) {
+      btn.style.background = 'var(--text)'; btn.style.color = '#fff'; btn.style.borderColor = 'var(--text)';
+    } else {
+      btn.style.background = ''; btn.style.color = ''; btn.style.borderColor = '';
+    }
+  });
+  renderExpHistList();
+}
+
+function toggleExpPaid(i) {
+  const hist = loadExpHist();
+  if (!hist[i]) return;
+  hist[i].paid = !hist[i].paid;
+  saveExpHist(hist);
+  renderExpHistList();
+}
 
 function switchExpSubTab(name) {
   document.querySelectorAll('#tab-expense .sub-content').forEach(el => el.classList.remove('active'));
@@ -1964,6 +1994,8 @@ function renderExpHistList() {
     if (_expCoFilter !== 'all' && d.co !== _expCoFilter) return false;
     if (_expTodayOnly && (d.date||'') !== todayIso) return false;
     if (!_expTodayOnly && monthVal && !(d.date||'').startsWith(monthVal)) return false;
+    if (_expPaidFilter === 'paid'   &&  !d.paid) return false;
+    if (_expPaidFilter === 'unpaid' && !!d.paid) return false;
     if (q && !(
       (d.vendor||'').toLowerCase().includes(q) ||
       (d.desc||'').toLowerCase().includes(q) ||
@@ -2009,14 +2041,21 @@ function renderExpHistList() {
 
     g.items.forEach((d, idx) => {
       const realIdx = hist.indexOf(d);
+      const isPaid = !!d.paid;
+      const rowBg  = isPaid ? 'background:rgba(16,185,129,0.08);border-left:3px solid #10b981' : 'background:var(--surface)';
+      const paidBtn = isPaid
+        ? '<button class="btn btn-sm" style="padding:2px 8px;background:#10b981;color:#fff;border-color:#10b981;white-space:nowrap" title="클릭하면 미송금으로 변경" onclick="toggleExpPaid(' + realIdx + ')">✅ 완료</button>'
+        : '<button class="btn btn-sm" style="padding:2px 8px;color:var(--text3);white-space:nowrap" title="송금완료로 표시" onclick="toggleExpPaid(' + realIdx + ')">☐ 송금</button>';
       const attachBtn = d.hasAttach
         ? '<button class="btn btn-sm" style="padding:2px 8px;color:var(--primary);border-color:var(--primary)" title="거래내역서 보기" onclick="viewExpAttach(' + (d.id||0) + ')">📎</button>'
         : '<button class="btn btn-sm" style="padding:2px 8px;color:var(--text3)" title="거래내역서 첨부" onclick="attachToExpHist(' + realIdx + ')">📎+</button>';
-      html += '<div id="exphi_' + realIdx + '" style="display:grid;grid-template-columns:24px 90px 1fr auto auto auto auto;gap:8px;align-items:center;padding:7px 8px;border-radius:6px;margin-bottom:4px;background:var(--surface)">' +
+      const descStyle = isPaid ? 'font-size:13px;cursor:pointer;color:var(--text3);text-decoration:line-through' : 'font-size:13px;cursor:pointer';
+      html += '<div id="exphi_' + realIdx + '" style="display:grid;grid-template-columns:24px 90px 1fr auto auto auto auto auto;gap:8px;align-items:center;padding:7px 8px;border-radius:6px;margin-bottom:4px;' + rowBg + '">' +
         '<input type="checkbox" class="exp-hist-chk" data-idx="' + realIdx + '" style="width:15px;height:15px;cursor:pointer" onchange="updateExpHistSelCount()">' +
         '<span style="font-size:11px;color:var(--text3);cursor:pointer" onclick="previewHistItem(' + realIdx + ')">' + escHtml(d.date||'') + '</span>' +
-        '<span style="font-size:13px;cursor:pointer" onclick="previewHistItem(' + realIdx + ')">' + escHtml(d.desc||'') + '</span>' +
-        '<span style="font-size:13px;font-weight:600;text-align:right;cursor:pointer" onclick="previewHistItem(' + realIdx + ')">' + fmtNum(d.total) + '원</span>' +
+        '<span style="' + descStyle + '" onclick="previewHistItem(' + realIdx + ')">' + escHtml(d.desc||'') + '</span>' +
+        '<span style="font-size:13px;font-weight:600;text-align:right;cursor:pointer' + (isPaid ? ';color:var(--text3)' : '') + '" onclick="previewHistItem(' + realIdx + ')">' + fmtNum(d.total) + '원</span>' +
+        paidBtn +
         attachBtn +
         '<button class="btn btn-sm" style="padding:2px 8px" onclick="saveExpImgFromHist(' + realIdx + ')">📷</button>' +
         '<button class="btn btn-sm" style="color:var(--danger);border-color:var(--danger);padding:2px 8px" onclick="deleteExpHist(' + realIdx + ')">삭제</button>' +
