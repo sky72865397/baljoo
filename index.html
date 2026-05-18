@@ -749,7 +749,8 @@ function parseParts(vc, voc, productName, selectOpt, displayOpt) {
     if (cc.productKw && productName && productName.toLowerCase().includes(cc.productKw.toLowerCase())) return true;
     return false;
   });
-  if (custom) {
+  // custom.product가 비어있거나 '/'를 포함하면 잘못 저장된 코드 → 일반 파싱으로 폴백
+  if (custom && custom.product && !custom.product.includes('/')) {
     const optStr = mapped ? mapped.result : (cleanSelectOpt(selectOpt) || cleanSelectOpt(displayOpt) || '');
     return { itemName: custom.product, optionName: optStr, optMapped: !!mapped, optNeedsCheck: !mapped && !optStr };
   }
@@ -767,8 +768,16 @@ function parseParts(vc, voc, productName, selectOpt, displayOpt) {
       let ilbiQty  = 1;
       if (ilbiSlash >= 0) {
         const rawOpt = after.slice(ilbiSlash + 1).trim();
-        ilbiQty = extractCodeQty(rawOpt);
-        ilbiOpt = stripCodeQty(rawOpt);
+        // "-수량 전체상품명" 패턴 추출: "4P-1 반건조 박대" → qty=1, trailingName="반건조 박대", cleanedOpt="4P-1"
+        const trailM2    = rawOpt.match(/-(\d+)\s+(.+)$/);
+        const cleanedOpt = rawOpt.replace(/-(\d+)\s+\S.*$/, '-$1');
+        // 뒤따르는 전체상품명이 bracket prefix보다 풍부하면 품목명 교체 (예: "박대" < "반건조 박대")
+        if (trailM2) {
+          const trName2 = trailM2[2].trim();
+          if (trName2.length > ilbiItem.length) ilbiItem = trName2;
+        }
+        ilbiQty = extractCodeQty(cleanedOpt);
+        ilbiOpt = stripCodeQty(cleanedOpt);
       }
       // 옵션 없으면 선택사항(S) + 노출옵션명(T) 폴백
       if (!ilbiOpt) {
@@ -841,6 +850,24 @@ function parseParts(vc, voc, productName, selectOpt, displayOpt) {
     };
   }
 
+  // 완전 미매칭 — 슬래시 포함 코드면 품목명/옵션 파싱 시도
+  const vc_slash = vendorCode.indexOf('/');
+  if (vc_slash >= 0) {
+    const itm_raw    = vendorCode.slice(0, vc_slash).trim();
+    const raw_after  = vendorCode.slice(vc_slash + 1).trim();
+    // "-수량 전체상품명" 패턴: "4P-1 반건조 박대" → qty=1, opt="4P", trailingName="반건조 박대"
+    const trailM     = raw_after.match(/-(\d+)\s+(.+)$/);
+    const qty3       = trailM ? parseInt(trailM[1]) : extractCodeQty(raw_after);
+    const trailingName = trailM ? trailM[2].trim() : '';
+    const cleanedR   = trailM ? raw_after.replace(/-(\d+)\s+.*$/, '-$1') : raw_after;
+    const opt3       = stripCodeQty(cleanedR);
+    // 뒤따르는 전체상품명이 prefix보다 길면 더 풍부한 품목명으로 사용 (예: "반건조 박대" > "박대")
+    const itm3       = (trailingName && trailingName.length > itm_raw.length)
+                         ? trailingName
+                         : (itm_raw || (productName||'').substring(0,20));
+    const optStr3    = mapped ? mapped.result : (opt3 || cleanSelectOpt(selectOpt) || cleanSelectOpt(displayOpt) || '');
+    return { itemName: itm3, optionName: optStr3, codeQty: qty3, unmatched: true, optMapped: !!mapped };
+  }
   // 완전 미매칭 — P열(상품명)을 품목명으로, Q/R열을 옵션으로
   const optStr = mapped ? mapped.result : (cleanSelectOpt(selectOpt) || cleanSelectOpt(displayOpt) || '');
   return { itemName: productName ? productName.substring(0,20) : vendorCode, optionName: optStr, codeQty: 1, unmatched: true, optMapped: !!mapped };
@@ -3493,21 +3520,27 @@ function reconExportXlsx() {
 <div class="tab-content" id="tab-price">
 <div class="container">
 
-  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px">
-    <div style="display:flex;gap:6px">
-      <button class="btn" id="pSubBtn-sale" onclick="priceSwitchSub('sale')" style="background:var(--text);color:#fff">📦 판매가(10%)</button>
-      <button class="btn" id="pSubBtn-dm"   onclick="priceSwitchSub('dm')">🛒 도매꾹</button>
+  <!-- 툴바 -->
+  <div class="card" style="padding:14px 18px;margin-bottom:14px">
+    <!-- 1행: 서브탭 + 액션 버튼 -->
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      <button class="btn" id="pSubBtn-sale" onclick="priceSwitchSub('sale')" style="background:var(--text);color:#fff;font-size:13px">📦 판매가(10%)</button>
+      <button class="btn" id="pSubBtn-dm"   onclick="priceSwitchSub('dm')" style="font-size:13px">🛒 도매꾹</button>
+      <div style="flex:1"></div>
+      <button class="btn btn-sm" onclick="priceImportExcel()" title="엑셀 파일에서 일괄 가져오기">📥 엑셀 가져오기</button>
+      <input type="file" id="priceImportInput" accept=".xlsx,.xls" style="display:none" onchange="priceImportFile(this.files[0]);this.value=''">
+      <button class="btn btn-primary btn-sm" onclick="priceOpenForm(null)">＋ 품목 추가</button>
     </div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+    <!-- 2행: 발주처 필터 + 검색 -->
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
       <div id="pVendorWrap" style="display:flex;align-items:center;gap:5px">
-        <label style="font-size:12px;color:var(--text2)">발주처</label>
-        <select id="pVendorFilter" class="inp" style="min-width:120px;font-size:12px" onchange="priceRender()">
+        <label style="font-size:12px;color:var(--text2);white-space:nowrap">발주처</label>
+        <select id="pVendorFilter" class="inp" style="min-width:130px;font-size:12px" onchange="priceRender()">
           <option value="전체">전체</option>
         </select>
       </div>
-      <input id="pSearch" class="inp" style="min-width:170px;font-size:12px" placeholder="🔍 품목명·코드 검색" oninput="priceRender()">
-      <span id="pCount" style="font-size:12px;color:var(--text3)"></span>
-      <button class="btn btn-primary btn-sm" onclick="priceOpenForm(null)">＋ 추가</button>
+      <input id="pSearch" class="inp" style="flex:1;min-width:180px;font-size:12px" placeholder="🔍 품목명·코드·규격 검색" oninput="priceRender()">
+      <span id="pCount" style="font-size:12px;color:var(--text3);white-space:nowrap"></span>
     </div>
   </div>
 
@@ -3882,6 +3915,85 @@ function priceDelete(idx){
   priceSaveStorage(key,items);
   if(_pSub==='sale')priceRebuildVendorFilter();
   priceRender();
+}
+
+// ── 엑셀 가져오기 ──
+function priceImportExcel() {
+  document.getElementById('priceImportInput').click();
+}
+
+function priceImportFile(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'array' });
+
+      // 판매가(10%) 시트
+      const saleSheet = wb.Sheets['판매가(10%)'];
+      const saleRows  = saleSheet ? XLSX.utils.sheet_to_json(saleSheet, { header:1, defval:'' }) : [];
+      let newSale = 0;
+      if (saleRows.length > 3) {
+        const existing = priceLoadStorage(PRICE_SALE_KEY);
+        const rows = saleRows.slice(3).filter(r => r.some(v => v !== ''));
+        rows.forEach(r => {
+          const vendor = String(r[2]||'').trim();
+          const name   = String(r[3]||'').trim();
+          if (!vendor && !name) return;
+          // 중복 체크 (발주처+제품명 동일하면 스킵)
+          const dup = existing.some(x => x.vendor===vendor && x.name===name);
+          if (!dup) {
+            existing.push({
+              vendor, name,
+              spec1:   String(r[4]||''), spec2:  String(r[5]||''),
+              origin:  String(r[6]||''), qty:    String(r[7]||''),
+              unit:    String(r[8]||''), price:  String(r[9]||''),
+              ship:    String(r[10]||''),total:  String(r[11]||''),
+              saleP:   String(r[13]||''),naver:  String(r[14]||''),
+              coupang: String(r[15]||''),carrier:String(r[20]||''),
+              tax:     String(r[1]||''), code:   String(r[0]||''),
+              note:    String(r[21]||''),
+            });
+            newSale++;
+          }
+        });
+        priceSaveStorage(PRICE_SALE_KEY, existing);
+      }
+
+      // 도매꾹 시트
+      const dmSheet = wb.Sheets['도매꾹'];
+      const dmRows  = dmSheet ? XLSX.utils.sheet_to_json(dmSheet, { header:1, defval:'' }) : [];
+      let newDm = 0;
+      if (dmRows.length > 3) {
+        const existing = priceLoadStorage(PRICE_DM_KEY);
+        const rows = dmRows.slice(3).filter(r => r.some(v => v !== ''));
+        rows.forEach(r => {
+          const name = String(r[3]||'').trim();
+          if (!name) return;
+          const dup = existing.some(x => x.name===name);
+          if (!dup) {
+            existing.push({
+              no:      String(r[0]||''), code:    String(r[2]||''),
+              name,    spec:    String(r[4]||''),
+              qty:     String(r[5]||''), ship:    String(r[6]||''),
+              price:   String(r[7]||''), total:   String(r[8]||''),
+              saleP:   String(r[11]||''),marginR: String(r[13]||''),
+              note:    String(r[14]||''),
+            });
+            newDm++;
+          }
+        });
+        priceSaveStorage(PRICE_DM_KEY, existing);
+      }
+
+      priceRebuildVendorFilter();
+      priceRender();
+      alert(`✅ 가져오기 완료!\n판매가(10%): ${newSale}건 추가\n도매꾹: ${newDm}건 추가\n(중복 항목은 건너뜀)`);
+    } catch(err) {
+      alert('❌ 파일 읽기 오류: ' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
 }
 
 (function initPrice(){priceRebuildVendorFilter();priceRender();})();
