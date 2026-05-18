@@ -470,6 +470,17 @@
         <textarea class="inp" id="expNote" rows="2" placeholder="특이사항이 있으면 입력"></textarea>
       </div>
 
+      <!-- 거래내역서 첨부 -->
+      <div style="margin-bottom:14px">
+        <label style="font-size:11px;color:var(--text3);font-weight:500;display:block;margin-bottom:6px">📎 거래내역서 첨부 <span style="font-weight:400;color:var(--text3)">(이미지·PDF, 선택)</span></label>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <input type="file" id="expAttachFile" accept="image/*,.pdf" style="display:none" onchange="onExpAttachChange(this)">
+          <button class="btn btn-sm" onclick="document.getElementById('expAttachFile').click()">📎 파일 선택</button>
+          <span id="expAttachName" style="font-size:12px;color:var(--text3)">선택된 파일 없음</span>
+          <button class="btn btn-sm" id="expAttachClear" style="display:none;color:var(--danger);border-color:var(--danger);padding:2px 8px" onclick="clearExpAttach()">✕ 제거</button>
+        </div>
+      </div>
+
       <div style="display:flex;gap:10px;flex-wrap:wrap">
         <button class="btn btn-primary" onclick="previewExpense()">👁 미리보기 / 이미지 저장</button>
         <button class="btn btn-green" onclick="saveExpense()">💾 이력 저장</button>
@@ -779,9 +790,10 @@ function parseParts(vc, voc, productName, selectOpt, displayOpt) {
         ilbiQty = extractCodeQty(cleanedOpt);
         ilbiOpt = stripCodeQty(cleanedOpt);
       }
-      // 옵션 없으면 선택사항(S) + 노출옵션명(T) 폴백
+      // 옵션 없으면 voc(판매자옵션코드) > 선택사항(S) > 노출옵션명(T) 순으로 폴백
+      // 지마켓/옥션: vc=일비]박대/ (슬래시뒤 빈값) + voc=3P-2 → cleanDash(voc)=3P 사용
       if (!ilbiOpt) {
-        ilbiOpt = mapped ? mapped.result : (cleanSelectOpt(selectOpt) || displayOpt || '');
+        ilbiOpt = mapped ? mapped.result : (cleanDash(optCode) || cleanSelectOpt(selectOpt) || displayOpt || '');
       } else if (mapped) {
         ilbiOpt = mapped.result;
       }
@@ -865,7 +877,7 @@ function parseParts(vc, voc, productName, selectOpt, displayOpt) {
     const itm3       = (trailingName && trailingName.length > itm_raw.length)
                          ? trailingName
                          : (itm_raw || (productName||'').substring(0,20));
-    const optStr3    = mapped ? mapped.result : (opt3 || cleanSelectOpt(selectOpt) || cleanSelectOpt(displayOpt) || '');
+    const optStr3    = mapped ? mapped.result : (opt3 || cleanDash(optCode) || cleanSelectOpt(selectOpt) || cleanSelectOpt(displayOpt) || '');
     return { itemName: itm3, optionName: optStr3, codeQty: qty3, unmatched: true, optMapped: !!mapped };
   }
   // 완전 미매칭 — P열(상품명)을 품목명으로, Q/R열을 옵션으로
@@ -1997,11 +2009,15 @@ function renderExpHistList() {
 
     g.items.forEach((d, idx) => {
       const realIdx = hist.indexOf(d);
-      html += '<div id="exphi_' + realIdx + '" style="display:grid;grid-template-columns:24px 90px 1fr auto auto auto;gap:8px;align-items:center;padding:7px 8px;border-radius:6px;margin-bottom:4px;background:var(--surface)">' +
+      const attachBtn = d.hasAttach
+        ? '<button class="btn btn-sm" style="padding:2px 8px;color:var(--primary);border-color:var(--primary)" title="거래내역서 보기" onclick="viewExpAttach(' + (d.id||0) + ')">📎</button>'
+        : '<button class="btn btn-sm" style="padding:2px 8px;color:var(--text3)" title="거래내역서 첨부" onclick="attachToExpHist(' + realIdx + ')">📎+</button>';
+      html += '<div id="exphi_' + realIdx + '" style="display:grid;grid-template-columns:24px 90px 1fr auto auto auto auto;gap:8px;align-items:center;padding:7px 8px;border-radius:6px;margin-bottom:4px;background:var(--surface)">' +
         '<input type="checkbox" class="exp-hist-chk" data-idx="' + realIdx + '" style="width:15px;height:15px;cursor:pointer" onchange="updateExpHistSelCount()">' +
         '<span style="font-size:11px;color:var(--text3);cursor:pointer" onclick="previewHistItem(' + realIdx + ')">' + escHtml(d.date||'') + '</span>' +
         '<span style="font-size:13px;cursor:pointer" onclick="previewHistItem(' + realIdx + ')">' + escHtml(d.desc||'') + '</span>' +
         '<span style="font-size:13px;font-weight:600;text-align:right;cursor:pointer" onclick="previewHistItem(' + realIdx + ')">' + fmtNum(d.total) + '원</span>' +
+        attachBtn +
         '<button class="btn btn-sm" style="padding:2px 8px" onclick="saveExpImgFromHist(' + realIdx + ')">📷</button>' +
         '<button class="btn btn-sm" style="color:var(--danger);border-color:var(--danger);padding:2px 8px" onclick="deleteExpHist(' + realIdx + ')">삭제</button>' +
       '</div>';
@@ -2015,8 +2031,11 @@ function renderExpHistList() {
 function deleteExpHist(i) {
   if (!confirm('이 항목을 삭제할까요?')) return;
   const hist = loadExpHist();
+  const item = hist[i];
   hist.splice(i, 1);
   saveExpHist(hist);
+  // 첨부파일도 같이 삭제
+  if (item && item.id && item.hasAttach) _idbDelAttach(item.id);
   renderExpHistList();
 }
 
@@ -2121,11 +2140,15 @@ function previewHistItem(i) {
 
 let _expSaveDirHandle = null;
 
-// ── IndexedDB 폴더 핸들 영속화 ──
+// ── IndexedDB 폴더 핸들 영속화 + 거래내역서 첨부 ──
 function _idbOpen() {
   return new Promise((res, rej) => {
-    const req = indexedDB.open('expSaveDB', 1);
-    req.onupgradeneeded = e => e.target.result.createObjectStore('handles');
+    const req = indexedDB.open('expSaveDB', 2);
+    req.onupgradeneeded = e => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains('handles'))     db.createObjectStore('handles');
+      if (!db.objectStoreNames.contains('attachments')) db.createObjectStore('attachments');
+    };
     req.onsuccess = e => res(e.target.result);
     req.onerror   = e => rej(e.target.error);
   });
@@ -2146,6 +2169,87 @@ async function _idbGet(key) {
     req.onsuccess = e => res(e.target.result);
     req.onerror   = e => rej(e.target.error);
   });
+}
+// ── 거래내역서 첨부 파일 CRUD ──
+async function _idbPutAttach(id, data) {
+  const db = await _idbOpen();
+  return new Promise((res, rej) => {
+    const tx = db.transaction('attachments', 'readwrite');
+    tx.objectStore('attachments').put(data, id);
+    tx.oncomplete = res; tx.onerror = e => rej(e.target.error);
+  });
+}
+async function _idbGetAttach(id) {
+  const db = await _idbOpen();
+  return new Promise((res, rej) => {
+    const tx = db.transaction('attachments', 'readonly');
+    const r  = tx.objectStore('attachments').get(id);
+    r.onsuccess = e => res(e.target.result);
+    r.onerror   = e => rej(e.target.error);
+  });
+}
+async function _idbDelAttach(id) {
+  const db = await _idbOpen();
+  return new Promise((res, rej) => {
+    const tx = db.transaction('attachments', 'readwrite');
+    tx.objectStore('attachments').delete(id);
+    tx.oncomplete = res; tx.onerror = e => rej(e.target.error);
+  });
+}
+function onExpAttachChange(input) {
+  const f = input && input.files && input.files[0];
+  const nameEl   = document.getElementById('expAttachName');
+  const clearBtn = document.getElementById('expAttachClear');
+  if (f) {
+    if (nameEl) { nameEl.textContent = f.name; nameEl.style.color = 'var(--success)'; }
+    if (clearBtn) clearBtn.style.display = '';
+  } else {
+    if (nameEl) { nameEl.textContent = '선택된 파일 없음'; nameEl.style.color = 'var(--text3)'; }
+    if (clearBtn) clearBtn.style.display = 'none';
+  }
+}
+function clearExpAttach() {
+  const inp = document.getElementById('expAttachFile');
+  if (inp) inp.value = '';
+  onExpAttachChange(null);
+}
+async function viewExpAttach(id) {
+  const attach = await _idbGetAttach(id);
+  if (!attach) { alert('첨부파일을 찾을 수 없어요.'); return; }
+  const w = window.open('', '_blank');
+  const isImg = (attach.type||'').startsWith('image/');
+  w.document.write(
+    '<html><head><title>' + attach.name + '</title></head>' +
+    '<body style="margin:0;background:#1a1a1a;display:flex;flex-direction:column;align-items:center">' +
+    '<div style="color:#ccc;font-family:sans-serif;font-size:13px;padding:10px">' + attach.name + '</div>' +
+    (isImg
+      ? '<img src="' + attach.data + '" style="max-width:100%;height:auto;display:block">'
+      : '<iframe src="' + attach.data + '" style="width:100vw;height:calc(100vh - 40px);border:none"></iframe>') +
+    '</body></html>'
+  );
+}
+async function attachToExpHist(i) {
+  // 기존 이력 항목에 파일 첨부 (히스토리 행에서 직접 첨부할 때)
+  const input = document.createElement('input');
+  input.type = 'file';  input.accept = 'image/*,.pdf';
+  input.onchange = async () => {
+    const f = input.files[0];
+    if (!f) return;
+    const hist = loadExpHist();
+    const item = hist[i];
+    if (!item) return;
+    const id = item.id || 0;
+    if (!id) { alert('이 항목은 ID가 없어 첨부가 불가능해요.'); return; }
+    const reader = new FileReader();
+    reader.onload = async e => {
+      await _idbPutAttach(id, { name: f.name, type: f.type, data: e.target.result });
+      item.hasAttach = true;
+      saveExpHist(hist);
+      renderExpHistList();
+    };
+    reader.readAsDataURL(f);
+  };
+  input.click();
 }
 
 async function _updateFolderLabel() {
@@ -2959,10 +3063,24 @@ function saveExpImg() {
 function saveExpense() {
   const d = getExpFormData();
   if (!d.vendor || !d.total) { alert('송금처와 송금금액을 입력해주세요.'); return; }
-  const hist = loadExpHist();
-  hist.unshift({ ...d, id: Date.now(), savedAt: new Date().toISOString() });
+  const hist   = loadExpHist();
+  const newId  = Date.now();
+  const attachInput = document.getElementById('expAttachFile');
+  const file   = attachInput && attachInput.files && attachInput.files[0];
+  const record = { ...d, id: newId, savedAt: new Date().toISOString() };
+  if (file) record.hasAttach = true;
+  hist.unshift(record);
   if (hist.length > 200) hist.splice(200);
   saveExpHist(hist);
+  // 첨부파일 IndexedDB 저장
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = async e => {
+      await _idbPutAttach(newId, { name: file.name, type: file.type, data: e.target.result });
+    };
+    reader.readAsDataURL(file);
+    clearExpAttach();
+  }
   alert('저장됐어요!');
   renderExpHistList();
 }
