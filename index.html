@@ -103,6 +103,7 @@
   <button class="tab-btn" id="tabBtn-expense" onclick="switchTab('expense')">📝 지출결의서</button>
   <button class="tab-btn" id="tabBtn-invoice" onclick="switchTab('invoice')">🚚 송장입력</button>
   <button class="tab-btn" id="tabBtn-recon" onclick="switchTab('recon')">⚖️ 정산 대조</button>
+  <button class="tab-btn" id="tabBtn-price" onclick="switchTab('price')">📊 매입단가표</button>
 </div>
 
 <!-- ══════════════════════════════════════════════════════════
@@ -3442,6 +3443,207 @@ function reconExportXlsx() {
 
 </div>
 </div><!-- /tab-recon -->
+
+<!-- ══════════════════════════════════════════════════════════
+     TAB 6: 매입단가표
+══════════════════════════════════════════════════════════ -->
+<div class="tab-content" id="tab-price">
+<div class="container">
+
+  <!-- 파일 업로드 -->
+  <div class="card" id="priceUploadCard">
+    <div class="card-title">📊 매입단가표 파일 업로드</div>
+    <div id="priceDropZone" style="border:2px dashed var(--border2);border-radius:var(--radius);padding:20px;text-align:center;cursor:pointer;font-size:13px;color:var(--text2)"
+      ondragover="event.preventDefault();this.style.background='var(--bg)'"
+      ondragleave="this.style.background=''"
+      ondrop="event.preventDefault();this.style.background='';priceLoadFile(event.dataTransfer.files[0])"
+      onclick="document.getElementById('priceFileInput').click()">
+      📂 매입 단가표 Excel 파일을 끌어다 놓거나 클릭하세요
+    </div>
+    <input type="file" id="priceFileInput" accept=".xlsx,.xls" style="display:none"
+      onchange="priceLoadFile(this.files[0]);this.value=''">
+    <div id="priceFileInfo" style="margin-top:8px;font-size:12px;color:var(--text3)"></div>
+  </div>
+
+  <!-- 서브탭 + 필터 -->
+  <div id="priceMainArea" style="display:none">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+      <button class="btn" id="pSubBtn-sale" onclick="switchPriceSub('sale')" style="background:var(--accent);color:#fff">판매가(10%)</button>
+      <button class="btn" id="pSubBtn-dm" onclick="switchPriceSub('dm')" style="background:var(--border);color:var(--text)">도매꾹</button>
+      <div id="priceVendorWrap" style="display:flex;align-items:center;gap:6px;margin-left:8px">
+        <label style="font-size:13px;color:var(--text2)">발주처</label>
+        <select id="priceVendorFilter" class="inp" style="min-width:130px" onchange="priceRender()"></select>
+      </div>
+      <input id="priceSearch" class="inp" style="min-width:180px;margin-left:4px" placeholder="🔍 제품명·코드 검색" oninput="priceRender()">
+      <span id="priceCount" style="font-size:12px;color:var(--text3);margin-left:4px"></span>
+    </div>
+    <div style="overflow-x:auto">
+      <table id="priceTable" style="width:100%;border-collapse:collapse;font-size:12px;min-width:700px">
+        <thead id="priceHead" style="position:sticky;top:0;z-index:1;background:var(--card)"></thead>
+        <tbody id="priceBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+</div><!-- /tab-price -->
+
+<script>
+// ══════════════════════════════════════════════════════════
+// 매입단가표
+// ══════════════════════════════════════════════════════════
+let _priceData = { sale: [], dm: [] };
+let _priceSub  = 'sale';
+
+function priceLoadFile(file) {
+  if (!file) return;
+  const info = document.getElementById('priceFileInfo');
+  info.textContent = '⏳ 읽는 중...';
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'array' });
+
+      // ── 판매가(10%) 시트 ──
+      const saleSheet = wb.Sheets['판매가(10%)'];
+      const saleRows  = saleSheet ? XLSX.utils.sheet_to_json(saleSheet, { header: 1, defval: '' }) : [];
+      const saleHdr   = saleRows[2] || [];  // 3행이 헤더
+      _priceData.sale = saleRows.slice(3).filter(r => r.some(v => v !== '')).map(r => ({
+        code:    r[0]  || '',
+        tax:     r[1]  || '',
+        vendor:  r[2]  || '',
+        name:    r[3]  || '',
+        spec1:   r[4]  || '',
+        spec2:   r[5]  || '',
+        origin:  r[6]  || '',
+        qty:     r[7]  || '',
+        unit:    r[8]  || '',
+        price:   r[9]  || '',
+        ship:    r[10] || '',
+        total:   r[11] || '',
+        realShip:r[12] || '',
+        saleP:   r[13] || '',
+        naver:   r[14] || '',
+        coupang: r[15] || '',
+        carrier: r[20] || '',
+        note:    r[21] || '',
+      })).filter(r => r.vendor || r.name);
+
+      // ── 도매꾹 시트 ──
+      const dmSheet = wb.Sheets['도매꾹'];
+      const dmRows  = dmSheet ? XLSX.utils.sheet_to_json(dmSheet, { header: 1, defval: '' }) : [];
+      _priceData.dm = dmRows.slice(3).filter(r => r.some(v => v !== '')).map(r => ({
+        no:      r[0]  || '',
+        code:    r[2]  || '',
+        name:    r[3]  || '',
+        spec:    r[4]  || '',
+        qty:     r[5]  || '',
+        ship:    r[6]  || '',
+        price:   r[7]  || '',
+        total:   r[8]  || '',
+        saleP:   r[11] || '',
+        margin:  r[12] || '',
+        marginR: r[13] || '',
+        note:    r[14] || '',
+      })).filter(r => r.name);
+
+      // 발주처 드롭다운 구성
+      const vendors = ['전체', ...new Set(_priceData.sale.map(r => r.vendor).filter(Boolean)).values()].sort((a,b)=>a==='전체'?-1:a.localeCompare(b,'ko'));
+      const sel = document.getElementById('priceVendorFilter');
+      sel.innerHTML = vendors.map(v => `<option value="${escHtml(v)}">${escHtml(v)}</option>`).join('');
+
+      document.getElementById('priceMainArea').style.display = 'block';
+      info.textContent = `✅ ${file.name} — 판매가 ${_priceData.sale.length}건 · 도매꾹 ${_priceData.dm.length}건`;
+      priceRender();
+    } catch(err) {
+      info.textContent = '❌ 오류: ' + err.message;
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function switchPriceSub(sub) {
+  _priceSub = sub;
+  ['sale','dm'].forEach(s => {
+    const btn = document.getElementById('pSubBtn-' + s);
+    if (btn) { btn.style.background = s===sub?'var(--accent)':'var(--border)'; btn.style.color = s===sub?'#fff':'var(--text)'; }
+  });
+  const vw = document.getElementById('priceVendorWrap');
+  if (vw) vw.style.display = sub==='sale' ? 'flex' : 'none';
+  priceRender();
+}
+
+function fmtN(v) {
+  if (v === '' || v == null) return '—';
+  const n = typeof v === 'string' ? parseFloat(v.replace(/,/g,'')) : v;
+  return isNaN(n) ? String(v) : n.toLocaleString('ko-KR');
+}
+
+function priceRender() {
+  const search = (document.getElementById('priceSearch')?.value || '').toLowerCase();
+  const vendor = document.getElementById('priceVendorFilter')?.value || '전체';
+  const head   = document.getElementById('priceHead');
+  const body   = document.getElementById('priceBody');
+  if (!head || !body) return;
+
+  const TH = s => `<th style="padding:8px 10px;white-space:nowrap;border-bottom:2px solid var(--border);text-align:left;background:var(--bg);font-size:11px;color:var(--text2)">${s}</th>`;
+  const TD = (s,right) => `<td style="padding:7px 10px;border-bottom:1px solid var(--border);white-space:nowrap${right?';text-align:right':''}">${s}</td>`;
+  const badge = (txt,color) => `<span style="background:${color};color:#fff;border-radius:4px;padding:1px 6px;font-size:10px">${txt}</span>`;
+
+  if (_priceSub === 'sale') {
+    let rows = _priceData.sale;
+    if (vendor !== '전체') rows = rows.filter(r => r.vendor === vendor);
+    if (search) rows = rows.filter(r =>
+      (r.name+r.code+r.spec1+r.spec2).toLowerCase().includes(search));
+
+    head.innerHTML = `<tr>${[TH('업체'),TH('제품명'),TH('규격1'),TH('규격2'),TH('수량'),TH('단위'),TH('단가'),TH('배송비'),TH('총매입가'),TH('판매가'),TH('네이버'),TH('쿠팡'),TH('택배사'),TH('코드')].join('')}</tr>`;
+    body.innerHTML = rows.length ? rows.map(r => {
+      const taxBadge = r.tax==='면세' ? badge('면세','#6b7280') : badge('과세','#d97706');
+      return `<tr>
+        <td style="padding:7px 10px;border-bottom:1px solid var(--border);white-space:nowrap">${escHtml(r.vendor)} ${taxBadge}</td>
+        ${TD(escHtml(r.name))}
+        ${TD(escHtml(r.spec1))}
+        ${TD(escHtml(r.spec2))}
+        ${TD(escHtml(String(r.qty)),true)}
+        ${TD(escHtml(r.unit))}
+        ${TD(fmtN(r.price),true)}
+        ${TD(fmtN(r.ship),true)}
+        ${TD('<strong>'+fmtN(r.total)+'</strong>',true)}
+        ${TD('<span style="color:var(--accent);font-weight:600">'+fmtN(r.saleP)+'</span>',true)}
+        ${TD(fmtN(r.naver),true)}
+        ${TD(fmtN(r.coupang),true)}
+        ${TD(escHtml(r.carrier))}
+        <td style="padding:7px 10px;border-bottom:1px solid var(--border);font-size:10px;color:var(--text3);font-family:monospace">${escHtml(r.code)}</td>
+      </tr>`;
+    }).join('') : `<tr><td colspan="14" style="padding:24px;text-align:center;color:var(--text3)">검색 결과 없음</td></tr>`;
+    document.getElementById('priceCount').textContent = `${rows.length}건`;
+
+  } else {
+    let rows = _priceData.dm;
+    if (search) rows = rows.filter(r =>
+      (r.name+(r.code||'')+r.spec).toLowerCase().includes(search));
+
+    head.innerHTML = `<tr>${[TH('번호'),TH('코드'),TH('제품명'),TH('규격'),TH('수량'),TH('단가'),TH('배송비'),TH('총매입가'),TH('판매가'),TH('마진율'),TH('비고')].join('')}</tr>`;
+    body.innerHTML = rows.length ? rows.map(r => {
+      const mr = typeof r.marginR === 'number' ? (r.marginR*100).toFixed(1)+'%' : (r.marginR||'—');
+      return `<tr>
+        ${TD(escHtml(String(r.no)))}
+        <td style="padding:7px 10px;border-bottom:1px solid var(--border);font-size:10px;font-family:monospace;color:var(--text3)">${escHtml(String(r.code))}</td>
+        ${TD('<strong>'+escHtml(r.name)+'</strong>')}
+        ${TD(escHtml(r.spec))}
+        ${TD(escHtml(String(r.qty)),true)}
+        ${TD(fmtN(r.price),true)}
+        ${TD(fmtN(r.ship),true)}
+        ${TD('<strong>'+fmtN(r.total)+'</strong>',true)}
+        ${TD('<span style="color:var(--accent);font-weight:600">'+fmtN(r.saleP)+'</span>',true)}
+        ${TD(mr,true)}
+        ${TD(escHtml(r.note))}
+      </tr>`;
+    }).join('') : `<tr><td colspan="11" style="padding:24px;text-align:center;color:var(--text3)">검색 결과 없음</td></tr>`;
+    document.getElementById('priceCount').textContent = `${rows.length}건`;
+  }
+}
+</script>
 
 </body>
 </html>
