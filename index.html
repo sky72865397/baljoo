@@ -333,6 +333,22 @@
     <div id="invTrackList" style="margin-top:10px"></div>
   </div>
 
+  <div class="card" id="invCarrierSettingsCard">
+    <div class="card-title" style="cursor:pointer;user-select:none" onclick="invToggleCarrierSettings()">
+      ⚙️ 거래처별 택배사 기본 매핑 설정
+      <span id="invCarrierSettingsToggle" style="font-size:12px;color:var(--text3);margin-left:8px;font-weight:400">▼  펼치기</span>
+    </div>
+    <div id="invCarrierSettingsBody" style="display:none">
+      <p style="font-size:13px;color:var(--text2);margin-bottom:12px">운송장 파일명에 포함된 키워드로 택배사를 자동 설정합니다. 파일 업로드 전에 먼저 저장해두세요.</p>
+      <div id="invCarrierMapRows" style="margin-bottom:10px"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-sm" onclick="invAddCarrierRow()">+ 줄 추가</button>
+        <button class="btn btn-sm btn-primary" onclick="invSaveCarrierMap()">💾 저장</button>
+      </div>
+      <div id="invCarrierSaveMsg" style="font-size:12px;color:var(--success);margin-top:6px;display:none">저장됐어요!</div>
+    </div>
+  </div>
+
   <div class="card" id="invVendorCard" style="display:none">
     <div class="card-title">🏢 거래처별 택배사 설정</div>
     <p style="font-size:13px;color:var(--text2);margin-bottom:14px">판매자상품코드의 <code style="background:var(--bg);padding:2px 5px;border-radius:3px">거래처명]</code> 기준으로 자동 분류됩니다. 택배사를 확인·수정하세요.</p>
@@ -481,9 +497,13 @@
         </div>
       </div>
 
+      <div id="expEditBanner" style="display:none;background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:8px 12px;font-size:12px;color:#92400e;margin-bottom:10px">
+        ✏️ <strong>수정 모드</strong> — 저장하면 기존 이력이 업데이트됩니다.
+      </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
         <button class="btn btn-primary" onclick="previewExpense()">👁 미리보기 / 이미지 저장</button>
-        <button class="btn btn-green" onclick="saveExpense()">💾 이력 저장</button>
+        <button class="btn btn-green" id="expSaveBtn" onclick="saveExpense()">💾 이력 저장</button>
+        <button class="btn" id="expCancelEditBtn" style="display:none;color:var(--danger);border-color:var(--danger)" onclick="cancelExpEdit()">✕ 수정 취소</button>
         <button class="btn" onclick="resetExpForm()">🔄 초기화</button>
       </div>
     </div>
@@ -1630,6 +1650,92 @@ const VENDOR_COURIER_DEFAULT = {
   '늘푸른': '롯데택배',
 };
 
+// ─── 거래처별 택배사 커스텀 매핑 (localStorage: invCarrierMap) ───────────
+function invGetCarrierMap() {
+  try { return JSON.parse(localStorage.getItem('invCarrierMap') || '[]'); } catch(e) { return []; }
+}
+function invSaveCarrierMapData(arr) {
+  localStorage.setItem('invCarrierMap', JSON.stringify(arr));
+}
+function invLookupCourier(fname) {
+  // 사용자 커스텀 매핑 우선
+  const custom = invGetCarrierMap();
+  for (const entry of custom) {
+    if (entry.keyword && entry.courier && fname.includes(entry.keyword)) return {courier: entry.courier, matchedKey: entry.keyword};
+  }
+  // 하드코딩 기본 매핑
+  const known = ['푸드앤','푸드엔','일비','거풍푸드','거풍','남부파머스','최고집','현해랑','도매꾹','늘푸른'];
+  for (const v of known) {
+    if (fname.includes(v)) return {courier: VENDOR_COURIER_DEFAULT[v] || '롯데택배', matchedKey: v};
+  }
+  return {courier: '롯데택배', matchedKey: null};
+}
+function invToggleCarrierSettings() {
+  const body = document.getElementById('invCarrierSettingsBody');
+  const toggle = document.getElementById('invCarrierSettingsToggle');
+  if (!body) return;
+  if (body.style.display === 'none') {
+    body.style.display = 'block';
+    toggle.textContent = '▲ 접기';
+    invRenderCarrierMapRows();
+  } else {
+    body.style.display = 'none';
+    toggle.textContent = '▼  펼치기';
+  }
+}
+function invRenderCarrierMapRows() {
+  const el = document.getElementById('invCarrierMapRows');
+  if (!el) return;
+  const COURIERS = ['롯데택배','CJ대한통운','우체국택배','한진택배','로젠택배','경동택배'];
+  const arr = invGetCarrierMap();
+  if (!arr.length) {
+    // 기본값 채워주기 (처음 펼쳤을 때)
+    const defaults = Object.entries(VENDOR_COURIER_DEFAULT).map(([k,v]) => ({keyword:k, courier:v}));
+    el.innerHTML = defaults.map((e,i) => invCarrierRowHtml(i, e.keyword, e.courier, COURIERS)).join('') +
+      '<div id="invCarrierCustomRows"></div>';
+  } else {
+    el.innerHTML = arr.map((e,i) => invCarrierRowHtml(i, e.keyword, e.courier, COURIERS)).join('');
+  }
+}
+function invCarrierRowHtml(i, keyword, courier, couriers) {
+  const COURIERS = couriers || ['롯데택배','CJ대한통운','우체국택배','한진택배','로젠택배','경동택배'];
+  return '<div class="inv-cmap-row" data-idx="' + i + '" style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">' +
+    '<input class="inp" style="font-size:13px" placeholder="파일명 키워드 (예: 푸드앤드베스트)" value="' + escHtml(keyword||'') + '" oninput="invCarrierRowEdit(this)">' +
+    '<select class="inp" style="font-size:13px" onchange="invCarrierRowEdit(this)">' +
+    COURIERS.map(c => '<option value="' + c + '"' + (c===courier?' selected':'') + '>' + c + '</option>').join('') +
+    '</select>' +
+    '<button class="btn btn-danger btn-sm" onclick="invDelCarrierRow(this)">✕</button>' +
+    '</div>';
+}
+function invCarrierRowEdit(el) {
+  // 실시간 편집은 저장 버튼 누를 때 수집하므로 별도 처리 불필요
+}
+function invDelCarrierRow(btn) {
+  const row = btn.closest('.inv-cmap-row');
+  if (row) row.remove();
+}
+function invAddCarrierRow() {
+  const COURIERS = ['롯데택배','CJ대한통운','우체국택배','한진택배','로젠택배','경동택배'];
+  const el = document.getElementById('invCarrierMapRows');
+  if (!el) return;
+  const div = document.createElement('div');
+  div.innerHTML = invCarrierRowHtml(Date.now(), '', '롯데택배', COURIERS);
+  el.appendChild(div.firstElementChild);
+}
+function invSaveCarrierMap() {
+  const rows = document.querySelectorAll('#invCarrierMapRows .inv-cmap-row');
+  const arr = [];
+  rows.forEach(row => {
+    const inputs = row.querySelectorAll('input, select');
+    const keyword = inputs[0] ? inputs[0].value.trim() : '';
+    const courier = inputs[1] ? inputs[1].value : '';
+    if (keyword && courier) arr.push({keyword, courier});
+  });
+  invSaveCarrierMapData(arr);
+  const msg = document.getElementById('invCarrierSaveMsg');
+  if (msg) { msg.style.display='block'; setTimeout(() => msg.style.display='none', 2000); }
+}
+
 function invDropOrder(e) {
   e.preventDefault();
   document.getElementById('invOrderZone').classList.remove('dragover');
@@ -1760,8 +1866,9 @@ function invLoadTracks(files) {
           }
         });
         const hasCourier   = courierIdx >= 0;
-        const vendorGuess  = invGuessVendor(file.name);
-        const courierGuess = VENDOR_COURIER_DEFAULT[vendorGuess] || '롯데택배';
+        const lookup       = invLookupCourier(file.name);
+        const vendorGuess  = lookup.matchedKey || invGuessVendor(file.name);
+        const courierGuess = lookup.courier;
         invTrackFiles.push({fileName: file.name, vendorName: vendorGuess, courierName: courierGuess, hasCourier, map});
         invRenderTrackList();
         invRenderVendorCard();
@@ -1775,6 +1882,11 @@ function invLoadTracks(files) {
 }
 
 function invGuessVendor(fname) {
+  // 커스텀 매핑 키워드 우선 체크
+  const custom = invGetCarrierMap();
+  for (const entry of custom) {
+    if (entry.keyword && fname.includes(entry.keyword)) return entry.keyword;
+  }
   const known = ['푸드앤','푸드엔','일비','거풍푸드','거풍','최고집','현해랑','도매꾹','늘푸른'];
   for (const v of known) { if (fname.includes(v)) return v; }
   const m = fname.match(/[가-힣]+/g);
@@ -2098,7 +2210,7 @@ function renderExpHistList() {
         ? '<button class="btn btn-sm" style="padding:2px 8px;color:var(--primary);border-color:var(--primary)" title="거래내역서 보기" onclick="viewExpAttach(' + (d.id||0) + ')">📎</button>'
         : '<button class="btn btn-sm" style="padding:2px 8px;color:var(--text3)" title="거래내역서 첨부" onclick="attachToExpHist(' + realIdx + ')">📎+</button>';
       const descStyle = isPaid ? 'font-size:13px;cursor:pointer;color:var(--text3);text-decoration:line-through' : 'font-size:13px;cursor:pointer';
-      html += '<div id="exphi_' + realIdx + '" style="display:grid;grid-template-columns:24px 90px 1fr auto auto auto auto auto;gap:8px;align-items:center;padding:7px 8px;border-radius:6px;margin-bottom:4px;' + rowBg + '">' +
+      html += '<div id="exphi_' + realIdx + '" style="display:grid;grid-template-columns:24px 90px 1fr auto auto auto auto auto auto;gap:8px;align-items:center;padding:7px 8px;border-radius:6px;margin-bottom:4px;' + rowBg + '">' +
         '<input type="checkbox" class="exp-hist-chk" data-idx="' + realIdx + '" style="width:15px;height:15px;cursor:pointer" onchange="updateExpHistSelCount()">' +
         '<span style="font-size:11px;color:var(--text3);cursor:pointer" onclick="previewHistItem(' + realIdx + ')">' + escHtml(d.date||'') + '</span>' +
         '<span style="' + descStyle + '" onclick="previewHistItem(' + realIdx + ')">' + escHtml(d.desc||'') + '</span>' +
@@ -2106,6 +2218,7 @@ function renderExpHistList() {
         paidBtn +
         attachBtn +
         '<button class="btn btn-sm" style="padding:2px 8px" onclick="saveExpImgFromHist(' + realIdx + ')">📷</button>' +
+        '<button class="btn btn-sm" style="padding:2px 8px;color:var(--accent);border-color:var(--accent)" onclick="editExpHist(' + realIdx + ')">✏️</button>' +
         '<button class="btn btn-sm" style="color:var(--danger);border-color:var(--danger);padding:2px 8px" onclick="deleteExpHist(' + realIdx + ')">삭제</button>' +
       '</div>';
     });
@@ -3172,24 +3285,110 @@ function saveExpImg() {
   });
 }
 
+let _editingExpIdx = -1;
+
+function editExpHist(i) {
+  const hist = loadExpHist();
+  const d = hist[i];
+  if (!d) return;
+  _editingExpIdx = i;
+  // 회사 선택
+  selectExpCo(d.co || '옐로우브릿지');
+  // 폼 채우기
+  document.getElementById('expDate').value    = d.date    || '';
+  document.getElementById('expWriter').value  = d.writer  || '';
+  document.getElementById('expVendor').value  = d.vendor  || '';
+  document.getElementById('expDesc').value    = d.desc    || '';
+  document.getElementById('expSupply').value  = d.supply  || '';
+  document.getElementById('expVat').value     = d.vat     || '';
+  document.getElementById('expTotal').value   = d.total   || '';
+  document.getElementById('expMemo').value    = d.memo    || '';
+  document.getElementById('expNote').value    = d.note    || '';
+  // 결제조건
+  const pr = document.querySelector(`input[name="expPayType"][value="${d.payType||'즉시결제'}"]`);
+  if (pr) pr.checked = true;
+  // 증빙자료
+  ['ev1','ev2','ev3','ev4','ev5','ev6'].forEach((id,j) => {
+    const el = document.getElementById(id); if (el) el.checked = d['ev'+(j+1)] || false;
+  });
+  // 계좌정보
+  const bank = loadBankInfo().find(b => b.name === d.vendor || (d.vendor||'').includes(b.name) || (b.name||'').includes(d.vendor||''));
+  if (bank) applyBankTemplate(bank); else document.getElementById('expBankInfo').style.display = 'none';
+  // 첨부파일 안내
+  const nameEl = document.getElementById('expAttachName');
+  const clrBtn = document.getElementById('expAttachClear');
+  if (d.hasAttach) {
+    if (nameEl) { nameEl.textContent = '📎 기존 첨부파일 있음 (새 파일 선택 시 교체)'; nameEl.style.color = 'var(--primary)'; }
+  } else {
+    if (nameEl) { nameEl.textContent = '선택된 파일 없음'; nameEl.style.color = 'var(--text3)'; }
+    if (clrBtn) clrBtn.style.display = 'none';
+  }
+  // 수정 모드 UI
+  const banner = document.getElementById('expEditBanner');
+  const saveBtn = document.getElementById('expSaveBtn');
+  const cancelBtn = document.getElementById('expCancelEditBtn');
+  if (banner)    banner.style.display    = '';
+  if (saveBtn)   saveBtn.textContent     = '💾 수정 저장';
+  if (cancelBtn) cancelBtn.style.display = '';
+  // 작성 탭으로 이동
+  switchExpSubTab('write');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function cancelExpEdit() {
+  _editingExpIdx = -1;
+  const banner   = document.getElementById('expEditBanner');
+  const saveBtn  = document.getElementById('expSaveBtn');
+  const cancelBtn= document.getElementById('expCancelEditBtn');
+  if (banner)    banner.style.display    = 'none';
+  if (saveBtn)   saveBtn.textContent     = '💾 이력 저장';
+  if (cancelBtn) cancelBtn.style.display = 'none';
+  resetExpForm();
+}
+
 function saveExpense() {
   const d = getExpFormData();
   if (!d.vendor || !d.total) { alert('송금처와 송금금액을 입력해주세요.'); return; }
-  const hist   = loadExpHist();
-  const newId  = Date.now();
+  const hist = loadExpHist();
   const attachInput = document.getElementById('expAttachFile');
-  const file   = attachInput && attachInput.files && attachInput.files[0];
+  const file = attachInput && attachInput.files && attachInput.files[0];
+
+  if (_editingExpIdx >= 0) {
+    // ── 수정 모드: 기존 레코드 업데이트 ──
+    const existing = hist[_editingExpIdx] || {};
+    const updated  = { ...existing, ...d, savedAt: new Date().toISOString() };
+    if (file) updated.hasAttach = true;
+    hist[_editingExpIdx] = updated;
+    saveExpHist(hist);
+    if (file && existing.id) {
+      const reader = new FileReader();
+      reader.onload = async e => { await _idbPutAttach(existing.id, { name: file.name, type: file.type, data: e.target.result }); };
+      reader.readAsDataURL(file);
+      clearExpAttach();
+    }
+    _editingExpIdx = -1;
+    const banner   = document.getElementById('expEditBanner');
+    const saveBtn  = document.getElementById('expSaveBtn');
+    const cancelBtn= document.getElementById('expCancelEditBtn');
+    if (banner)    banner.style.display    = 'none';
+    if (saveBtn)   saveBtn.textContent     = '💾 이력 저장';
+    if (cancelBtn) cancelBtn.style.display = 'none';
+    alert('수정됐어요!');
+    switchExpSubTab('list');
+    renderExpHistList();
+    return;
+  }
+
+  // ── 신규 저장 ──
+  const newId  = Date.now();
   const record = { ...d, id: newId, savedAt: new Date().toISOString() };
   if (file) record.hasAttach = true;
   hist.unshift(record);
   if (hist.length > 200) hist.splice(200);
   saveExpHist(hist);
-  // 첨부파일 IndexedDB 저장
   if (file) {
     const reader = new FileReader();
-    reader.onload = async e => {
-      await _idbPutAttach(newId, { name: file.name, type: file.type, data: e.target.result });
-    };
+    reader.onload = async e => { await _idbPutAttach(newId, { name: file.name, type: file.type, data: e.target.result }); };
     reader.readAsDataURL(file);
     clearExpAttach();
   }
