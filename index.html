@@ -1976,15 +1976,20 @@ function invProcess() {
       const newRow = {...row};
       const name = String(row[nameCol]||'').trim();
       const code = String(row[codeCol]||'');
+      // 판매자코드에서 거래처명 추출: "푸드앤]간고등어/100g-10" → "푸드앤"
       let vendor = '';
       if (code.includes(']')) vendor = code.split(']')[0].replace('[','').trim();
       else if (code.includes('_') && !/^\d/.test(code)) vendor = code.split('_')[0].trim();
+      // 거래처명으로 택배사 기본값 결정 (사용자 매핑 → 하드코딩 순)
+      const vendorCourierDefault = vendor ? invLookupCourier(vendor).courier : null;
       let found = false;
       for (const tf of invTrackFiles) {
         const entry = tf.map[name];
         if (name && entry) {
-          const trackNo  = typeof entry === 'object' ? entry.no      : entry;
-          const courier  = typeof entry === 'object' && entry.courier ? entry.courier : tf.courierName;
+          const trackNo = typeof entry === 'object' ? entry.no : entry;
+          // 우선순위: ① 운송장파일 택배사컬럼 ② 거래처명 매핑 ③ 파일명 기반 매핑
+          const trackCourier = typeof entry === 'object' && entry.courier ? entry.courier : '';
+          const courier = trackCourier || vendorCourierDefault || tf.courierName;
           newRow[trackCol]   = trackNo;
           newRow[courierCol] = courier;
           matched++;
@@ -1994,8 +1999,11 @@ function invProcess() {
         }
       }
       if (!found && name) {
+        // 미매칭이어도 거래처명 매핑이 있으면 택배사 기입
+        const fallbackCourier = vendorCourierDefault || '';
+        if (fallbackCourier) newRow[courierCol] = fallbackCourier;
         unmatched++;
-        preview.push({name, vendor, courier:'', track:'', prod: String(row[prodCol]||'').slice(0,30), status:'unmatch'});
+        preview.push({name, vendor, courier: fallbackCourier, track:'', prod: String(row[prodCol]||'').slice(0,30), status:'unmatch'});
       }
       return newRow;
     });
