@@ -3844,7 +3844,7 @@ function reconExportXlsx() {
     <div class="ds-card">
       <div class="ds-card-title"><span class="ds-dot" style="background:#1e3a6e"></span>거래처별 발주 현황</div>
       <table class="ds-stbl">
-        <thead><tr><th>거래처</th><th class="ds-cc">발주서</th><th class="ds-cc">메일</th><th>상태</th><th>비고</th></tr></thead>
+        <thead><tr><th>거래처</th><th class="ds-cc" style="color:#f59e0b">YB</th><th class="ds-cc" style="color:#3b82f6">GR</th><th class="ds-cc">메일</th><th>상태</th><th>비고</th></tr></thead>
         <tbody id="ds-supplierBody"></tbody>
       </table>
     </div>
@@ -4190,8 +4190,18 @@ const DS_STORE='ywDailyStatus_'+ds_todayKey;
 const DS_DAYS=['일','월','화','수','목','금','토'];
 (function(){const el=document.getElementById('ds-todayInfo');if(el)el.textContent=`${ds_now.getFullYear()}년 ${ds_now.getMonth()+1}월 ${ds_now.getDate()}일 (${DS_DAYS[ds_now.getDay()]}) 기준`;})();
 
-function ds_defaultData(){return{suppliers:DS_SUPPLIERS.map(n=>({name:n,ordered:false,mailed:false,memo:''})),tracking:DS_SUPPLIERS.map(n=>({supplier:n,num:''})),cs:[{text:'샵마인 주문 수집 확인',done:false}],expense:[{text:'지출결의서 작성 여부 확인',done:false}],receipt:[{text:'입금결의서 작성 여부 확인',done:false}],note:''};}
-function ds_loadData(){try{return JSON.parse(localStorage.getItem(DS_STORE)||'null')||ds_defaultData();}catch{return ds_defaultData();}}
+function ds_defaultData(){return{suppliers:DS_SUPPLIERS.map(n=>({name:n,orderedYB:false,orderedGR:false,mailed:false,memo:''})),tracking:DS_SUPPLIERS.map(n=>({supplier:n,num:''})),cs:[{text:'샵마인 주문 수집 확인',done:false}],expense:[{text:'지출결의서 작성 여부 확인',done:false}],receipt:[{text:'입금결의서 작성 여부 확인',done:false}],note:''};}
+function ds_loadData(){
+  try{
+    const d=JSON.parse(localStorage.getItem(DS_STORE)||'null')||ds_defaultData();
+    // 구버전(ordered) → 신버전(orderedYB/orderedGR) 마이그레이션
+    if(d.suppliers){d.suppliers.forEach(s=>{
+      if(s.orderedYB===undefined)s.orderedYB=s.ordered||false;
+      if(s.orderedGR===undefined)s.orderedGR=false;
+    });}
+    return d;
+  }catch{return ds_defaultData();}
+}
 function ds_saveData(){localStorage.setItem(DS_STORE,JSON.stringify(ds_data));const el=document.getElementById('ds-lastSaved');if(el)el.textContent='저장됨: '+new Date().toLocaleTimeString('ko-KR');}
 let ds_data=ds_loadData();
 
@@ -4206,13 +4216,20 @@ function ds_switchTab(name,btn){
 function ds_renderSuppliers(){
   const tb=document.getElementById('ds-supplierBody');if(!tb)return;tb.innerHTML='';
   ds_data.suppliers.forEach((s,i)=>{
-    const both=s.ordered&&s.mailed,none=!s.ordered&&!s.mailed;
+    const anyOrdered=s.orderedYB||s.orderedGR;
+    const both=anyOrdered&&s.mailed,none=!anyOrdered&&!s.mailed;
     const bc=both?'ds-sdone':none?'ds-spending':'ds-spartial',bt=both?'✓ 완료':none?'대기':'진행중';
+    // 발주 상태 텍스트 (어느 회사 발주인지 표시)
+    let ordLabel='';
+    if(s.orderedYB&&s.orderedGR)ordLabel='YB+GR';
+    else if(s.orderedYB)ordLabel='YB';
+    else if(s.orderedGR)ordLabel='GR';
     const tr=document.createElement('tr');
     tr.innerHTML=`<td class="ds-sname">${s.name}</td>
-      <td class="ds-cc"><input type="checkbox" ${s.ordered?'checked':''} onchange="ds_toggleSupplier(${i},'ordered')"></td>
+      <td class="ds-cc"><input type="checkbox" ${s.orderedYB?'checked':''} onchange="ds_toggleSupplier(${i},'orderedYB')" style="accent-color:#f59e0b"></td>
+      <td class="ds-cc"><input type="checkbox" ${s.orderedGR?'checked':''} onchange="ds_toggleSupplier(${i},'orderedGR')" style="accent-color:#3b82f6"></td>
       <td class="ds-cc"><input type="checkbox" ${s.mailed?'checked':''} onchange="ds_toggleSupplier(${i},'mailed')"></td>
-      <td><span class="ds-sbadge ${bc}">${bt}</span></td>
+      <td><span class="ds-sbadge ${bc}">${ordLabel?ordLabel+' ':''} ${bt}</span></td>
       <td><input type="text" style="border:1px solid #e5e7eb;border-radius:4px;padding:2px 6px;font-size:0.76rem;width:100%;font-family:inherit;outline:none" value="${s.memo||''}" placeholder="메모" onchange="ds_updateMemo(${i},this.value)"></td>`;
     tb.appendChild(tr);
   });
@@ -4283,7 +4300,8 @@ function ds_addReceipt(){const v=document.getElementById('ds-receipt-input').val
 
 function ds_updateProgress(){
   let total=0,done=0;
-  ds_data.suppliers.forEach(s=>{total+=2;if(s.ordered)done++;if(s.mailed)done++;});
+  // YB + GR 각각 체크항목으로 계산 (3항목: YB발주, GR발주, 메일)
+  ds_data.suppliers.forEach(s=>{total+=3;if(s.orderedYB)done++;if(s.orderedGR)done++;if(s.mailed)done++;});
   [...ds_data.tracking,...(ds_data.extraTracking||[])].forEach(t=>{total++;if(t.num)done++;});
   [...ds_data.cs,...ds_data.expense,...ds_data.receipt].forEach(x=>{total++;if(x.done)done++;});
   const pct=total===0?0:Math.round(done/total*100);
@@ -4292,14 +4310,16 @@ function ds_updateProgress(){
 }
 
 function ds_updateSummary(){
-  const ordDone=ds_data.suppliers.filter(s=>s.ordered&&s.mailed).length;
+  const ybDone=ds_data.suppliers.filter(s=>s.orderedYB).length;
+  const grDone=ds_data.suppliers.filter(s=>s.orderedGR).length;
   const ordTotal=ds_data.suppliers.length;
   const allTrack=[...ds_data.tracking,...(ds_data.extraTracking||[])];
   const trkDone=allTrack.filter(t=>t.num).length;
   const csDone=ds_data.cs.filter(x=>x.done).length,csTotal=ds_data.cs.length;
   const box=document.getElementById('ds-summaryRow');if(!box)return;
   box.innerHTML=`
-    <div class="ds-sbox ${ordDone===ordTotal?'ds-ok':''}"><div class="ds-num">${ordDone}/${ordTotal}</div><div class="ds-lbl">발주 완료</div></div>
+    <div class="ds-sbox ${ybDone===ordTotal?'ds-ok':''}"><div class="ds-num">${ybDone}/${ordTotal}</div><div class="ds-lbl" style="color:#f59e0b">YB 발주</div></div>
+    <div class="ds-sbox ${grDone===ordTotal?'ds-ok':''}"><div class="ds-num">${grDone}/${ordTotal}</div><div class="ds-lbl" style="color:#3b82f6">GR 발주</div></div>
     <div class="ds-sbox ${trkDone===allTrack.length?'ds-ok':'ds-warn'}"><div class="ds-num">${trkDone}/${allTrack.length}</div><div class="ds-lbl">운송장 입력</div></div>
     <div class="ds-sbox ${csDone===csTotal&&csTotal>0?'ds-ok':''}"><div class="ds-num">${csDone}/${csTotal}</div><div class="ds-lbl">C/S 처리</div></div>
     <div class="ds-sbox"><div class="ds-num">${[...ds_data.expense,...ds_data.receipt].filter(x=>x.done).length}/${ds_data.expense.length+ds_data.receipt.length}</div><div class="ds-lbl">결의서</div></div>`;
@@ -4308,7 +4328,8 @@ function ds_updateSummary(){
 let ds_chartInst;
 function ds_updateChart(){
   const cats=[
-    {label:'발주',done:ds_data.suppliers.filter(s=>s.ordered&&s.mailed).length*2,total:ds_data.suppliers.length*2},
+    {label:'YB발주',done:ds_data.suppliers.filter(s=>s.orderedYB).length,total:ds_data.suppliers.length},
+    {label:'GR발주',done:ds_data.suppliers.filter(s=>s.orderedGR).length,total:ds_data.suppliers.length},
     {label:'운송장',done:[...ds_data.tracking,...(ds_data.extraTracking||[])].filter(t=>t.num).length,total:[...ds_data.tracking,...(ds_data.extraTracking||[])].length},
     {label:'C/S',done:ds_data.cs.filter(x=>x.done).length,total:ds_data.cs.length},
     {label:'결의서',done:[...ds_data.expense,...ds_data.receipt].filter(x=>x.done).length,total:ds_data.expense.length+ds_data.receipt.length},
