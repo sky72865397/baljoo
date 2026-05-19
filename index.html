@@ -831,6 +831,8 @@ function parseParts(vc, voc, productName, selectOpt, displayOpt) {
     if (slashIdx >= 0) {
       const itemPart   = after.slice(0, slashIdx).trim();
       const afterSlash = after.slice(slashIdx + 1).trim();
+      // 슬래시 뒤 "-수량" 추출: "100g-10" → codeQty=10, optStr="100g"
+      const codeQtyFromSlash = extractCodeQty(afterSlash);
       let optStr = '';
       if (mapped) {
         optStr = mapped.result;
@@ -840,7 +842,7 @@ function parseParts(vc, voc, productName, selectOpt, displayOpt) {
       } else if (optCode && optCode !== '알수없음') {
         optStr = cleanDash(optCode);
       }
-      return { itemName: itemPart, optionName: optStr, optMapped: !!mapped };
+      return { itemName: itemPart, optionName: optStr, codeQty: codeQtyFromSlash, optMapped: !!mapped };
     } else {
       const optStr = mapped ? mapped.result
         : (cleanSelectOpt(selectOpt) || displayOpt || (optCode && optCode !== '알수없음' ? cleanDash(optCode) : ''));
