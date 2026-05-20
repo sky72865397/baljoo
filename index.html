@@ -106,6 +106,7 @@
   <button class="tab-btn" id="tabBtn-recon" onclick="switchTab('recon')">⚖️ 정산 대조</button>
   <button class="tab-btn" id="tabBtn-price" onclick="switchTab('price')">📊 매입단가표</button>
   <button class="tab-btn" id="tabBtn-daily" onclick="switchTab('daily')">📋 일일현황</button>
+  <button class="tab-btn" id="tabBtn-report" onclick="switchTab('report')">📊 일일보고서</button>
 </div>
 
 <!-- ══════════════════════════════════════════════════════════
@@ -2696,6 +2697,7 @@ function switchTab(name){
     if(name==='expense'){try{initExpenseTab();}catch(e){console.error(e);}}
     if(name==='invoice'){try{if(typeof invRestoreOrder==='function')invRestoreOrder();}catch(e){console.error(e);}}
     if(name==='recon'){try{reconInitIfNeeded();}catch(e){console.error(e);}}
+    if(name==='report'){try{const d=document.getElementById('rptDate');if(d&&!d.value)d.value=new Date().toISOString().slice(0,10);}catch(e){console.error(e);}}
   }catch(e){console.error('switchTab 오류:',e);}
 }
 function switchSubTab(name){
@@ -4179,6 +4181,70 @@ function reconExportXlsx() {
 </div>
 </div><!-- /tab-daily -->
 
+<!-- ══════════════════════════════════════════════════════════
+     TAB 8: 일일보고서
+══════════════════════════════════════════════════════════ -->
+<div class="tab-content" id="tab-report">
+<div class="container">
+
+  <div class="card">
+    <div class="card-title" style="cursor:pointer;user-select:none" onclick="rptToggleSettings()">
+      ⚙️ 광고비·인건비 설정
+      <span id="rptSettingsToggle" style="font-size:12px;color:var(--text3);margin-left:8px;font-weight:400">▼ 펼치기</span>
+    </div>
+    <div id="rptSettingsBody" style="display:none">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:12px">
+        <div>
+          <div style="font-size:12px;color:var(--text2);margin-bottom:4px">🔴 로또상회(그로븐) 일 광고비</div>
+          <input class="inp" id="rptGrovAd" type="number" value="30000" style="font-size:13px">
+        </div>
+        <div>
+          <div style="font-size:12px;color:var(--text2);margin-bottom:4px">🟡 자꾸가게(YB) 일 광고비</div>
+          <input class="inp" id="rptYbAd" type="number" value="40000" style="font-size:13px">
+        </div>
+        <div>
+          <div style="font-size:12px;color:var(--text2);margin-bottom:4px">👥 인건비 월 합계 (없으면 0)</div>
+          <input class="inp" id="rptLabor" type="number" value="0" style="font-size:13px">
+        </div>
+      </div>
+      <button class="btn btn-sm btn-primary" onclick="rptSaveSettings()">💾 저장</button>
+      <span id="rptSettingsMsg" style="font-size:12px;color:var(--success);margin-left:8px;display:none">저장됐어요!</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📂 유통 일일매출현황 파일 업로드</div>
+    <div class="upload-zone" id="rptUploadZone"
+      onclick="document.getElementById('rptFileInput').click()"
+      ondragover="event.preventDefault();this.classList.add('dragover')"
+      ondragleave="this.classList.remove('dragover')"
+      ondrop="rptDropFile(event)">
+      <div style="font-size:32px;margin-bottom:8px">📊</div>
+      <div style="font-weight:600;margin-bottom:4px">유통 일일매출현황.xlsx 끌어다 놓거나 클릭</div>
+      <div style="font-size:12px;color:var(--text3)">그로븐 / YB 시트가 있는 엑셀 파일</div>
+      <input type="file" id="rptFileInput" accept=".xlsx,.xls" style="display:none" onchange="rptLoadFile(this.files[0])">
+    </div>
+    <div id="rptSheetInfo" style="margin-top:10px;font-size:13px;color:var(--text2)"></div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+      <div style="flex:1;min-width:160px">
+        <div style="font-size:12px;color:var(--text2);margin-bottom:4px">📅 조회 날짜 (발주일자 기준)</div>
+        <input class="inp" type="date" id="rptDate" style="font-size:14px">
+      </div>
+      <button class="btn btn-primary" id="rptGenerateBtn" onclick="rptGenerate()" disabled>📊 보고서 생성</button>
+      <button class="btn btn-green" id="rptDownloadBtn" onclick="rptDownloadExcel()" style="display:none">⬇️ Excel 다운로드</button>
+    </div>
+  </div>
+
+  <div id="rptPreviewCard" style="display:none" class="card">
+    <div id="rptPreview"></div>
+  </div>
+
+</div>
+</div><!-- /tab-report -->
+
 <script>
 // ══════════════════════════════════════════════════════════
 // 매입단가표  (직접 등록/관리)
@@ -4630,6 +4696,290 @@ document.addEventListener('keydown',e=>{
 });
 
 ds_renderAll();
+
+// ══════════════════════════════════════════════════════════
+// 일일보고서  (Daily Margin Report) — rpt_ prefix
+// ══════════════════════════════════════════════════════════
+const RPT_SETTINGS_KEY = 'rptSettings_v1';
+let rptWb = null;
+
+function rptGetSettings() {
+  try { return {...{grovAdDay:30000, ybAdDay:40000, laborMon:0}, ...JSON.parse(localStorage.getItem(RPT_SETTINGS_KEY)||'{}')}; }
+  catch(e) { return {grovAdDay:30000, ybAdDay:40000, laborMon:0}; }
+}
+function rptSaveSettings() {
+  const s = {
+    grovAdDay: Math.abs(parseInt(document.getElementById('rptGrovAd')?.value)||30000),
+    ybAdDay:   Math.abs(parseInt(document.getElementById('rptYbAd')?.value)||40000),
+    laborMon:  Math.abs(parseInt(document.getElementById('rptLabor')?.value)||0),
+  };
+  localStorage.setItem(RPT_SETTINGS_KEY, JSON.stringify(s));
+  const msg = document.getElementById('rptSettingsMsg');
+  if (msg) { msg.style.display='block'; setTimeout(()=>msg.style.display='none', 2000); }
+}
+function rptToggleSettings() {
+  const body = document.getElementById('rptSettingsBody');
+  const toggle = document.getElementById('rptSettingsToggle');
+  if (!body) return;
+  if (body.style.display === 'none') {
+    const s = rptGetSettings();
+    const g = document.getElementById('rptGrovAd'); if(g) g.value = s.grovAdDay;
+    const y = document.getElementById('rptYbAd');   if(y) y.value = s.ybAdDay;
+    const l = document.getElementById('rptLabor');  if(l) l.value = s.laborMon;
+    body.style.display = 'block'; toggle.textContent = '▲ 접기';
+  } else { body.style.display = 'none'; toggle.textContent = '▼ 펼치기'; }
+}
+
+function rptDropFile(e) {
+  e.preventDefault();
+  document.getElementById('rptUploadZone').classList.remove('dragover');
+  const f = e.dataTransfer.files[0]; if (f) rptLoadFile(f);
+}
+function rptLoadFile(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      rptWb = XLSX.read(e.target.result, {type:'array', cellDates:true});
+      const infoEl = document.getElementById('rptSheetInfo');
+      if (infoEl) infoEl.innerHTML = '✅ <b>' + escHtml(file.name) + '</b> 로드 완료 &nbsp;|&nbsp; 시트: '
+        + rptWb.SheetNames.map(n=>'<span style="color:var(--accent)">'+escHtml(n)+'</span>').join(', ');
+      document.getElementById('rptGenerateBtn').disabled = false;
+    } catch(err) {
+      const infoEl = document.getElementById('rptSheetInfo');
+      if (infoEl) infoEl.innerHTML = '<span style="color:var(--danger)">❌ ' + escHtml(err.message) + '</span>';
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function rptFindSheet(wb, keywords) {
+  for (const name of wb.SheetNames)
+    if (keywords.some(kw => name.toLowerCase().includes(kw.toLowerCase()))) return name;
+  return null;
+}
+
+function rptNormDate(val) {
+  if (!val) return '';
+  if (val instanceof Date) return val.toISOString().slice(0,10);
+  if (typeof val === 'number' && val > 40000) {
+    const d = new Date((val - 25569) * 86400000);
+    return d.toISOString().slice(0,10);
+  }
+  const s = String(val).trim();
+  const m1 = s.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
+  if (m1) return `${m1[1]}-${m1[2].padStart(2,'0')}-${m1[3].padStart(2,'0')}`;
+  const m2 = s.match(/^(\d{1,2})[-\/](\d{1,2})$/);
+  if (m2) return `${new Date().getFullYear()}-${m2[1].padStart(2,'0')}-${m2[2].padStart(2,'0')}`;
+  return s;
+}
+
+function rptFindCols(rows) {
+  const norm = s => String(s||'').replace(/\s/g,'');
+  for (let ri = 0; ri < Math.min(25, rows.length); ri++) {
+    const row = rows[ri] || [];
+    const dateIdx  = row.findIndex(c => /발주일자|날짜|주문일|일자/.test(norm(c)));
+    const salesIdx = row.findIndex(c => /주문금액|매출금액|판매금액|매출액/.test(norm(c)));
+    if (dateIdx >= 0 && salesIdx >= 0) return {
+      hdrRow: ri,
+      date:       dateIdx,
+      platform:   row.findIndex(c => /판매처|채널|플랫폼|마켓|쇼핑몰/.test(norm(c))),
+      product:    row.findIndex(c => /제품명|상품명|품목명/.test(norm(c))),
+      sales:      salesIdx,
+      commission: row.findIndex(c => /수수료|판매수수료/.test(norm(c))),
+      margin:     row.findIndex(c => /마진액|마진/.test(norm(c))),
+    };
+  }
+  return null;
+}
+// 알려진 컬럼 위치 (H=7, L=11, M=12, S=18, W=22, X=23, Y=24)
+const RPT_COLS_GROV = {hdrRow:0, date:7, platform:11, product:12, sales:18, commission:22, margin:23};
+const RPT_COLS_YB   = {hdrRow:0, date:7, platform:11, product:12, sales:18, commission:22, margin:24};
+
+function rptParseSheet(sheetName, targetDate, fallback) {
+  const ws = rptWb.Sheets[sheetName]; if (!ws) return [];
+  const raw = XLSX.utils.sheet_to_json(ws, {header:1, defval:'', cellDates:true});
+  const cols = rptFindCols(raw) || fallback;
+  const result = [];
+  for (let ri = (cols.hdrRow||0) + 1; ri < raw.length; ri++) {
+    const row = raw[ri];
+    if (!row || !row.length) continue;
+    const dateStr = rptNormDate(row[cols.date]);
+    if (dateStr !== targetDate) continue;
+    const sales      = parseFloat(row[cols.sales])||0;
+    const commission = parseFloat(row[cols.commission])||0;
+    const margin     = parseFloat(row[cols.margin])||0;
+    if (sales === 0 && margin === 0) continue;
+    result.push({
+      platform: String(row[cols.platform]||'').trim() || '기타',
+      product:  String(row[cols.product]||'').trim()  || '기타',
+      sales, commission, margin
+    });
+  }
+  return result;
+}
+
+function rptAggregate(rows) {
+  const byPlatform = {}, byProduct = {};
+  let totals = {sales:0, commission:0, margin:0, count:0};
+  for (const r of (rows||[])) {
+    for (const [key, grp] of [[r.platform, byPlatform],[r.product, byProduct]]) {
+      if (!grp[key]) grp[key] = {sales:0,commission:0,margin:0,count:0};
+      grp[key].sales += r.sales; grp[key].commission += r.commission;
+      grp[key].margin += r.margin; grp[key].count++;
+    }
+    totals.sales += r.sales; totals.commission += r.commission;
+    totals.margin += r.margin; totals.count++;
+  }
+  return {byPlatform, byProduct, totals};
+}
+
+function rptGenerate() {
+  if (!rptWb) { alert('파일을 먼저 업로드해주세요.'); return; }
+  const dateVal = document.getElementById('rptDate')?.value;
+  if (!dateVal) { alert('날짜를 선택해주세요.'); return; }
+  const grovSheet = rptFindSheet(rptWb, ['그로븐','그로브','groven']);
+  const ybSheet   = rptFindSheet(rptWb, ['YB','yb','옐로','yellow']);
+  if (!grovSheet && !ybSheet) {
+    alert('그로븐 또는 YB 시트를 찾을 수 없어요.\n현재 시트: ' + rptWb.SheetNames.join(', '));
+    return;
+  }
+  const s = rptGetSettings();
+  const grovData = grovSheet ? rptParseSheet(grovSheet, dateVal, RPT_COLS_GROV) : [];
+  const ybData   = ybSheet   ? rptParseSheet(ybSheet, dateVal, RPT_COLS_YB)     : [];
+  const report = {
+    date: dateVal,
+    grov: {agg: rptAggregate(grovData), adDay: s.grovAdDay, sheet: grovSheet},
+    yb:   {agg: rptAggregate(ybData),   adDay: s.ybAdDay,   sheet: ybSheet},
+    laborMon: s.laborMon,
+    laborDay: s.laborMon > 0 ? Math.round(s.laborMon / 30) : 0,
+  };
+  rptRenderPreview(report);
+  window._rptReport = report;
+  document.getElementById('rptDownloadBtn').style.display = 'inline-block';
+  document.getElementById('rptPreviewCard').style.display = 'block';
+}
+
+const _rptFmt  = n => Math.round(n).toLocaleString('ko-KR') + '원';
+const _rptClr  = n => n >= 0 ? '#38a169' : '#e53e3e';
+const _rptRow  = (n, d) =>
+  `<tr style="border-bottom:1px solid #edf2f7">
+    <td style="padding:5px 10px">${escHtml(n)}</td>
+    <td style="padding:5px 10px;text-align:right">${Math.round(d.sales).toLocaleString()}</td>
+    <td style="padding:5px 10px;text-align:right;color:#e53e3e">${Math.round(d.commission).toLocaleString()}</td>
+    <td style="padding:5px 10px;text-align:right;color:${_rptClr(d.margin)}">${Math.round(d.margin).toLocaleString()}</td>
+  </tr>`;
+const _rptTblH = `<thead><tr style="background:#f7fafc;font-size:11px;color:#718096">
+    <th style="padding:5px 10px;text-align:left">구분</th>
+    <th style="padding:5px 10px;text-align:right">매출</th>
+    <th style="padding:5px 10px;text-align:right">수수료</th>
+    <th style="padding:5px 10px;text-align:right">마진</th>
+  </tr></thead>`;
+
+function rptSectionHTML(label, info) {
+  const {agg, adDay} = info;
+  const t = agg.totals;
+  const net = t.margin - adDay;
+  const mr  = t.sales > 0 ? (t.margin/t.sales*100).toFixed(1) : '0.0';
+  const platforms = Object.entries(agg.byPlatform).sort((a,b)=>b[1].sales-a[1].sales);
+  const products  = Object.entries(agg.byProduct).sort((a,b)=>b[1].sales-a[1].sales);
+  return `<div style="margin-bottom:16px;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden">
+    <div style="background:#1a365d;color:white;padding:10px 16px;font-size:14px;font-weight:700">${escHtml(label)}</div>
+    <div style="padding:10px 16px;background:#ebf8ff;display:flex;gap:18px;flex-wrap:wrap;font-size:12px">
+      ${[['매출',_rptFmt(t.sales),'#2b6cb0'],['수수료',_rptFmt(t.commission),'#e53e3e'],['마진',_rptFmt(t.margin),'#2d3748'],
+         ['광고비',_rptFmt(adDay),'#dd6b20'],['순마진',_rptFmt(net),_rptClr(net)],['마진율',mr+'%','#2d3748'],['건수',t.count+'건','#2d3748']]
+        .map(([lb,v,c])=>`<div><div style="color:#718096;font-size:10px">${lb}</div><div style="font-weight:700;color:${c}">${v}</div></div>`).join('')}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;border-top:1px solid #e2e8f0">
+      <div style="padding:10px;border-right:1px solid #e2e8f0">
+        <div style="font-size:11px;font-weight:600;color:#4a5568;margin-bottom:6px">📦 플랫폼별</div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px">${_rptTblH}<tbody>${platforms.map(([n,d])=>_rptRow(n,d)).join('')}</tbody></table>
+      </div>
+      <div style="padding:10px">
+        <div style="font-size:11px;font-weight:600;color:#4a5568;margin-bottom:6px">🛒 제품별</div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px">${_rptTblH}<tbody>${products.map(([n,d])=>_rptRow(n,d)).join('')}</tbody></table>
+      </div>
+    </div>
+  </div>`;
+}
+
+function rptRenderPreview(report) {
+  const g = report.grov.agg.totals, y = report.yb.agg.totals;
+  const totSales = g.sales + y.sales, totComm = g.commission + y.commission;
+  const totMargin = g.margin + y.margin, totAd = report.grov.adDay + report.yb.adDay;
+  const totNet = totMargin - totAd - report.laborDay;
+  const [yr,mo,dy] = report.date.split('-');
+  const dateLabel  = `${yr}년 ${parseInt(mo)}월 ${parseInt(dy)}일`;
+  const kpiItems = [
+    ['총 매출', _rptFmt(totSales), '#2b6cb0'],
+    ['총 수수료', _rptFmt(totComm), '#e53e3e'],
+    ['광고비 합계', _rptFmt(totAd), '#dd6b20'],
+    ['전체 순마진', _rptFmt(totNet), _rptClr(totNet)],
+  ];
+  document.getElementById('rptPreview').innerHTML = `
+  <div style="font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;color:#1a202c">
+    <div style="background:linear-gradient(135deg,#1e3a6e,#2b6cb0);color:white;border-radius:10px;padding:12px 18px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+      <div><div style="font-size:15px;font-weight:700">${escHtml(dateLabel)} 일일 마진 보고서</div>
+        <div style="font-size:11px;opacity:.8;margin-top:2px">그로븐(로또상회) + 옐로우브릿지(자꾸가게)</div></div>
+      <div style="font-size:11px;opacity:.7">${new Date().toLocaleTimeString('ko-KR')}</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
+      ${kpiItems.map(([lb,v,c])=>`<div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:10px 14px">
+        <div style="font-size:11px;color:#718096">${lb}</div>
+        <div style="font-size:15px;font-weight:700;color:${c};margin-top:2px">${v}</div></div>`).join('')}
+    </div>
+    ${report.grov.sheet ? rptSectionHTML('■ 로또상회 (그로븐)', report.grov) : ''}
+    ${report.yb.sheet   ? rptSectionHTML('■ 자꾸가게 (옐로우브릿지)', report.yb) : ''}
+    ${report.laborDay > 0 ? `<div style="background:#fffaf0;border:1px solid #fbd38d;border-radius:8px;padding:10px 14px;font-size:12px;color:#744210;margin-top:8px">
+      📌 인건비 일배분: ${report.laborDay.toLocaleString()}원/일 (월 ${report.laborMon.toLocaleString()}원 ÷ 30일) 포함됨</div>` : ''}
+  </div>`;
+}
+
+function rptDownloadExcel() {
+  const report = window._rptReport; if (!report) return;
+  const wb2 = XLSX.utils.book_new();
+  const rows = [];
+  const [yr,mo,dy] = report.date.split('-');
+  rows.push([`${yr}년 ${parseInt(mo)}월 ${parseInt(dy)}일 일일 마진 보고서`]);
+  rows.push([]);
+  const g=report.grov.agg.totals, y=report.yb.agg.totals;
+  const totSales=g.sales+y.sales, totComm=g.commission+y.commission;
+  const totMargin=g.margin+y.margin, totAd=report.grov.adDay+report.yb.adDay;
+  rows.push(['총매출', Math.round(totSales), '총수수료', Math.round(totComm), '광고비합계', totAd, '전체순마진', Math.round(totMargin-totAd-report.laborDay)]);
+  rows.push([]);
+  function addSection(label, info) {
+    const {agg, adDay} = info;
+    const t = agg.totals;
+    const mr = t.sales > 0 ? (t.margin/t.sales*100).toFixed(1)+'%' : '0.0%';
+    rows.push([label]);
+    rows.push(['매출', Math.round(t.sales), '수수료', Math.round(t.commission), '마진', Math.round(t.margin), '광고비', adDay, '순마진', Math.round(t.margin-adDay), '마진율', mr, '건수', t.count]);
+    rows.push([]);
+    rows.push(['플랫폼', '매출', '수수료', '마진', '', '제품', '매출', '수수료', '마진']);
+    const plats = Object.entries(agg.byPlatform).sort((a,b)=>b[1].sales-a[1].sales);
+    const prods  = Object.entries(agg.byProduct).sort((a,b)=>b[1].sales-a[1].sales);
+    for (let i=0; i<Math.max(plats.length, prods.length); i++) {
+      const [pn,pd] = plats[i]||['',null]; const [rn,rd] = prods[i]||['',null];
+      rows.push([
+        pn||'', pn&&pd?Math.round(pd.sales):'', pn&&pd?Math.round(pd.commission):'', pn&&pd?Math.round(pd.margin):'',
+        '',
+        rn||'', rn&&rd?Math.round(rd.sales):'', rn&&rd?Math.round(rd.commission):'', rn&&rd?Math.round(rd.margin):''
+      ]);
+    }
+    rows.push([]);
+  }
+  if (report.grov.sheet) addSection('■ 로또상회 (그로븐)', report.grov);
+  if (report.yb.sheet)   addSection('■ 자꾸가게 (옐로우브릿지)', report.yb);
+  const ws2 = XLSX.utils.aoa_to_sheet(rows);
+  ws2['!cols'] = [{wch:18},{wch:12},{wch:12},{wch:12},{wch:4},{wch:18},{wch:12},{wch:12},{wch:12}];
+  XLSX.utils.book_append_sheet(wb2, ws2, '일일마진보고서');
+  XLSX.writeFile(wb2, `일일마진보고서_${report.date}.xlsx`);
+}
+
+// report 탭 오늘 날짜 기본값 세팅 (페이지 로드 시)
+(function(){
+  const dateEl = document.getElementById('rptDate');
+  if (dateEl && !dateEl.value) dateEl.value = new Date().toISOString().slice(0,10);
+})();
 </script>
 
 </body>
