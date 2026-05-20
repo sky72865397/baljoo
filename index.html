@@ -226,10 +226,14 @@
       </div>
       <!-- 변경할 상품코드 입력 -->
       <input type="hidden" id="newOriginalCode">
-      <div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end">
+      <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end">
         <div>
           <label style="display:block;font-size:11px;color:var(--text3);margin-bottom:4px;font-weight:500">변경할 상품코드 <span style="color:var(--danger)">★</span></label>
           <input class="inp" id="newCode" placeholder="예: 일비]백찰옥수수">
+        </div>
+        <div>
+          <label style="display:block;font-size:11px;color:var(--text3);margin-bottom:4px;font-weight:500">옵션 키워드 <span style="font-weight:400;color:var(--text3)">(같은 코드·다른 옵션일 때)</span></label>
+          <input class="inp" id="newOptKw" placeholder="예: 블랙, 베이지" style="font-size:12px">
         </div>
         <div><button class="btn btn-primary" id="addCodeBtn" onclick="addCode()" style="height:36px">+ 추가</button></div>
       </div>
@@ -776,16 +780,20 @@ function parseParts(vc, voc, productName, selectOpt, displayOpt) {
   const mapped = applyOptMap(productName, selectOpt);
 
   // 2. 커스텀 코드 체크 (항상 자동추출보다 우선!)
-  const custom = loadCodes().find(cc => {
-    // 알수없음 suffix 제거 후 prefix 매칭
+  // 같은 원본코드·다른 옵션 케이스: optKw 매칭 우선, 없으면 optKw 없는 항목으로 폴백
+  const _codeMatch = cc => {
     const codeBase = (cc.code||'').replace(/\/알수없음$/, '').replace(/알수없음$/, '').trim();
     const origBase = (cc.originalCode||'').replace(/\/알수없음$/, '').replace(/알수없음$/, '').trim();
     if (vendorCode === cc.code || (codeBase && vendorCode.startsWith(codeBase))) return true;
     if (cc.originalCode && (vendorCode === cc.originalCode || (origBase && vendorCode.startsWith(origBase)))) return true;
-    // 상품명 키워드 매칭 (주문마다 코드가 바뀌는 경우)
     if (cc.productKw && productName && productName.toLowerCase().includes(cc.productKw.toLowerCase())) return true;
     return false;
-  });
+  };
+  const _allMatched = loadCodes().filter(_codeMatch);
+  const _optSrc = (selectOpt||'')+' '+(optCode||'');
+  // optKw 있는 것 중 현재 옵션과 일치하는 것 우선, 그 다음 optKw 없는 것
+  const custom = _allMatched.find(cc => cc.optKw && _optSrc.toLowerCase().includes(cc.optKw.toLowerCase()))
+              || _allMatched.find(cc => !cc.optKw);
   // custom.product가 비어있거나 '/'를 포함하면 잘못 저장된 코드 → 일반 파싱으로 폴백
   if (custom && custom.product && !custom.product.includes('/')) {
     const optStr = mapped ? mapped.result : (cleanSelectOpt(selectOpt) || cleanSelectOpt(displayOpt) || '');
@@ -1337,8 +1345,9 @@ function renderCodeList(){
       ?`<div style="font-size:12px;font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(opText)}">${opText}</div>`
       :`<div style="font-size:12px;color:var(--text3)">—</div>`;
     const optLine=ooText?`<div style="font-size:11px;color:var(--text2);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(ooText)}">${ooText}</div>`:'';
+    const optKwBadge=cc.optKw?`<div style="display:inline-block;margin-top:3px;font-size:10px;background:#fef3c7;color:#92400e;border:1px solid #fbbf24;border-radius:10px;padding:1px 7px;white-space:nowrap">🎨 옵션: ${escHtml(cc.optKw)}</div>`:'';
     html+=`<div class="code-item" id="codeitem-${i}" style="${G}">
-      <div style="min-width:0"><div class="code-tag" style="font-size:11px;word-break:break-all">${orig}</div>${autoBadge}</div>
+      <div style="min-width:0"><div class="code-tag" style="font-size:11px;word-break:break-all">${orig}</div>${autoBadge}${optKwBadge}</div>
       <div style="min-width:0;padding-top:2px">${productLine}${optLine}</div>
       <div style="min-width:0;padding-top:2px">${changed}</div>
       <div style="display:flex;gap:6px;padding-top:2px;white-space:nowrap"><button class="btn btn-sm" onclick="editCode(${i})">✏️</button><button class="btn btn-danger" onclick="removeCode(${i})">삭제</button></div>
@@ -1353,6 +1362,7 @@ function editCode(i){
   _editingCodeIdx=i;
   document.getElementById('newOriginalCode').value=cc.originalCode||cc.code;
   document.getElementById('newCode').value=cc.code;
+  const okwEl=document.getElementById('newOptKw'); if(okwEl) okwEl.value=cc.optKw||'';
   // 주문 원본 정보 표시 (있으면)
   let opText=cc.orderProduct||'', ooText=cc.orderOpt||'';
   if(!opText && typeof allOrders!=='undefined'){
@@ -1389,6 +1399,7 @@ function cancelEditCode(){
   _editingCodeIdx=-1;
   document.getElementById('newOriginalCode').value='';
   document.getElementById('newCode').value='';
+  const okw=document.getElementById('newOptKw'); if(okw) okw.value='';
   document.getElementById('addError').textContent='';
   document.getElementById('prefillInfo').style.display='none';
   document.getElementById('prefillOrigCode').textContent='';
@@ -1436,6 +1447,7 @@ function autoDetectVendorProduct(code){
 function addCode(){
   const originalCode=document.getElementById('newOriginalCode').value.trim();
   const code=document.getElementById('newCode').value.trim();
+  const optKw=(document.getElementById('newOptKw')?.value||'').trim();
   const errEl=document.getElementById('addError');
   if(!code){errEl.textContent='변경할 상품코드를 입력해 주세요.';return;}
   const codes=loadCodes();
@@ -1444,24 +1456,28 @@ function addCode(){
   if(_editingCodeIdx>=0){
     const existing=codes.findIndex((c,idx)=>c.code===code && idx!==_editingCodeIdx);
     if(existing>=0){errEl.textContent='이미 다른 항목에 등록된 코드입니다.';return;}
-    codes[_editingCodeIdx]={originalCode:originalCode||code, code, vendor, product};  // auto 플래그 제거 (직접 수정)
+    const upd={originalCode:originalCode||code, code, vendor, product};
+    if(optKw) upd.optKw=optKw;
+    codes[_editingCodeIdx]=upd;
     saveCodes(codes);
     cancelEditCode();
     renderCodeList();renderCodeMappingList();
     return;
   }
-  // ── 추가 모드 ──
-  if(codes.find(c=>c.code===code)){errEl.textContent='이미 등록된 코드입니다.';return;}
+  // ── 추가 모드 ──  (optKw 있으면 같은 code 중복 허용, 없으면 기존 로직)
+  if(!optKw && codes.find(c=>c.code===code && !c.optKw)){errEl.textContent='이미 등록된 코드입니다.';return;}
   errEl.textContent='';
   const orderProduct=document.getElementById('prefillProduct').textContent||'';
   const orderOpt=document.getElementById('prefillOpt').textContent||'';
   const entry={originalCode:originalCode||code, code, vendor, product};
+  if(optKw) entry.optKw=optKw;
   if(orderProduct&&orderProduct!=='—') entry.orderProduct=orderProduct;
   if(orderOpt&&orderOpt!=='—') entry.orderOpt=orderOpt;
   codes.push(entry);
   saveCodes(codes);
   document.getElementById('newOriginalCode').value='';
   document.getElementById('newCode').value='';
+  const okw=document.getElementById('newOptKw'); if(okw) okw.value='';
   renderCodeList();renderCodeMappingList();
 }
 function removeCode(i){if(!confirm('삭제할까요?'))return;const codes=loadCodes();codes.splice(i,1);saveCodes(codes);renderCodeList();renderCodeMappingList();}
@@ -1478,7 +1494,8 @@ function renderUnmatchedHints(){
   if(allProblem.length===0){card.style.display='none';return;}
   card.style.display='block';
 
-  const unique=[...new Map(allProblem.map(o=>[o.vendor_code,o])).values()].slice(0,20);
+  // vendor_code + 옵션 조합으로 중복 제거 (같은 코드·다른 옵션은 각각 표시)
+  const unique=[...new Map(allProblem.map(o=>[o.vendor_code+'|'+(o.select_opt||'').trim(),o])).values()].slice(0,20);
   let html='<div style="display:grid;grid-template-columns:auto 1fr auto auto auto;gap:10px;padding-bottom:6px;border-bottom:2px solid var(--border);font-size:11px;font-weight:500;color:var(--text3)"><span>구분</span><span>상품명 (P열) / 코드</span><span>옵션(Q열)</span><span>수량</span><span></span></div>';
   unique.forEach(o=>{
     const optText=(o.select_opt||o.option_name||'').trim()||'—';
@@ -1557,6 +1574,19 @@ function prefill(code, product, selectOpt){
   switchTab('codes');switchSubTab('code');
   document.getElementById('newOriginalCode').value=code;
   document.getElementById('newCode').value='';
+  // 같은 originalCode가 이미 등록된 코드가 있으면 옵션 키워드 자동 제안
+  const okwEl=document.getElementById('newOptKw');
+  if(okwEl){
+    const existing=loadCodes().filter(c=>(c.originalCode||c.code)===code);
+    // 이미 같은 원본코드가 하나 이상 등록돼 있으면 → 이번 옵션 키워드 자동 세팅
+    if(existing.length>0 && selectOpt && selectOpt!=='-'){
+      // 옵션에서 첫 번째 의미 있는 단어 추출 (예: "블랙NF051" → "블랙")
+      const kw=(selectOpt.match(/[가-힣]+/)||[selectOpt])[0];
+      okwEl.value=kw||selectOpt;
+    } else {
+      okwEl.value='';
+    }
+  }
   // 기존코드 + 상품명·옵션명 표시
   document.getElementById('prefillOrigCode').textContent=code||'';
   document.getElementById('prefillProduct').textContent=product||'';
