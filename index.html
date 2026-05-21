@@ -102,6 +102,7 @@
   <button class="tab-btn active" id="tabBtn-order" onclick="switchTab('order')">📋 발주서 생성</button>
   <button class="tab-btn" id="tabBtn-codes" onclick="switchTab('codes')">⚙️ 코드 관리 <span id="codeCountBadge"></span></button>
   <button class="tab-btn" id="tabBtn-expense" onclick="switchTab('expense')">📝 지출결의서</button>
+  <button class="tab-btn" id="tabBtn-income" onclick="switchTab('income')">📥 입금결의서</button>
   <button class="tab-btn" id="tabBtn-invoice" onclick="switchTab('invoice')">🚚 송장입력</button>
   <button class="tab-btn" id="tabBtn-recon" onclick="switchTab('recon')">⚖️ 정산 대조</button>
   <button class="tab-btn" id="tabBtn-price" onclick="switchTab('price')">📊 매입단가표</button>
@@ -613,6 +614,208 @@
   </div>
 
 </div>
+</div>
+
+<!-- 입금결의서 탭 -->
+<div class="tab-content" id="tab-income">
+<div class="container">
+
+  <div class="sub-tab-nav">
+    <button class="sub-tab-btn active" id="stab-incwrite" onclick="switchIncSubTab('write')">✏️ 입금결의서 작성</button>
+    <button class="sub-tab-btn" id="stab-incbank" onclick="switchIncSubTab('bank')">🏦 계좌 관리</button>
+    <button class="sub-tab-btn" id="stab-inclist" onclick="switchIncSubTab('list')">📋 작성 이력</button>
+  </div>
+
+  <!-- 작성 서브탭 -->
+  <div class="sub-content active" id="incsubtab-write">
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
+        <div style="font-size:18px;font-weight:700">입금결의서</div>
+        <div style="display:flex;gap:6px">
+          <button class="sub-tab-btn active" id="incco-yb" onclick="selectIncCo('옐로우브릿지')">옐로우브릿지</button>
+          <button class="sub-tab-btn" id="incco-gr" onclick="selectIncCo('그로븐')">그로븐</button>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+        <div>
+          <label style="font-size:11px;color:var(--text3);font-weight:500;display:block;margin-bottom:4px">작성일자</label>
+          <input class="inp" type="date" id="incDate">
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text3);font-weight:500;display:block;margin-bottom:4px">작성자</label>
+          <div style="display:flex;gap:6px;align-items:center">
+            <input class="inp" id="incWriter" placeholder="예: 김수영 사원" style="flex:1">
+            <button class="btn btn-sm" onclick="saveDefaultWriter()" title="기본값으로 저장" style="white-space:nowrap;font-size:11px;padding:5px 10px">💾 기본값 저장</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:14px">
+        <label style="font-size:11px;color:var(--text3);font-weight:500;display:block;margin-bottom:4px">입금처</label>
+        <div style="position:relative">
+          <input class="inp" id="incVendor" placeholder="입금처 입력 (등록된 곳은 자동완성)" autocomplete="off" oninput="onIncVendorInput()" onfocus="onIncVendorInput()" onblur="setTimeout(()=>hideIncVendorList(),200)">
+          <div id="incVendorDropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--border2);border-radius:var(--radius-sm);box-shadow:0 4px 12px rgba(0,0,0,0.1);z-index:100;max-height:200px;overflow-y:auto"></div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:14px">
+        <label style="font-size:11px;color:var(--text3);font-weight:500;display:block;margin-bottom:4px">입금내역</label>
+        <input class="inp" id="incDesc" placeholder="예: 4/6 누룽지 480g 2봉 입금건">
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px">
+        <div>
+          <label style="font-size:11px;color:var(--text3);font-weight:500;display:block;margin-bottom:4px">공급가액 (원) <span style="font-weight:400;color:var(--text3)">(직접입력 가능)</span></label>
+          <input class="inp" type="number" id="incSupply" placeholder="자동계산 또는 직접입력" oninput="calcIncTotalFromParts()">
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text3);font-weight:500;display:block;margin-bottom:4px">세액 (원) <span style="font-weight:400;color:var(--text3)">(직접입력 가능)</span></label>
+          <input class="inp" type="number" id="incVat" placeholder="자동계산 또는 직접입력" oninput="calcIncTotalFromParts()">
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text3);font-weight:500;display:block;margin-bottom:4px">합계 / 입금금액 (원) ★</label>
+          <input class="inp" type="number" id="incTotal" placeholder="합계 입력하세요" oninput="calcIncFromTotal()">
+        </div>
+      </div>
+
+      <div style="margin-bottom:14px">
+        <label style="font-size:11px;color:var(--text3);font-weight:500;display:block;margin-bottom:6px">결제조건</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer"><input type="radio" name="incPayType" value="즉시결제" checked> 즉시결제</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer"><input type="radio" name="incPayType" value="외상"> 외상</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer"><input type="radio" name="incPayType" value="선금"> 선금</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer"><input type="radio" name="incPayType" value="15일결제"> 15일결제</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer"><input type="radio" name="incPayType" value="당월말결제"> 당월말결제</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer"><input type="radio" name="incPayType" value="주결제"> 주결제</label>
+        </div>
+      </div>
+
+      <div style="margin-bottom:14px">
+        <label style="font-size:11px;color:var(--text3);font-weight:500;display:block;margin-bottom:6px">증빙자료</label>
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+          <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer"><input type="checkbox" id="iev1"> 세금계산서</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer"><input type="checkbox" id="iev2" onchange="onIev2Change()"> 계산서</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer"><input type="checkbox" id="iev3"> 현금영수증</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer"><input type="checkbox" id="iev4"> 고지서</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer"><input type="checkbox" id="iev5"> 기 타</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer"><input type="checkbox" id="iev6"> 사후첨부</label>
+        </div>
+      </div>
+
+      <div style="margin-bottom:14px">
+        <label style="font-size:11px;color:var(--text3);font-weight:500;display:block;margin-bottom:4px">입금내역 MEMO</label>
+        <textarea class="inp" id="incMemo" rows="3" placeholder="입금 관련 메모"></textarea>
+      </div>
+
+      <div id="incBankInfo" style="display:none;background:var(--accent-bg);border:1px solid #bfdbfe;border-radius:var(--radius-sm);padding:12px;margin-bottom:14px;font-size:13px">
+        <div style="font-weight:500;margin-bottom:6px;color:var(--accent)">🏦 계좌정보</div>
+        <div id="incBankDetail" style="color:var(--text2);line-height:1.8"></div>
+      </div>
+
+      <div style="margin-bottom:14px">
+        <label style="font-size:11px;color:var(--text3);font-weight:500;display:block;margin-bottom:4px">특이사항 및 메모</label>
+        <textarea class="inp" id="incNote" rows="2" placeholder="특이사항이 있으면 입력"></textarea>
+      </div>
+
+      <div style="margin-bottom:14px">
+        <label style="font-size:11px;color:var(--text3);font-weight:500;display:block;margin-bottom:6px">📎 거래내역서 첨부 <span style="font-weight:400;color:var(--text3)">(이미지·PDF, 선택)</span></label>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <input type="file" id="incAttachFile" accept="image/*,.pdf" style="display:none" onchange="onIncAttachChange(this)">
+          <button class="btn btn-sm" onclick="document.getElementById('incAttachFile').click()">📎 파일 선택</button>
+          <span id="incAttachName" style="font-size:12px;color:var(--text3)">선택된 파일 없음</span>
+          <button class="btn btn-sm" id="incAttachClear" style="display:none;color:var(--danger);border-color:var(--danger);padding:2px 8px" onclick="clearIncAttach()">✕ 제거</button>
+        </div>
+      </div>
+
+      <div id="incEditBanner" style="display:none;background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:8px 12px;font-size:12px;color:#92400e;margin-bottom:10px">
+        ✏️ <strong>수정 모드</strong> — 저장하면 기존 이력이 업데이트됩니다.
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="previewIncome()">👁 미리보기 / 이미지 저장</button>
+        <button class="btn btn-green" id="incSaveBtn" onclick="saveIncome()">💾 이력 저장</button>
+        <button class="btn" id="incCancelEditBtn" style="display:none;color:var(--danger);border-color:var(--danger)" onclick="cancelIncEdit()">✕ 수정 취소</button>
+        <button class="btn" onclick="resetIncForm()">🔄 초기화</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 계좌관리 서브탭 (지출결의서와 동일 데이터 공유) -->
+  <div class="sub-content" id="incsubtab-bank">
+    <div class="card" style="background:#f0fdf4;border-color:#86efac">
+      <div style="font-size:13px;color:#15803d;font-weight:600;margin-bottom:4px">📌 계좌 목록은 지출결의서 탭과 공유됩니다.</div>
+      <div style="font-size:12px;color:#166534">아래에서 계좌를 추가하면 입금/지출결의서 양쪽에 모두 반영됩니다.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">🏦 계좌 등록</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;align-items:end;margin-bottom:8px">
+        <div><label style="font-size:11px;color:var(--text3);font-weight:500;display:block;margin-bottom:4px">거래처명</label><input class="inp" id="incbnName" placeholder="예: 공덕농협"></div>
+        <div><label style="font-size:11px;color:var(--text3);font-weight:500;display:block;margin-bottom:4px">은행명</label><input class="inp" id="incbnBank" placeholder="예: 농협은행"></div>
+        <div><label style="font-size:11px;color:var(--text3);font-weight:500;display:block;margin-bottom:4px">계좌번호</label><input class="inp" id="incbnAcct" placeholder="예: 351-0852-6200-13"></div>
+        <div><button class="btn btn-primary" onclick="addIncBankInfo()" style="height:36px;margin-top:18px">+ 추가</button></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <div><label style="font-size:11px;color:var(--text3);font-weight:500;display:block;margin-bottom:4px">예금주명</label><input class="inp" id="incbnHolder" placeholder="예: 공덕농협농산물가공사업소"></div>
+        <div><label style="font-size:11px;color:var(--text3);font-weight:500;display:block;margin-bottom:4px">결제조건 (기본값)</label>
+          <select class="inp" id="incbnPayType">
+            <option value="즉시결제">즉시결제</option>
+            <option value="외상">외상</option>
+            <option value="선금">선금</option>
+            <option value="15일결제">15일결제</option>
+            <option value="당월말결제">당월말결제</option>
+            <option value="주결제">주결제</option>
+          </select>
+        </div>
+      </div>
+      <div id="incbnError" style="font-size:12px;color:var(--danger);margin-bottom:8px"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">📋 등록된 계좌 목록</div>
+      <div id="incBankList"><p style="font-size:13px;color:var(--text3)">등록된 계좌가 없습니다.</p></div>
+    </div>
+  </div>
+
+  <!-- 작성이력 서브탭 -->
+  <div class="sub-content" id="incsubtab-list">
+    <div class="card">
+      <div class="card-title">📋 입금결의서 작성 이력</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+        <input id="incHistSearch" class="inp" type="text" placeholder="거래처·입금내역 검색..." oninput="renderIncHistList()" style="flex:1;min-width:160px;max-width:260px">
+        <input id="incHistMonth" class="inp" type="month" oninput="setIncMonthFilter(this.value)" style="width:140px">
+        <button class="btn btn-sm" id="incTodayBtn" onclick="setIncTodayFilter()" style="white-space:nowrap">📅 금일</button>
+        <div style="display:flex;gap:6px">
+          <button class="sub-tab-btn active" id="incCoFilter-all"   onclick="setIncCoFilter('all')">전체</button>
+          <button class="sub-tab-btn"        id="incCoFilter-yb"    onclick="setIncCoFilter('옐로우브릿지')">옐로우브릿지</button>
+          <button class="sub-tab-btn"        id="incCoFilter-gr"    onclick="setIncCoFilter('그로븐')">그로븐</button>
+        </div>
+        <div style="display:flex;gap:4px;margin-left:4px">
+          <button class="btn btn-sm active" id="incPaidFilter-all"    onclick="setIncPaidFilter('all')"    style="white-space:nowrap">전체</button>
+          <button class="btn btn-sm"        id="incPaidFilter-unpaid" onclick="setIncPaidFilter('unpaid')" style="white-space:nowrap">⏳ 미확인</button>
+          <button class="btn btn-sm"        id="incPaidFilter-paid"   onclick="setIncPaidFilter('paid')"   style="white-space:nowrap">✅ 입금확인</button>
+        </div>
+        <button class="btn btn-green btn-sm" style="margin-left:auto" onclick="exportIncHistXlsx()">📥 Excel 내보내기</button>
+        <button class="btn btn-sm" onclick="if(confirm('전체 이력을 삭제할까요?')){localStorage.removeItem('yb_inchist');renderIncHistList();}">🗑 전체삭제</button>
+      </div>
+      <div id="incHistSummary" style="margin-bottom:12px"></div>
+      <div id="incHistList"><p style="font-size:13px;color:var(--text3)">저장된 이력이 없습니다.</p></div>
+    </div>
+  </div>
+
+</div>
+</div><!-- /tab-income -->
+
+<!-- 입금결의서 미리보기 모달 -->
+<div id="incModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:1000;overflow:auto;padding:20px">
+  <div style="max-width:800px;margin:0 auto;background:#fff;border-radius:var(--radius);padding:24px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div style="font-size:15px;font-weight:700">입금결의서 미리보기</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-green" onclick="saveIncImg()">📷 이미지 저장</button>
+        <button class="btn" onclick="document.getElementById('incModal').style.display='none'">✕ 닫기</button>
+      </div>
+    </div>
+    <div id="incPreviewContent" style="border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden"></div>
+  </div>
 </div>
 
 <!-- 지출결의서 미리보기 모달 -->
@@ -2725,6 +2928,7 @@ function switchTab(name){
     if(btnEl) btnEl.classList.add('active');
     if(name==='codes'){try{renderCodeList();}catch(e){console.error(e);}try{renderOptMapList();}catch(e){console.error(e);}try{renderUnmatchedHints();}catch(e){console.error(e);}try{renderOmPreview();}catch(e){console.error(e);}try{renderCodeMappingList();}catch(e){console.error(e);}}
     if(name==='expense'){try{initExpenseTab();}catch(e){console.error(e);}}
+    if(name==='income'){try{initIncomeTab();}catch(e){console.error(e);}}
     if(name==='invoice'){try{if(typeof invRestoreOrder==='function')invRestoreOrder();}catch(e){console.error(e);}}
     if(name==='recon'){try{reconInitIfNeeded();}catch(e){console.error(e);}}
     if(name==='report'){try{const d=document.getElementById('rptDate');if(d&&!d.value)d.value=new Date().toISOString().slice(0,10);}catch(e){console.error(e);}}
@@ -3453,6 +3657,580 @@ function resetExpForm() {
   document.querySelector('input[name="expPayType"][value="즉시결제"]').checked = true;
 }
 
+// ══════════════════════════════════════════════════════════
+// 입금결의서
+// ══════════════════════════════════════════════════════════
+const LS_INCHIST = 'yb_inchist';
+let curIncCo = '옐로우브릿지';
+let _incCoFilter   = 'all';
+let _incTodayOnly  = false;
+let _incPaidFilter = 'all';
+let _editingIncIdx = -1;
+let _incModalData  = null;
+
+function loadIncHist() { try{ return JSON.parse(localStorage.getItem(LS_INCHIST)||'[]'); }catch{ return []; } }
+function saveIncHist(a){ localStorage.setItem(LS_INCHIST, JSON.stringify(a)); }
+
+function initIncomeTab() {
+  document.getElementById('incDate').value = new Date().toISOString().slice(0,10);
+  const savedWriter = localStorage.getItem('yb_default_writer') || '';
+  if (savedWriter) document.getElementById('incWriter').value = savedWriter;
+  if (curIncCo === '그로븐') {
+    document.getElementById('iev2').checked = true;
+    onIev2Change();
+  }
+  renderIncBankList();
+  renderIncHistList();
+  updateIncVendorSelect();
+}
+
+function selectIncCo(co) {
+  curIncCo = co;
+  document.getElementById('incco-yb').classList.toggle('active', co==='옐로우브릿지');
+  document.getElementById('incco-gr').classList.toggle('active', co==='그로븐');
+  if (co === '그로븐') {
+    document.getElementById('iev2').checked = true;
+    onIev2Change();
+  } else {
+    document.getElementById('iev2').checked = false;
+    calcIncFromTotal();
+  }
+}
+
+function switchIncSubTab(name) {
+  document.querySelectorAll('#tab-income .sub-content').forEach(el => el.classList.remove('active'));
+  ['write','bank','list'].forEach(n => {
+    const btn = document.getElementById('stab-inc' + n);
+    if (btn) btn.classList.remove('active');
+  });
+  const content = document.getElementById('incsubtab-' + name);
+  const btn     = document.getElementById('stab-inc' + name);
+  if (content) content.classList.add('active');
+  if (btn)     btn.classList.add('active');
+  if (name === 'list') renderIncHistList();
+  if (name === 'bank') renderIncBankList();
+}
+
+function calcIncFromTotal() {
+  const total = parseInt(document.getElementById('incTotal').value) || 0;
+  if (!total) { document.getElementById('incSupply').value=''; document.getElementById('incVat').value=''; return; }
+  const isCalc = document.getElementById('iev2').checked;
+  let supply, vat;
+  if (isCalc) { supply = total; vat = 0; }
+  else { supply = Math.ceil(total / 1.1); vat = total - supply; }
+  document.getElementById('incSupply').value = supply;
+  document.getElementById('incVat').value    = vat;
+}
+function calcIncTotalFromParts() {
+  const supply = parseInt(document.getElementById('incSupply').value) || 0;
+  const vat    = parseInt(document.getElementById('incVat').value)    || 0;
+  if (supply || vat) document.getElementById('incTotal').value = supply + vat;
+}
+function onIev2Change() {
+  if (document.getElementById('iev2').checked) {
+    const total = parseInt(document.getElementById('incTotal').value) || 0;
+    document.getElementById('incVat').value    = 0;
+    document.getElementById('incSupply').value = total || '';
+  } else { calcIncFromTotal(); }
+}
+
+function updateIncVendorSelect() { /* 자동완성 방식으로 대체 */ }
+
+function onIncVendorInput() {
+  const val   = document.getElementById('incVendor').value.trim();
+  const banks = loadBankInfo();
+  const filtered = val ? banks.filter(b => b.name.toLowerCase().includes(val.toLowerCase())) : banks;
+  const dd = document.getElementById('incVendorDropdown');
+  if (filtered.length === 0) { dd.style.display='none'; return; }
+  dd.innerHTML = filtered.map((b,i2) =>
+    '<div class="vendor-item" id="incvitem_'+i2+'"><div class="vendor-item-name">'+b.name+'</div><div class="vendor-item-sub">'+b.bank+' · '+b.acct+'</div></div>'
+  ).join('');
+  filtered.forEach((b, i2) => {
+    const el = document.getElementById('incvitem_'+i2);
+    if (el) el.addEventListener('mousedown', () => selectIncVendorItem(b.name));
+  });
+  dd.style.display = 'block';
+  const exact = banks.find(b => b.name === val);
+  if (exact) applyIncBankTemplate(exact);
+}
+
+function selectIncVendorItem(name) {
+  document.getElementById('incVendor').value = name;
+  hideIncVendorList();
+  const bank = loadBankInfo().find(b => b.name === name);
+  if (bank) applyIncBankTemplate(bank);
+}
+
+function hideIncVendorList() {
+  const dd = document.getElementById('incVendorDropdown');
+  if (dd) dd.style.display = 'none';
+}
+
+function applyIncBankTemplate(bank) {
+  if (!bank) { document.getElementById('incBankInfo').style.display='none'; return; }
+  document.getElementById('incBankInfo').style.display = 'block';
+  document.getElementById('incBankDetail').innerHTML =
+    '예금주: <strong>'+bank.holder+'</strong> &nbsp;|&nbsp; '+
+    bank.bank+' &nbsp;|&nbsp; 계좌번호: <strong>'+bank.acct+'</strong>'+
+    (bank.tmemo ? '<br><span style="font-size:12px;color:var(--text2)">'+bank.tmemo+'</span>' : '');
+  if (bank.tpayType) {
+    const r = document.querySelector('input[name="incPayType"][value="'+bank.tpayType+'"]');
+    if (r) r.checked = true;
+  }
+  ['iev1','iev2','iev3','iev4','iev5','iev6'].forEach((id,i) => {
+    document.getElementById(id).checked = bank['tev'+(i+1)] || false;
+  });
+  const desc = document.getElementById('incDesc').value || '';
+  document.getElementById('incMemo').value =
+    '* '+desc+'\n* 예금주명 : '+bank.holder+'\n* '+bank.bank+'\n* 계좌번호 : '+bank.acct;
+  if (bank.tnote) document.getElementById('incNote').value = bank.tnote;
+}
+
+function getIncFormData() {
+  const vname = document.getElementById('incVendor').value.trim();
+  const bank = loadBankInfo().find(b=>b.name===vname) || loadBankInfo().find(b=>vname.includes(b.name)||b.name.includes(vname));
+  return {
+    co:      curIncCo,
+    date:    document.getElementById('incDate').value,
+    writer:  document.getElementById('incWriter').value,
+    vendor:  vname,
+    desc:    document.getElementById('incDesc').value,
+    supply:  document.getElementById('incSupply').value,
+    vat:     document.getElementById('incVat').value,
+    total:   document.getElementById('incTotal').value,
+    payType: document.querySelector('input[name="incPayType"]:checked')?.value||'즉시결제',
+    ev1: document.getElementById('iev1').checked,
+    ev2: document.getElementById('iev2').checked,
+    ev3: document.getElementById('iev3').checked,
+    ev4: document.getElementById('iev4').checked,
+    ev5: document.getElementById('iev5').checked,
+    ev6: document.getElementById('iev6').checked,
+    memo:   document.getElementById('incMemo').value,
+    note:   document.getElementById('incNote').value,
+    bank:   bank || null,
+  };
+}
+
+async function previewIncome() {
+  const d = getIncFormData();
+  const inp = document.getElementById('incAttachFile');
+  const file = inp && inp.files && inp.files[0];
+  if (file && file.type.startsWith('image/')) {
+    const reader = new FileReader();
+    reader.onload = e => _doPreviewIncome(d, e.target.result);
+    reader.readAsDataURL(file);
+  } else {
+    _doPreviewIncome(d, null);
+  }
+}
+
+function _doPreviewIncome(d, attachImgUrl) {
+  _incModalData = d;
+  const DAYS_KO = ['일','월','화','수','목','금','토'];
+  let dateKo = '';
+  if (d.date) {
+    const dt = new Date(d.date);
+    dateKo = dt.getFullYear()+'년 '+(dt.getMonth()+1)+'월 '+dt.getDate()+'일 '+DAYS_KO[dt.getDay()]+'요일';
+  }
+  const leftContent =
+    '<table style="width:100%;border-collapse:collapse">'+
+      '<tr><td style="font-size:13px;padding:4px 8px 4px 4px;white-space:nowrap">　공급가액 :</td><td style="font-size:13px;padding:4px 0;text-align:right;width:100%">'+fmtNum(d.supply)+'원</td></tr>'+
+      '<tr><td style="font-size:13px;padding:4px 8px 4px 4px;white-space:nowrap">　세　　액 :</td><td style="font-size:13px;padding:4px 0;text-align:right;width:100%">'+fmtNum(d.vat)+'원</td></tr>'+
+      '<tr><td colspan="2" style="padding:0"><hr style="margin:4px 0;border:none;border-top:1px solid #000"></td></tr>'+
+      '<tr><td style="font-size:13px;padding:4px 8px 4px 4px;white-space:nowrap;font-weight:700">　합　　계 :</td><td style="font-size:13px;padding:4px 0;text-align:right;width:100%;font-weight:700">'+fmtNum(d.total)+'원</td></tr>'+
+    '</table>';
+  const rightParts = [];
+  if (d.desc) rightParts.push('* '+d.desc);
+  if (d.bank) {
+    rightParts.push('* 예금주명 : '+d.bank.holder);
+    rightParts.push('* '+d.bank.bank);
+    rightParts.push('* 계좌번호 : '+d.bank.acct);
+  }
+  const rightContent = rightParts.map(l => escHtml(l)).join('<br>');
+  const memoHtml =
+    '<tr>'+
+      '<td style="width:50%;border:1px solid #000;padding:10px 12px;font-size:13px;vertical-align:top;line-height:2.2;min-height:90px">'+leftContent+'</td>'+
+      '<td style="width:50%;border:1px solid #000;border-left:none;padding:10px 12px;font-size:13px;vertical-align:top;line-height:2.2">'+rightContent+'</td>'+
+    '</tr>';
+  const B  = 'border:1px solid #000';
+  const co = d.co === '옐로우브릿지' ? 'YB' : '그로븐';
+  const html =
+    '<div id="incPrintArea" style="font-family:Malgun Gothic,Arial,sans-serif;font-size:12px;padding:28px 32px;background:#fff;width:740px;box-sizing:border-box">'+
+    '<table style="width:100%;border-collapse:collapse;margin-bottom:0">'+
+    '<colgroup><col style="width:55%"><col style="width:15%"><col style="width:15%"><col style="width:15%"></colgroup>'+
+    '<tr>'+
+      '<td rowspan="3" style="'+B+';padding:12px 16px;vertical-align:middle">'+
+        '<div style="font-size:20px;font-weight:700">'+co+' 입금결의서</div>'+
+      '</td>'+
+      '<td style="'+B+';text-align:center;font-size:11px;padding:4px;background:#f5f5f5;font-weight:600">작성자</td>'+
+      '<td style="'+B+';text-align:center;font-size:11px;padding:4px;background:#f5f5f5;font-weight:600">재무이사</td>'+
+      '<td style="'+B+';text-align:center;font-size:11px;padding:4px;background:#f5f5f5;font-weight:600">대표이사</td>'+
+    '</tr>'+
+    '<tr>'+
+      '<td style="'+B+';height:44px"></td>'+
+      '<td style="'+B+'"></td>'+
+      '<td style="'+B+'"></td>'+
+    '</tr>'+
+    '<tr>'+
+      '<td style="'+B+';text-align:center;font-size:11px;padding:3px;color:#666">　　/　　</td>'+
+      '<td style="'+B+';text-align:center;font-size:11px;padding:3px;color:#666">　　/　　</td>'+
+      '<td style="'+B+';text-align:center;font-size:11px;padding:3px;color:#666">　　/　　</td>'+
+    '</tr>'+
+    '</table>'+
+    '<table style="width:100%;border-collapse:collapse;margin-top:-1px">'+
+    '<colgroup><col style="width:12%"><col style="width:38%"><col style="width:12%"><col style="width:38%"></colgroup>'+
+    '<tr>'+
+      '<td style="'+B+';padding:6px 10px;font-weight:600;background:#f5f5f5;font-size:11px">작성일자</td>'+
+      '<td style="'+B+';padding:6px 10px;font-size:11px">'+dateKo+'</td>'+
+      '<td style="'+B+';padding:6px 10px;font-weight:600;background:#f5f5f5;font-size:11px">작 성 자</td>'+
+      '<td style="'+B+';padding:6px 10px;font-size:11px">'+(d.writer||'')+'</td>'+
+    '</tr>'+
+    '<tr>'+
+      '<td style="'+B+';padding:8px 10px;font-weight:600;background:#f5f5f5;font-size:11px">입 금 처</td>'+
+      '<td colspan="3" style="'+B+';padding:8px 10px;font-size:14px;font-weight:700;text-align:center">'+(d.vendor||'')+'</td>'+
+    '</tr>'+
+    '<tr>'+
+      '<td style="'+B+';padding:8px 10px;font-weight:600;background:#f5f5f5;font-size:11px">입금내역</td>'+
+      '<td colspan="3" style="'+B+';padding:8px 10px;font-size:14px;font-weight:700;text-align:center">'+(d.desc||'')+'</td>'+
+    '</tr>'+
+    '<tr>'+
+      '<td style="'+B+';padding:6px 10px;font-weight:600;background:#f5f5f5;font-size:11px">결제조건</td>'+
+      '<td style="'+B+';padding:6px 10px;text-align:center;font-size:12px">'+(d.payType||'즉시결제')+'</td>'+
+      '<td style="'+B+';padding:6px 10px;font-weight:600;background:#f5f5f5;font-size:11px">입금금액</td>'+
+      '<td style="'+B+';padding:6px 10px;font-size:13px;font-weight:700;text-align:right">'+fmtNum(d.total)+'&nbsp;&nbsp;<span style="font-size:11px;font-weight:400">(VAT포함)</span></td>'+
+    '</tr>'+
+    '<tr>'+
+      '<td style="'+B+';padding:6px 10px;font-weight:600;background:#f5f5f5;font-size:11px">증빙자료</td>'+
+      '<td colspan="3" style="'+B+';padding:6px 10px">'+
+        '<table style="width:100%;border-collapse:collapse"><tr>'+
+          '<td style="text-align:center;border:1px solid #ccc;padding:3px 6px;font-size:11px">세금계산서<br><b>'+chk(d.ev1)+'</b></td>'+
+          '<td style="text-align:center;border:1px solid #ccc;padding:3px 6px;font-size:11px">계산서<br><b>'+chk(d.ev2)+'</b></td>'+
+          '<td style="text-align:center;border:1px solid #ccc;padding:3px 6px;font-size:11px">현금영수증<br><b>'+chk(d.ev3)+'</b></td>'+
+          '<td style="text-align:center;border:1px solid #ccc;padding:3px 6px;font-size:11px">고지서<br><b>'+chk(d.ev4)+'</b></td>'+
+          '<td style="text-align:center;border:1px solid #ccc;padding:3px 6px;font-size:11px">기 타<br><b>'+chk(d.ev5)+'</b></td>'+
+          '<td style="text-align:center;border:1px solid #ccc;padding:3px 6px;font-size:11px">사후첨부<br><b>'+chk(d.ev6)+'</b></td>'+
+        '</tr></table>'+
+      '</td>'+
+    '</tr>'+
+    '<tr>'+
+      '<td colspan="4" style="'+B+';padding:6px 10px;text-align:center;font-size:11px">위의 금액을 정히 입금요청하오니 확인하여 주십시오.</td>'+
+    '</tr>'+
+    '</table>'+
+    '<table style="width:100%;border-collapse:collapse;margin-top:-1px;table-layout:fixed">'+
+    '<colgroup><col style="width:50%"><col style="width:50%"></colgroup>'+
+    '<tr>'+
+      '<td style="'+B+';padding:5px 10px;font-size:11px;font-weight:600;background:#f5f5f5;width:50%">※ 입금내역 MEMO</td>'+
+      '<td style="'+B+';padding:5px 10px;font-size:11px;font-weight:600;background:#f5f5f5;width:50%">※ 재무회계과 MEMO</td>'+
+    '</tr>'+
+    memoHtml+
+    '</table>'+
+    '<table style="width:100%;border-collapse:collapse;margin-top:-1px">'+
+    '<tr><td style="'+B+';padding:5px 10px;font-size:11px;font-weight:600;background:#f5f5f5">최종결재자 MEMO</td></tr>'+
+    '<tr><td style="'+B+';height:55px;padding:5px 10px"></td></tr>'+
+    '<tr><td style="'+B+';padding:5px 10px;font-size:11px;font-weight:600;background:#f5f5f5">특이사항 및 메모</td></tr>'+
+    '<tr><td style="'+B+';padding:8px 10px;font-size:11px;min-height:36px">'+
+      (d.note ? escHtml(d.note) : '* 입금 내역 첨부')+
+      (attachImgUrl ? '<br><img src="'+attachImgUrl+'" style="max-width:100%;margin-top:8px;display:block;border:1px solid #e0e0e0;border-radius:3px">' : '')+
+    '</td></tr>'+
+    '</table>'+
+    '</div>';
+  document.getElementById('incPreviewContent').innerHTML = html;
+  document.getElementById('incModal').style.display = 'block';
+}
+
+function saveIncImg() {
+  const el = document.getElementById('incPrintArea');
+  const d  = _incModalData || getIncFormData();
+  html2canvas(el, { scale:2, backgroundColor:'#fff', useCORS:true }).then(canvas => {
+    const dateStr = (d.date||'').replace(/-/g,'');
+    const fname2  = `${dateStr}-입금결의서-${d.vendor||'미지정'}_${d.co||''}.png`;
+    const a = document.createElement('a');
+    a.download = fname2; a.href = canvas.toDataURL('image/png'); a.click();
+  });
+}
+
+function editIncHist(i) {
+  const hist = loadIncHist();
+  const d = hist[i];
+  if (!d) return;
+  _editingIncIdx = i;
+  selectIncCo(d.co || '옐로우브릿지');
+  document.getElementById('incDate').value   = d.date    || '';
+  document.getElementById('incWriter').value = d.writer  || '';
+  document.getElementById('incVendor').value = d.vendor  || '';
+  document.getElementById('incDesc').value   = d.desc    || '';
+  document.getElementById('incSupply').value = d.supply  || '';
+  document.getElementById('incVat').value    = d.vat     || '';
+  document.getElementById('incTotal').value  = d.total   || '';
+  document.getElementById('incMemo').value   = d.memo    || '';
+  document.getElementById('incNote').value   = d.note    || '';
+  const pr = document.querySelector('input[name="incPayType"][value="'+(d.payType||'즉시결제')+'"]');
+  if (pr) pr.checked = true;
+  ['iev1','iev2','iev3','iev4','iev5','iev6'].forEach((id,j) => {
+    const el = document.getElementById(id); if (el) el.checked = d['ev'+(j+1)] || false;
+  });
+  const bank = loadBankInfo().find(b => b.name === d.vendor || (d.vendor||'').includes(b.name) || (b.name||'').includes(d.vendor||''));
+  if (bank) applyIncBankTemplate(bank); else document.getElementById('incBankInfo').style.display='none';
+  const nameEl = document.getElementById('incAttachName');
+  if (d.hasAttach) { if (nameEl) { nameEl.textContent='📎 기존 첨부파일 있음'; nameEl.style.color='var(--primary)'; } }
+  else { if (nameEl) { nameEl.textContent='선택된 파일 없음'; nameEl.style.color='var(--text3)'; } }
+  document.getElementById('incEditBanner').style.display   = '';
+  document.getElementById('incSaveBtn').textContent        = '💾 수정 저장';
+  document.getElementById('incCancelEditBtn').style.display = '';
+  switchIncSubTab('write');
+  window.scrollTo({ top:0, behavior:'smooth' });
+}
+
+function cancelIncEdit() {
+  _editingIncIdx = -1;
+  document.getElementById('incEditBanner').style.display    = 'none';
+  document.getElementById('incSaveBtn').textContent         = '💾 이력 저장';
+  document.getElementById('incCancelEditBtn').style.display = 'none';
+  resetIncForm();
+}
+
+function saveIncome() {
+  const d = getIncFormData();
+  if (!d.vendor || !d.total) { alert('입금처와 입금금액을 입력해주세요.'); return; }
+  const hist = loadIncHist();
+  const attachInput = document.getElementById('incAttachFile');
+  const file = attachInput && attachInput.files && attachInput.files[0];
+  if (_editingIncIdx >= 0) {
+    const existing = hist[_editingIncIdx] || {};
+    const updated  = { ...existing, ...d, savedAt: new Date().toISOString() };
+    if (file) updated.hasAttach = true;
+    hist[_editingIncIdx] = updated;
+    saveIncHist(hist);
+    _editingIncIdx = -1;
+    document.getElementById('incEditBanner').style.display    = 'none';
+    document.getElementById('incSaveBtn').textContent         = '💾 이력 저장';
+    document.getElementById('incCancelEditBtn').style.display = 'none';
+    alert('수정됐어요!');
+    switchIncSubTab('list');
+    renderIncHistList();
+    return;
+  }
+  const newId  = Date.now();
+  const record = { ...d, id: newId, savedAt: new Date().toISOString() };
+  if (file) record.hasAttach = true;
+  hist.unshift(record);
+  if (hist.length > 200) hist.splice(200);
+  saveIncHist(hist);
+  alert('저장됐어요!');
+  renderIncHistList();
+}
+
+function resetIncForm() {
+  document.getElementById('incDate').value = new Date().toISOString().slice(0,10);
+  ['incWriter','incDesc','incSupply','incVat','incTotal','incMemo','incNote'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('incVendor').value = '';
+  document.getElementById('incBankInfo').style.display = 'none';
+  hideIncVendorList();
+  ['iev1','iev2','iev3','iev4','iev5','iev6'].forEach(id=>document.getElementById(id).checked=false);
+  document.querySelector('input[name="incPayType"][value="즉시결제"]').checked = true;
+}
+
+function onIncAttachChange(input) {
+  const nameEl = document.getElementById('incAttachName');
+  const clrBtn = document.getElementById('incAttachClear');
+  if (input && input.files && input.files[0]) {
+    if (nameEl) nameEl.textContent = input.files[0].name;
+    if (clrBtn) clrBtn.style.display = '';
+  } else {
+    if (nameEl) { nameEl.textContent='선택된 파일 없음'; nameEl.style.color='var(--text3)'; }
+    if (clrBtn) clrBtn.style.display = 'none';
+  }
+}
+function clearIncAttach() {
+  const inp = document.getElementById('incAttachFile');
+  if (inp) inp.value = '';
+  onIncAttachChange(null);
+}
+
+// 입금결의서 이력 필터
+function setIncPaidFilter(val) {
+  _incPaidFilter = val;
+  ['all','unpaid','paid'].forEach(k => {
+    const el = document.getElementById('incPaidFilter-'+k); if (el) el.classList.remove('active');
+  });
+  const btn = document.getElementById('incPaidFilter-'+val);
+  if (btn) btn.classList.add('active');
+  renderIncHistList();
+}
+function setIncCoFilter(co) {
+  _incCoFilter = co; _incTodayOnly = false;
+  const tb = document.getElementById('incTodayBtn');
+  if (tb) { tb.style.background=''; tb.style.color=''; }
+  ['all','yb','gr'].forEach(k => { const el=document.getElementById('incCoFilter-'+k); if(el) el.classList.remove('active'); });
+  const keyMap = {'all':'all','옐로우브릿지':'yb','그로븐':'gr'};
+  const btn = document.getElementById('incCoFilter-'+(keyMap[co]||'all'));
+  if (btn) btn.classList.add('active');
+  renderIncHistList();
+}
+function setIncTodayFilter() {
+  _incTodayOnly = !_incTodayOnly;
+  const tb = document.getElementById('incTodayBtn');
+  if (tb) { tb.style.background = _incTodayOnly?'var(--text)':''; tb.style.color = _incTodayOnly?'#fff':''; }
+  if (_incTodayOnly) { const el=document.getElementById('incHistMonth'); if(el) el.value=''; }
+  renderIncHistList();
+}
+function setIncMonthFilter(val) {
+  if (val) { _incTodayOnly=false; const tb=document.getElementById('incTodayBtn'); if(tb){tb.style.background='';tb.style.color='';} }
+  renderIncHistList();
+}
+
+function toggleIncPaid(i) {
+  const hist = loadIncHist();
+  if (!hist[i]) return;
+  hist[i].paid = !hist[i].paid;
+  saveIncHist(hist);
+  renderIncHistList();
+}
+function deleteIncHist(i) {
+  if (!confirm('이 항목을 삭제할까요?')) return;
+  const hist = loadIncHist();
+  hist.splice(i, 1);
+  saveIncHist(hist);
+  renderIncHistList();
+}
+
+function renderIncHistList() {
+  const el = document.getElementById('incHistList');
+  if (!el) return;
+  const hist = loadIncHist();
+  if (!hist.length) { el.innerHTML='<p style="font-size:13px;color:var(--text3)">저장된 이력이 없습니다.</p>'; return; }
+  const q        = (document.getElementById('incHistSearch')||{}).value?.trim().toLowerCase() || '';
+  const monthVal = (document.getElementById('incHistMonth')||{}).value || '';
+  const todayIso = new Date().toISOString().slice(0,10);
+  let filtered = hist.filter(d => {
+    if (_incCoFilter !== 'all' && d.co !== _incCoFilter) return false;
+    if (_incTodayOnly && (d.date||'') !== todayIso) return false;
+    if (!_incTodayOnly && monthVal && !(d.date||'').startsWith(monthVal)) return false;
+    if (_incPaidFilter === 'paid'   &&  !d.paid) return false;
+    if (_incPaidFilter === 'unpaid' && !!d.paid) return false;
+    if (q && !((d.vendor||'').toLowerCase().includes(q)||(d.desc||'').toLowerCase().includes(q)||(d.date||'').includes(q))) return false;
+    return true;
+  });
+  const sumEl = document.getElementById('incHistSummary');
+  if (sumEl && filtered.length) {
+    const totalAmt = filtered.reduce((s,d)=>s+(Number(d.total)||0),0);
+    sumEl.innerHTML = '<div style="display:flex;gap:16px;flex-wrap:wrap;padding:10px 14px;background:var(--bg);border-radius:8px;font-size:13px">'+
+      '<span>📊 <b>'+filtered.length+'건</b></span>'+
+      '<span style="color:var(--primary)">총 합계 <b>'+totalAmt.toLocaleString()+'원</b></span></div>';
+  } else if (sumEl) { sumEl.innerHTML=''; }
+  if (!filtered.length) { el.innerHTML='<p style="font-size:13px;color:var(--text3)">검색 결과가 없습니다.</p>'; return; }
+  const groups = {};
+  filtered.forEach(d => {
+    const key = (d.co||'')+'|'+(d.vendor||'미지정');
+    if (!groups[key]) groups[key]={co:d.co||'',vendor:d.vendor||'미지정',items:[]};
+    groups[key].items.push(d);
+  });
+  let html = '';
+  Object.values(groups).forEach(g => {
+    const coColor = g.co==='옐로우브릿지'?'#f59e0b':'#3b82f6';
+    html += '<div style="margin-bottom:18px">'+
+      '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:2px solid var(--border2);margin-bottom:8px">'+
+        '<span style="font-size:11px;font-weight:700;color:#fff;background:'+coColor+';padding:2px 8px;border-radius:10px">'+escHtml(g.co)+'</span>'+
+        '<span style="font-size:14px;font-weight:700">'+escHtml(g.vendor)+'</span>'+
+        '<span style="font-size:12px;color:var(--text3)">('+g.items.length+'건)</span>'+
+      '</div>';
+    g.items.forEach((d, idx) => {
+      const realIdx = hist.indexOf(d);
+      const isPaid  = !!d.paid;
+      const rowBg   = isPaid ? 'background:rgba(16,185,129,0.08);border-left:3px solid #10b981' : 'background:var(--surface)';
+      const paidBtn = isPaid
+        ? '<button class="btn btn-sm" style="padding:2px 8px;background:#10b981;color:#fff;border-color:#10b981;white-space:nowrap" onclick="toggleIncPaid('+realIdx+')">✅ 확인</button>'
+        : '<button class="btn btn-sm" style="padding:2px 8px;color:var(--text3);white-space:nowrap" onclick="toggleIncPaid('+realIdx+')">☐ 확인</button>';
+      const descStyle = isPaid ? 'font-size:13px;color:var(--text3);text-decoration:line-through' : 'font-size:13px';
+      html += '<div style="display:grid;grid-template-columns:90px 1fr auto auto auto auto;gap:8px;align-items:center;padding:7px 8px;border-radius:6px;margin-bottom:4px;'+rowBg+'">'+
+        '<span style="font-size:11px;color:var(--text3);cursor:pointer" onclick="previewIncHistItem('+realIdx+')">'+escHtml(d.date||'')+'</span>'+
+        '<span style="'+descStyle+';cursor:pointer" onclick="previewIncHistItem('+realIdx+')">'+escHtml(d.desc||'')+'</span>'+
+        '<span style="font-size:13px;font-weight:600;text-align:right;cursor:pointer'+(isPaid?';color:var(--text3)':'')+'" onclick="previewIncHistItem('+realIdx+')">'+fmtNum(d.total)+'원</span>'+
+        paidBtn+
+        '<button class="btn btn-sm" style="padding:2px 8px" onclick="saveIncImgFromHist('+realIdx+')">📷</button>'+
+        '<button class="btn btn-sm" style="padding:2px 8px;color:var(--accent);border-color:var(--accent)" onclick="editIncHist('+realIdx+')">✏️</button>'+
+        '<button class="btn btn-sm" style="color:var(--danger);border-color:var(--danger);padding:2px 8px" onclick="deleteIncHist('+realIdx+')">삭제</button>'+
+      '</div>';
+    });
+    html += '</div>';
+  });
+  el.innerHTML = html;
+}
+
+async function previewIncHistItem(i) {
+  const hist = loadIncHist();
+  const d = hist[i];
+  if (!d) return;
+  _doPreviewIncome(d, null);
+}
+
+async function saveIncImgFromHist(i) {
+  const hist = loadIncHist();
+  const d = hist[i];
+  if (!d) return;
+  _doPreviewIncome(d, null);
+  await new Promise(r => setTimeout(r, 300));
+  saveIncImg();
+}
+
+function exportIncHistXlsx() {
+  const hist = loadIncHist();
+  if (!hist.length) { alert('저장된 이력이 없습니다.'); return; }
+  const rows = [['날짜','회사','입금처','입금내역','공급가액','세액','합계','결제조건','입금확인','저장일시']];
+  hist.forEach(d => rows.push([
+    d.date||'', d.co||'', d.vendor||'', d.desc||'',
+    Number(d.supply)||0, Number(d.vat)||0, Number(d.total)||0,
+    d.payType||'', d.paid?'완료':'미확인', d.savedAt||''
+  ]));
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  XLSX.utils.book_append_sheet(wb, ws, '입금결의서이력');
+  XLSX.writeFile(wb, '입금결의서이력_'+new Date().toISOString().slice(0,10)+'.xlsx');
+}
+
+// 입금결의서 계좌관리 (지출결의서 데이터 공유)
+function renderIncBankList() {
+  const banks = loadBankInfo();
+  const el = document.getElementById('incBankList');
+  if (!el) return;
+  if (!banks.length) { el.innerHTML='<p style="font-size:13px;color:var(--text3)">등록된 계좌가 없습니다.</p>'; return; }
+  let html = '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:8px;padding-bottom:8px;border-bottom:2px solid var(--border);font-size:11px;font-weight:500;color:var(--text2)"><span>거래처</span><span>은행</span><span>계좌번호</span><span>예금주</span><span></span></div>';
+  banks.forEach((b,i) => {
+    html += `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:8px;align-items:center;font-size:13px">
+        <strong>${b.name}</strong><span>${b.bank}</span><span style="font-family:monospace;font-size:12px">${b.acct}</span><span>${b.holder}</span>
+        <button class="btn btn-danger btn-sm" onclick="removeIncBankInfo(${i})">삭제</button>
+      </div>
+    </div>`;
+  });
+  el.innerHTML = html;
+}
+function addIncBankInfo() {
+  const name   = document.getElementById('incbnName').value.trim();
+  const bank   = document.getElementById('incbnBank').value.trim();
+  const acct   = document.getElementById('incbnAcct').value.trim();
+  const holder = document.getElementById('incbnHolder').value.trim();
+  const tpayType = document.getElementById('incbnPayType').value;
+  const errEl  = document.getElementById('incbnError');
+  if (!name||!bank||!acct||!holder) { errEl.textContent='거래처, 은행, 계좌번호, 예금주를 모두 입력해주세요.'; return; }
+  errEl.textContent='';
+  const banks = loadBankInfo();
+  banks.push({ name, bank, acct, holder, tpayType, tev1:false,tev2:false,tev3:false,tev4:false,tev5:false,tev6:false });
+  saveBankInfo(banks);
+  ['incbnName','incbnBank','incbnAcct','incbnHolder'].forEach(id=>document.getElementById(id).value='');
+  renderIncBankList();
+  renderBankList(); // 지출결의서 계좌목록도 갱신
+}
+function removeIncBankInfo(i) {
+  if (!confirm('이 계좌를 삭제할까요?')) return;
+  const banks = loadBankInfo();
+  banks.splice(i,1);
+  saveBankInfo(banks);
+  renderIncBankList();
+  renderBankList();
+}
+
+// ══════════════════════════════════════════════════════════
 // 계좌관리
 function renderBankList() {
   const banks = loadBankInfo();
