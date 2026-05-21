@@ -708,6 +708,11 @@
         <textarea class="inp" id="incMemo" rows="3" placeholder="입금 관련 메모"></textarea>
       </div>
 
+      <div style="margin-bottom:14px">
+        <label style="font-size:11px;color:var(--text3);font-weight:500;display:block;margin-bottom:4px">재무회계과 MEMO <span style="font-weight:400;color:var(--text3)">(미리보기 우측에 출력)</span></label>
+        <textarea class="inp" id="incRightMemo" rows="3" placeholder="예) * 5/6~15일 주문 건&#10;* 판매내역: 말비·박대 외 242건&#10;* 입금자료 : 최정현"></textarea>
+      </div>
+
       <div id="incBankInfo" style="display:none;background:var(--accent-bg);border:1px solid #bfdbfe;border-radius:var(--radius-sm);padding:12px;margin-bottom:14px;font-size:13px">
         <div style="font-weight:500;margin-bottom:6px;color:var(--accent)">🏦 계좌정보</div>
         <div id="incBankDetail" style="color:var(--text2);line-height:1.8"></div>
@@ -3805,9 +3810,10 @@ function getIncFormData() {
     ev4: document.getElementById('iev4').checked,
     ev5: document.getElementById('iev5').checked,
     ev6: document.getElementById('iev6').checked,
-    memo:   document.getElementById('incMemo').value,
-    note:   document.getElementById('incNote').value,
-    bank:   bank || null,
+    memo:      document.getElementById('incMemo').value,
+    rightMemo: document.getElementById('incRightMemo').value,
+    note:      document.getElementById('incNote').value,
+    bank:      bank || null,
   };
 }
 
@@ -3839,14 +3845,9 @@ function _doPreviewIncome(d, attachImgUrl) {
       '<tr><td colspan="2" style="padding:0"><hr style="margin:4px 0;border:none;border-top:1px solid #000"></td></tr>'+
       '<tr><td style="font-size:13px;padding:4px 8px 4px 4px;white-space:nowrap;font-weight:700">　합　　계 :</td><td style="font-size:13px;padding:4px 0;text-align:right;width:100%;font-weight:700">'+fmtNum(d.total)+'원</td></tr>'+
     '</table>';
-  const rightParts = [];
-  if (d.desc) rightParts.push('* '+d.desc);
-  if (d.bank) {
-    rightParts.push('* 예금주명 : '+d.bank.holder);
-    rightParts.push('* '+d.bank.bank);
-    rightParts.push('* 계좌번호 : '+d.bank.acct);
-  }
-  const rightContent = rightParts.map(l => escHtml(l)).join('<br>');
+  const rightContent = d.rightMemo
+    ? escHtml(d.rightMemo).replace(/\n/g, '<br>')
+    : '';
   const memoHtml =
     '<tr>'+
       '<td style="width:50%;border:1px solid #000;padding:10px 12px;font-size:13px;vertical-align:top;line-height:2.2;min-height:90px">'+leftContent+'</td>'+
@@ -3962,8 +3963,9 @@ function editIncHist(i) {
   document.getElementById('incSupply').value = d.supply  || '';
   document.getElementById('incVat').value    = d.vat     || '';
   document.getElementById('incTotal').value  = d.total   || '';
-  document.getElementById('incMemo').value   = d.memo    || '';
-  document.getElementById('incNote').value   = d.note    || '';
+  document.getElementById('incMemo').value      = d.memo      || '';
+  document.getElementById('incRightMemo').value = d.rightMemo || '';
+  document.getElementById('incNote').value      = d.note      || '';
   const pr = document.querySelector('input[name="incPayType"][value="'+(d.payType||'즉시결제')+'"]');
   if (pr) pr.checked = true;
   ['iev1','iev2','iev3','iev4','iev5','iev6'].forEach((id,j) => {
@@ -4022,7 +4024,7 @@ function saveIncome() {
 
 function resetIncForm() {
   document.getElementById('incDate').value = new Date().toISOString().slice(0,10);
-  ['incWriter','incDesc','incSupply','incVat','incTotal','incMemo','incNote'].forEach(id=>document.getElementById(id).value='');
+  ['incWriter','incDesc','incSupply','incVat','incTotal','incMemo','incRightMemo','incNote'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('incVendor').value = '';
   document.getElementById('incBankInfo').style.display = 'none';
   hideIncVendorList();
