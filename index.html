@@ -1672,8 +1672,9 @@ function addCode(){
     renderCodeList();renderCodeMappingList();
     return;
   }
-  // ── 추가 모드 ──  (optKw 있으면 같은 code 중복 허용, 없으면 기존 로직)
-  if(!optKw && codes.find(c=>c.code===code && !c.optKw)){errEl.textContent='이미 등록된 코드입니다.';return;}
+  // ── 추가 모드 ──  (같은 code여도 originalCode가 다르면 허용 / optKw 있으면 무조건 허용)
+  const myOrig = originalCode || code;
+  if(!optKw && codes.find(c=>c.code===code && !c.optKw && (c.originalCode||c.code)===myOrig)){errEl.textContent='이미 등록된 코드입니다.';return;}
   errEl.textContent='';
   const orderProduct=document.getElementById('prefillProduct').textContent||'';
   const orderOpt=document.getElementById('prefillOpt').textContent||'';
