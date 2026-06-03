@@ -1,0 +1,1574 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>오늘의 퀘스트 ⚔️</title>
+<style>
+/* ===== CSS VARIABLES & RESET ===== */
+:root {
+  --bg-start: #0f0c29;
+  --bg-mid: #302b63;
+  --bg-end: #24243e;
+  --card: rgba(255,255,255,0.07);
+  --card-hover: rgba(255,255,255,0.12);
+  --card-border: rgba(255,255,255,0.12);
+  --primary: #7c3aed;
+  --primary-light: #a855f7;
+  --accent: #f59e0b;
+  --accent-light: #fbbf24;
+  --success: #10b981;
+  --success-light: #34d399;
+  --danger: #ef4444;
+  --danger-light: #f87171;
+  --text: #f1f5f9;
+  --muted: #94a3b8;
+  --muted2: #64748b;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body {
+  height: 100%;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-mid) 50%, var(--bg-end) 100%);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ===== SCREEN MANAGEMENT ===== */
+.screen {
+  display: none;
+  position: fixed;
+  inset: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.screen.active { display: flex; flex-direction: column; }
+
+/* ===== ANIMATIONS ===== */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes popIn {
+  0%   { transform: scale(0.5); opacity: 0; }
+  70%  { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-8px); }
+}
+@keyframes pulse-ring {
+  0%   { transform: scale(0.8); opacity: 1; }
+  100% { transform: scale(2); opacity: 0; }
+}
+@keyframes star-burst {
+  0%   { transform: scale(0) rotate(0deg); opacity: 1; }
+  100% { transform: scale(1) rotate(180deg); opacity: 0; }
+}
+@keyframes confetti-fall {
+  0%   { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+}
+@keyframes bounce-in {
+  0%   { transform: scale(0.3); opacity: 0; }
+  50%  { transform: scale(1.05); opacity: 0.9; }
+  70%  { transform: scale(0.9); }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(124,58,237,0.4); }
+  50%       { box-shadow: 0 0 40px rgba(124,58,237,0.8), 0 0 60px rgba(124,58,237,0.3); }
+}
+@keyframes coin-spin {
+  0%   { transform: rotateY(0deg); }
+  100% { transform: rotateY(360deg); }
+}
+@keyframes progress-fill {
+  from { width: 0%; }
+}
+@keyframes countdown-tick {
+  0%  { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100%{ transform: scale(1); }
+}
+
+.anim-fadeInUp  { animation: fadeInUp 0.4s ease forwards; }
+.anim-popIn     { animation: popIn 0.5s cubic-bezier(0.175,0.885,0.32,1.275) forwards; }
+.anim-float     { animation: float 3s ease-in-out infinite; }
+.anim-glow      { animation: glow-pulse 2s ease-in-out infinite; }
+
+/* ===== CONFETTI PIECES ===== */
+.confetti-container {
+  position: fixed; inset: 0; pointer-events: none; z-index: 999; overflow: hidden;
+}
+.confetti-piece {
+  position: absolute;
+  top: -20px;
+  width: 10px; height: 10px;
+  border-radius: 2px;
+  animation: confetti-fall linear forwards;
+}
+
+/* ===== COMMON UI ===== */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 56px; padding: 0 28px;
+  border: none; border-radius: 9999px;
+  font-size: 1.05rem; font-weight: 700; cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+  width: 100%;
+  letter-spacing: 0.5px;
+}
+.btn:active { transform: scale(0.95); }
+.btn-primary {
+  background: linear-gradient(135deg, #7c3aed, #9333ea);
+  color: #fff;
+  box-shadow: 0 4px 20px rgba(124,58,237,0.5);
+}
+.btn-primary:hover { box-shadow: 0 6px 28px rgba(124,58,237,0.7); }
+.btn-accent {
+  background: linear-gradient(135deg, #f59e0b, #f97316);
+  color: #fff;
+  box-shadow: 0 4px 20px rgba(245,158,11,0.5);
+}
+.btn-success {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+  box-shadow: 0 4px 20px rgba(16,185,129,0.5);
+}
+.btn-danger {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: #fff;
+  box-shadow: 0 4px 20px rgba(239,68,68,0.4);
+}
+.btn-ghost {
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--card-border);
+}
+.btn-sm {
+  min-height: 42px; padding: 0 18px; font-size: 0.9rem; border-radius: 12px;
+}
+.card {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.page-padding { padding: 20px 16px; }
+.section-title {
+  font-size: 0.8rem; font-weight: 700; letter-spacing: 1.5px;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 12px;
+}
+.spacer { flex: 1; }
+
+/* ===== WELCOME SCREEN ===== */
+#screen-welcome {
+  align-items: center; justify-content: center;
+  padding: 40px 24px;
+  background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+}
+.welcome-logo {
+  font-size: 5rem; margin-bottom: 16px;
+  animation: float 3s ease-in-out infinite;
+}
+.welcome-title {
+  font-size: 2rem; font-weight: 900; letter-spacing: -0.5px;
+  background: linear-gradient(135deg, #a78bfa, #f59e0b);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text; text-align: center; margin-bottom: 8px;
+}
+.welcome-subtitle {
+  color: var(--muted); font-size: 0.95rem; text-align: center; margin-bottom: 40px;
+}
+.child-select-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+  width: 100%; max-width: 340px; margin-bottom: 32px;
+}
+.child-select-btn {
+  background: var(--card);
+  border: 2px solid var(--card-border);
+  border-radius: 20px;
+  padding: 24px 16px;
+  cursor: pointer;
+  transition: transform 0.15s, border-color 0.2s, box-shadow 0.2s;
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  backdrop-filter: blur(10px);
+}
+.child-select-btn:active { transform: scale(0.93); }
+.child-select-btn .avatar { font-size: 3rem; }
+.child-select-btn .cname { font-size: 1.05rem; font-weight: 700; }
+.parent-link {
+  color: var(--muted2); font-size: 0.85rem; text-decoration: none;
+  padding: 12px 24px; border-radius: 9999px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.03);
+  cursor: pointer; transition: color 0.2s;
+}
+.parent-link:hover { color: var(--muted); }
+
+/* ===== CHILD HOME SCREEN ===== */
+#screen-child-home { padding: 0; background: transparent; }
+.child-header {
+  padding: 20px 20px 16px;
+  display: flex; align-items: center; gap: 14px;
+  background: rgba(0,0,0,0.25);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.child-header-avatar { font-size: 2.4rem; }
+.child-header-info { flex: 1; }
+.child-header-name { font-size: 1.3rem; font-weight: 800; }
+.child-header-slot {
+  font-size: 0.75rem; color: var(--muted);
+  background: rgba(255,255,255,0.08);
+  padding: 2px 10px; border-radius: 9999px;
+  display: inline-block; margin-top: 4px;
+}
+.coin-display {
+  display: flex; align-items: center; gap: 6px;
+  background: rgba(245,158,11,0.15);
+  border: 1px solid rgba(245,158,11,0.3);
+  border-radius: 9999px;
+  padding: 8px 14px;
+}
+.coin-display .coin-icon { font-size: 1.4rem; }
+.coin-display .coin-count { font-size: 1.3rem; font-weight: 900; color: var(--accent-light); }
+.coin-display .coin-label { font-size: 0.7rem; color: var(--accent); font-weight: 600; }
+
+/* Countdown bar */
+.countdown-section { padding: 14px 20px 0; }
+.countdown-label {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 0.85rem; color: var(--muted); margin-bottom: 8px;
+}
+.countdown-label strong { color: var(--text); font-size: 1rem; }
+.countdown-bar-track {
+  height: 10px; background: rgba(255,255,255,0.08);
+  border-radius: 9999px; overflow: hidden;
+}
+.countdown-bar-fill {
+  height: 100%; border-radius: 9999px;
+  background: linear-gradient(90deg, #7c3aed, #f59e0b);
+  transition: width 1s linear;
+}
+
+/* Task quest area */
+.quest-area { padding: 16px 20px; flex: 1; }
+.progress-dots { display: flex; gap: 8px; justify-content: center; margin-bottom: 20px; }
+.dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: rgba(255,255,255,0.15);
+  transition: all 0.3s;
+}
+.dot.done { background: var(--success); }
+.dot.current { background: var(--accent); width: 24px; border-radius: 5px; }
+
+.quest-card {
+  padding: 28px 24px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  animation: fadeInUp 0.4s ease;
+}
+.quest-card::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(124,58,237,0.1), rgba(245,158,11,0.05));
+  border-radius: 16px;
+}
+.quest-card-icon { font-size: 4.5rem; margin-bottom: 16px; display: block; }
+.quest-card-title { font-size: 1.8rem; font-weight: 900; margin-bottom: 10px; letter-spacing: -0.5px; }
+.quest-card-desc { color: var(--muted); font-size: 0.95rem; margin-bottom: 24px; line-height: 1.5; }
+.quest-coin-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(245,158,11,0.2);
+  border: 1px solid rgba(245,158,11,0.4);
+  border-radius: 9999px; padding: 6px 16px;
+  font-size: 0.95rem; font-weight: 700; color: var(--accent-light);
+  margin-bottom: 24px;
+}
+.quest-card-btns { display: flex; flex-direction: column; gap: 12px; }
+
+.pending-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(245,158,11,0.15);
+  border: 1px solid rgba(245,158,11,0.3);
+  border-radius: 9999px; padding: 8px 20px;
+  font-size: 0.9rem; color: var(--accent);
+  animation: bounce-in 0.4s ease;
+}
+
+/* All done in slot */
+.slot-done-card { padding: 40px 24px; text-align: center; }
+.slot-done-icon { font-size: 5rem; margin-bottom: 16px; animation: float 3s infinite; }
+.slot-done-title { font-size: 1.6rem; font-weight: 900; margin-bottom: 8px; }
+.slot-done-desc { color: var(--muted); margin-bottom: 24px; }
+.game-time-banner {
+  background: linear-gradient(135deg, rgba(16,185,129,0.2), rgba(5,150,105,0.1));
+  border: 1px solid rgba(16,185,129,0.3);
+  border-radius: 16px; padding: 20px;
+  text-align: center;
+}
+.game-time-big { font-size: 2.5rem; font-weight: 900; color: var(--success-light); }
+.game-time-label { font-size: 0.9rem; color: var(--success); margin-top: 4px; }
+
+/* ===== CELEBRATION SCREEN ===== */
+#screen-celebrate {
+  align-items: center; justify-content: center;
+  background: radial-gradient(ellipse at center, #1e1045 0%, #0f0c29 70%);
+}
+.celebrate-content { text-align: center; padding: 40px 24px; }
+.celebrate-icon { font-size: 6rem; animation: bounce-in 0.5s ease; display: block; margin-bottom: 20px; }
+.celebrate-coins {
+  font-size: 3.5rem; font-weight: 900; color: var(--accent-light);
+  animation: popIn 0.5s 0.2s both;
+  text-shadow: 0 0 30px rgba(245,158,11,0.6);
+}
+.celebrate-msg {
+  font-size: 1.4rem; font-weight: 700; margin: 16px 0;
+  animation: fadeInUp 0.4s 0.4s both;
+}
+.celebrate-total {
+  color: var(--muted); font-size: 0.95rem;
+  animation: fadeInUp 0.4s 0.6s both;
+  margin-bottom: 28px;
+}
+.celebrate-btn { animation: fadeInUp 0.4s 0.8s both; max-width: 280px; margin: 0 auto; }
+
+/* Stars decoration */
+.star-burst {
+  position: fixed; pointer-events: none;
+  font-size: 2rem;
+  animation: star-burst 1s ease-out forwards;
+}
+
+/* ===== PHOTO PENDING SCREEN ===== */
+#screen-photo-pending {
+  align-items: center; justify-content: center; padding: 40px 24px;
+}
+.photo-pending-card { padding: 32px 24px; text-align: center; max-width: 360px; width: 100%; }
+.photo-pending-icon { font-size: 4rem; margin-bottom: 16px; animation: float 3s infinite; }
+.photo-pending-title { font-size: 1.4rem; font-weight: 800; margin-bottom: 8px; }
+.photo-pending-desc { color: var(--muted); margin-bottom: 20px; line-height: 1.5; }
+.photo-thumb {
+  width: 160px; height: 160px; object-fit: cover;
+  border-radius: 16px; border: 2px solid rgba(255,255,255,0.15);
+  margin-bottom: 20px;
+}
+.pending-hint {
+  font-size: 0.9rem; color: var(--accent);
+  background: rgba(245,158,11,0.1);
+  border: 1px solid rgba(245,158,11,0.2);
+  border-radius: 12px; padding: 12px 16px;
+  margin-bottom: 20px;
+}
+
+/* ===== PARENT PIN SCREEN ===== */
+#screen-pin {
+  align-items: center; justify-content: center; padding: 40px 24px;
+}
+.pin-card { padding: 32px 24px; text-align: center; max-width: 320px; width: 100%; }
+.pin-title { font-size: 1.3rem; font-weight: 800; margin-bottom: 8px; }
+.pin-subtitle { color: var(--muted); font-size: 0.9rem; margin-bottom: 28px; }
+.pin-dots { display: flex; justify-content: center; gap: 12px; margin-bottom: 28px; }
+.pin-dot {
+  width: 18px; height: 18px; border-radius: 50%;
+  border: 2px solid var(--muted2);
+  background: transparent;
+  transition: background 0.15s, border-color 0.15s;
+}
+.pin-dot.filled { background: var(--primary-light); border-color: var(--primary-light); }
+.pin-error { color: var(--danger); font-size: 0.85rem; min-height: 20px; margin-bottom: 12px; }
+.keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.key-btn {
+  height: 64px; border-radius: 16px;
+  background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1);
+  color: var(--text); font-size: 1.4rem; font-weight: 700; cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  display: flex; align-items: center; justify-content: center;
+}
+.key-btn:active { background: rgba(124,58,237,0.3); transform: scale(0.93); }
+.key-btn.key-del { font-size: 1rem; color: var(--muted); }
+.key-btn.key-empty { visibility: hidden; }
+
+/* ===== PARENT DASHBOARD ===== */
+#screen-parent-dashboard { padding: 0; }
+.parent-header {
+  padding: 20px 20px 16px;
+  background: rgba(0,0,0,0.3);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  display: flex; align-items: center; gap: 12px;
+}
+.parent-header-title { font-size: 1.2rem; font-weight: 800; flex: 1; }
+.icon-btn {
+  width: 44px; height: 44px; border-radius: 12px;
+  background: var(--card); border: 1px solid var(--card-border);
+  color: var(--text); font-size: 1.2rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s;
+}
+.icon-btn:active { background: var(--card-hover); }
+.dashboard-content { padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+
+/* Child progress cards */
+.child-progress-card { padding: 18px; }
+.child-progress-header { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.child-progress-avatar { font-size: 2rem; }
+.child-progress-name { font-size: 1.1rem; font-weight: 700; flex: 1; }
+.child-coins-badge {
+  background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.3);
+  border-radius: 9999px; padding: 4px 12px;
+  font-size: 0.9rem; font-weight: 700; color: var(--accent-light);
+}
+.task-mini-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.task-mini-item {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 0.85rem; color: var(--muted);
+}
+.task-mini-item .status-icon { font-size: 1rem; }
+.task-mini-item.done { color: var(--text); }
+.progress-bar-track {
+  height: 8px; background: rgba(255,255,255,0.08); border-radius: 9999px; overflow: hidden;
+}
+.progress-bar-fill {
+  height: 100%; border-radius: 9999px;
+  background: linear-gradient(90deg, #7c3aed, #10b981);
+  transition: width 0.5s ease;
+}
+.game-time-badge {
+  margin-top: 10px;
+  font-size: 0.85rem; color: var(--success);
+  background: rgba(16,185,129,0.1);
+  border: 1px solid rgba(16,185,129,0.2);
+  border-radius: 9999px; padding: 4px 14px;
+  display: inline-flex; align-items: center; gap: 4px;
+}
+
+/* Pending approvals */
+.approval-card { padding: 18px; }
+.approval-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3);
+  border-radius: 9999px; padding: 4px 12px;
+  font-size: 0.8rem; font-weight: 700; color: var(--danger-light);
+  margin-bottom: 14px;
+}
+.approval-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px; border-radius: 12px;
+  background: rgba(255,255,255,0.04); margin-bottom: 10px;
+}
+.approval-photo-thumb {
+  width: 64px; height: 64px; object-fit: cover;
+  border-radius: 10px; border: 1px solid rgba(255,255,255,0.15);
+  flex-shrink: 0;
+}
+.approval-info { flex: 1; min-width: 0; }
+.approval-child { font-size: 0.9rem; font-weight: 700; }
+.approval-task { font-size: 0.8rem; color: var(--muted); margin-top: 2px; }
+.approval-btns { display: flex; gap: 8px; flex-shrink: 0; }
+.approval-btns .btn { min-height: 36px; padding: 0 12px; font-size: 0.85rem; border-radius: 10px; width: auto; }
+
+/* Weekly view */
+.weekly-card { padding: 18px; }
+.week-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-top: 12px; }
+.week-cell {
+  aspect-ratio: 1;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.7rem; font-weight: 700;
+  background: rgba(255,255,255,0.05);
+  color: var(--muted2);
+  flex-direction: column; gap: 2px;
+}
+.week-cell .day-label { font-size: 0.6rem; }
+.week-cell.has-data { background: rgba(124,58,237,0.25); color: var(--text); }
+.week-cell.today { border: 2px solid var(--primary-light); }
+
+/* ===== PARENT SETTINGS ===== */
+#screen-parent-settings { padding: 0; }
+.settings-content { padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+.settings-section { padding: 18px; }
+.settings-section-title {
+  font-size: 0.85rem; font-weight: 700; letter-spacing: 1px;
+  text-transform: uppercase; color: var(--primary-light);
+  margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
+}
+.child-edit-row {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 14px;
+}
+.avatar-picker {
+  display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;
+}
+.avatar-option {
+  width: 44px; height: 44px; border-radius: 12px; font-size: 1.6rem;
+  background: rgba(255,255,255,0.07); border: 2px solid transparent;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: border-color 0.15s, transform 0.1s;
+}
+.avatar-option.selected { border-color: var(--primary-light); }
+.avatar-option:active { transform: scale(0.9); }
+.setting-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.setting-row:last-child { border-bottom: none; }
+.setting-label { flex: 1; font-size: 0.95rem; }
+.setting-value { color: var(--muted); font-size: 0.9rem; }
+.toggle-switch {
+  position: relative; width: 48px; height: 26px;
+  background: rgba(255,255,255,0.1); border-radius: 9999px;
+  cursor: pointer; transition: background 0.2s; flex-shrink: 0;
+}
+.toggle-switch.on { background: var(--primary); }
+.toggle-knob {
+  position: absolute; top: 3px; left: 3px;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: white; transition: transform 0.2s;
+}
+.toggle-switch.on .toggle-knob { transform: translateX(22px); }
+.text-input {
+  background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px; padding: 10px 14px; color: var(--text);
+  font-size: 0.95rem; width: 100%; margin-top: 8px; outline: none;
+}
+.text-input:focus { border-color: var(--primary-light); }
+.task-edit-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.task-edit-item:last-child { border-bottom: none; }
+.task-edit-icon { font-size: 1.4rem; flex-shrink: 0; }
+.task-edit-info { flex: 1; min-width: 0; }
+.task-edit-name { font-size: 0.9rem; font-weight: 600; }
+.task-edit-meta { font-size: 0.75rem; color: var(--muted); }
+.task-coin-input {
+  width: 56px; background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
+  padding: 6px 8px; color: var(--text); font-size: 0.9rem; text-align: center;
+}
+.danger-zone { padding: 18px; border: 1px solid rgba(239,68,68,0.2); }
+.danger-zone .settings-section-title { color: var(--danger-light); }
+
+/* ===== MISC ===== */
+.back-btn {
+  width: 36px; height: 36px; border-radius: 10px;
+  background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1);
+  color: var(--text); font-size: 1.1rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.divider { height: 1px; background: rgba(255,255,255,0.06); margin: 4px 0; }
+.toast {
+  position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%);
+  background: rgba(30,20,60,0.95); border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 12px; padding: 12px 24px; font-size: 0.95rem; font-weight: 600;
+  z-index: 1000; white-space: nowrap;
+  animation: fadeInUp 0.3s ease;
+}
+.empty-state {
+  text-align: center; color: var(--muted); font-size: 0.9rem;
+  padding: 24px; display: flex; flex-direction: column; align-items: center; gap: 8px;
+}
+.empty-state span { font-size: 2rem; }
+</style>
+</head>
+<body>
+
+<!-- ===== WELCOME SCREEN ===== -->
+<div id="screen-welcome" class="screen active">
+  <div class="welcome-logo">⚔️</div>
+  <div class="welcome-title">오늘의 퀘스트</div>
+  <div class="welcome-subtitle">매일 퀘스트를 완료하고<br>게임 시간을 획득하자! 🎮</div>
+
+  <div class="child-select-grid" id="child-select-grid">
+    <!-- populated by JS -->
+  </div>
+
+  <div class="parent-link" id="btn-go-parent-mode">🔐 엄마 모드</div>
+</div>
+
+<!-- ===== CHILD HOME SCREEN ===== -->
+<div id="screen-child-home" class="screen">
+  <div class="child-header">
+    <div class="child-header-avatar" id="child-avatar-display">🦊</div>
+    <div class="child-header-info">
+      <div class="child-header-name" id="child-name-display">아들</div>
+      <div class="child-header-slot" id="child-slot-label">하교 후 루틴</div>
+    </div>
+    <div class="coin-display">
+      <span class="coin-icon">🪙</span>
+      <span class="coin-count" id="child-coin-count">0</span>
+      <span class="coin-label">코인</span>
+    </div>
+  </div>
+
+  <div class="countdown-section" id="countdown-section" style="display:none">
+    <div class="countdown-label">
+      <span>⏰ 태권도까지</span>
+      <strong id="countdown-text">2시간 30분</strong>
+    </div>
+    <div class="countdown-bar-track">
+      <div class="countdown-bar-fill" id="countdown-bar" style="width:50%"></div>
+    </div>
+  </div>
+
+  <div class="quest-area" id="quest-area">
+    <!-- populated by JS -->
+  </div>
+</div>
+
+<!-- ===== CELEBRATE SCREEN ===== -->
+<div id="screen-celebrate" class="screen">
+  <div class="celebrate-content">
+    <span class="celebrate-icon" id="cel-icon">✨</span>
+    <div class="celebrate-coins" id="cel-coins">+5 🪙</div>
+    <div class="celebrate-msg" id="cel-msg">대단해!</div>
+    <div class="celebrate-total" id="cel-total">오늘 총 코인: 15개</div>
+    <div class="celebrate-btn">
+      <button class="btn btn-accent" id="btn-next-quest">다음 퀘스트 ➡️</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== PHOTO PENDING SCREEN ===== -->
+<div id="screen-photo-pending" class="screen">
+  <div class="card photo-pending-card">
+    <div class="photo-pending-icon">📱</div>
+    <div class="photo-pending-title">사진을 엄마한테<br>보여주세요!</div>
+    <div class="photo-pending-desc">사진을 찍었어요.<br>엄마가 확인하면 코인을 받을 수 있어요! 🪙</div>
+    <img class="photo-thumb" id="pending-photo-preview" src="" alt="제출한 사진">
+    <div class="pending-hint">💡 엄마 모드에서 승인을 받으면<br>코인이 추가돼요!</div>
+    <button class="btn btn-ghost" id="btn-pending-back" style="margin-top:8px">← 다음 퀘스트</button>
+  </div>
+</div>
+
+<!-- ===== PARENT PIN SCREEN ===== -->
+<div id="screen-pin" class="screen">
+  <div class="card pin-card">
+    <div style="font-size:2.5rem;margin-bottom:12px">🔐</div>
+    <div class="pin-title">엄마 모드</div>
+    <div class="pin-subtitle">비밀번호 4자리를 입력해 주세요</div>
+    <div class="pin-dots" id="pin-dots">
+      <div class="pin-dot"></div>
+      <div class="pin-dot"></div>
+      <div class="pin-dot"></div>
+      <div class="pin-dot"></div>
+    </div>
+    <div class="pin-error" id="pin-error"></div>
+    <div class="keypad" id="keypad">
+      <button class="key-btn" data-key="1">1</button>
+      <button class="key-btn" data-key="2">2</button>
+      <button class="key-btn" data-key="3">3</button>
+      <button class="key-btn" data-key="4">4</button>
+      <button class="key-btn" data-key="5">5</button>
+      <button class="key-btn" data-key="6">6</button>
+      <button class="key-btn" data-key="7">7</button>
+      <button class="key-btn" data-key="8">8</button>
+      <button class="key-btn" data-key="9">9</button>
+      <button class="key-btn key-empty"></button>
+      <button class="key-btn" data-key="0">0</button>
+      <button class="key-btn key-del" data-key="del">⌫</button>
+    </div>
+    <button class="btn btn-ghost" id="btn-pin-back" style="margin-top:20px;border-radius:12px">← 돌아가기</button>
+  </div>
+</div>
+
+<!-- ===== PARENT DASHBOARD ===== -->
+<div id="screen-parent-dashboard" class="screen">
+  <div class="parent-header">
+    <button class="back-btn" id="btn-dashboard-back">←</button>
+    <div class="parent-header-title">🏠 엄마 대시보드</div>
+    <button class="icon-btn" id="btn-go-settings" title="설정">⚙️</button>
+  </div>
+  <div class="dashboard-content" id="dashboard-content">
+    <!-- populated by JS -->
+  </div>
+</div>
+
+<!-- ===== PARENT SETTINGS ===== -->
+<div id="screen-parent-settings" class="screen">
+  <div class="parent-header">
+    <button class="back-btn" id="btn-settings-back">←</button>
+    <div class="parent-header-title">⚙️ 설정</div>
+  </div>
+  <div class="settings-content" id="settings-content">
+    <!-- populated by JS -->
+  </div>
+</div>
+
+<!-- camera input is injected inside label dynamically -->
+
+<script>
+/* =====================================================
+   DATA & DEFAULTS
+   ===================================================== */
+
+const DEFAULT_SETTINGS = {
+  parentPin: '0000',
+  taekwondoTime: '14:25',
+  children: [
+    { id: 'c1', name: '아들', avatar: '🦊', color: '#7c3aed' },
+    { id: 'c2', name: '딸', avatar: '🐰', color: '#ec4899' }
+  ],
+  coinsPerMinute: 1
+};
+
+const DEFAULT_TASKS = [
+  // 아침 루틴
+  { id: 't_morning_1', slot: 'morning', icon: '🚿', name: '세수하기',    desc: '깨끗하게 세수해요!',         needsPhoto: true,  coins: 5  },
+  { id: 't_morning_2', slot: 'morning', icon: '🦷', name: '양치하기',    desc: '이를 깨끗이 닦아요!',         needsPhoto: true,  coins: 5  },
+  { id: 't_morning_3', slot: 'morning', icon: '🍚', name: '밥 먹기',     desc: '아침밥을 맛있게 먹어요!',     needsPhoto: false, coins: 5  },
+  { id: 't_morning_4', slot: 'morning', icon: '🎒', name: '가방 챙기기', desc: '준비물 다 챙겼나요?',         needsPhoto: true,  coins: 5  },
+  // 하교 후 루틴
+  { id: 't_after_1',  slot: 'after',   icon: '🙌', name: '손 씻기',     desc: '학교 다녀와서 손 씻기!',     needsPhoto: false, coins: 3  },
+  { id: 't_after_2',  slot: 'after',   icon: '🍎', name: '간식 먹기',   desc: '맛있는 간식 시간!',           needsPhoto: false, coins: 3  },
+  { id: 't_after_3',  slot: 'after',   icon: '📚', name: '오늘의 학습', desc: '오늘 배운 것을 복습해요!',   needsPhoto: true,  coins: 20 },
+  { id: 't_after_4',  slot: 'after',   icon: '🥋', name: '태권도 준비', desc: '태권도 가방 챙겨요!',         needsPhoto: false, coins: 5  },
+  // 저녁 루틴
+  { id: 't_evening_1', slot: 'evening', icon: '🍽️', name: '저녁 먹기',  desc: '저녁밥 맛있게 먹어요!',     needsPhoto: false, coins: 3  },
+  { id: 't_evening_2', slot: 'evening', icon: '🚿', name: '샤워하기',   desc: '깨끗하게 씻어요!',           needsPhoto: true,  coins: 10 },
+  { id: 't_evening_3', slot: 'evening', icon: '🦷', name: '양치하기',   desc: '잠들기 전 양치!',            needsPhoto: true,  coins: 5  },
+  { id: 't_evening_4', slot: 'evening', icon: '📖', name: '책 읽기',    desc: '책 한 권 읽어볼까요?',       needsPhoto: true,  coins: 10 }
+];
+
+const SLOT_BONUS = 10;
+const SLOT_HOURS = { morning: [6, 12], after: [12, 18], evening: [18, 23] };
+const SLOT_NAMES = { morning: '아침 루틴', after: '하교 후 루틴', evening: '저녁 루틴' };
+const CELEBRATE_MSGS = ['대단해! 🌟', '최고야! 🏆', '퀘스트 클리어! ⚔️', '완벽해! ✨', '굉장해! 🎉'];
+const AVATAR_OPTIONS = ['🦊','🐰','🐻','🐯','🦁','🐸','🐧','🦄','🐺','🦋','🐉','⭐'];
+
+/* =====================================================
+   STATE
+   ===================================================== */
+
+let currentChildId = null;
+let celebrateTimer = null;
+let countdownTimer = null;
+let celebrateTaskId = null;
+
+/* =====================================================
+   STORAGE HELPERS
+   ===================================================== */
+
+function getSettings() {
+  try {
+    const s = localStorage.getItem('questApp_settings');
+    return s ? { ...DEFAULT_SETTINGS, ...JSON.parse(s) } : { ...DEFAULT_SETTINGS };
+  } catch(e) { return { ...DEFAULT_SETTINGS }; }
+}
+function saveSettings(s) { localStorage.setItem('questApp_settings', JSON.stringify(s)); }
+
+function getTasks() {
+  try {
+    const t = localStorage.getItem('questApp_tasks');
+    return t ? JSON.parse(t) : [...DEFAULT_TASKS];
+  } catch(e) { return [...DEFAULT_TASKS]; }
+}
+function saveTasks(t) { localStorage.setItem('questApp_tasks', JSON.stringify(t)); }
+
+function getTodayKey() {
+  const d = new Date();
+  return `questApp_log_${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function getLog() {
+  try {
+    const l = localStorage.getItem(getTodayKey());
+    return l ? JSON.parse(l) : {};
+  } catch(e) { return {}; }
+}
+function saveLog(log) { localStorage.setItem(getTodayKey(), JSON.stringify(log)); }
+
+function getChildLog(childId) {
+  const log = getLog();
+  return log[childId] || {};
+}
+function setTaskStatus(childId, taskId, status, photoData = null) {
+  const log = getLog();
+  if (!log[childId]) log[childId] = {};
+  log[childId][taskId] = {
+    status,
+    photoData: photoData || (log[childId][taskId] ? log[childId][taskId].photoData : null),
+    completedAt: new Date().toISOString()
+  };
+  saveLog(log);
+}
+
+/* =====================================================
+   UTILITY
+   ===================================================== */
+
+function getCurrentSlot() {
+  const h = new Date().getHours();
+  if (h >= SLOT_HOURS.morning[0] && h < SLOT_HOURS.morning[1]) return 'morning';
+  if (h >= SLOT_HOURS.after[0]   && h < SLOT_HOURS.after[1])   return 'after';
+  if (h >= SLOT_HOURS.evening[0] && h < SLOT_HOURS.evening[1]) return 'evening';
+  // default fallback
+  if (h < SLOT_HOURS.morning[0]) return 'morning';
+  return 'evening';
+}
+
+function getActiveTasks() {
+  return getTasks().filter(t => t.enabled !== false);
+}
+
+function getSlotTasks(slot) {
+  return getActiveTasks().filter(t => t.slot === slot);
+}
+
+function calcTotalCoins(childId) {
+  const log = getChildLog(childId);
+  const tasks = getActiveTasks();
+  let total = 0;
+  const slots = { morning: false, after: false, evening: false };
+  const slotDone = { morning: true, after: true, evening: true };
+  for (const t of tasks) {
+    const entry = log[t.id];
+    if (entry && (entry.status === 'done' || entry.status === 'approved')) {
+      total += t.coins;
+      slots[t.slot] = true;
+    } else {
+      slotDone[t.slot] = false;
+    }
+  }
+  // bonus for completed slots
+  for (const slot of ['morning','after','evening']) {
+    const slotTasks = tasks.filter(t => t.slot === slot);
+    if (slotTasks.length > 0 && slotDone[slot]) total += SLOT_BONUS;
+  }
+  return total;
+}
+
+function isSlotComplete(childId, slot) {
+  const tasks = getSlotTasks(slot);
+  const log = getChildLog(childId);
+  return tasks.every(t => {
+    const e = log[t.id];
+    return e && (e.status === 'done' || e.status === 'approved');
+  });
+}
+
+function getNextPendingTask(childId, slot) {
+  const tasks = getSlotTasks(slot);
+  const log = getChildLog(childId);
+  for (const t of tasks) {
+    const e = log[t.id];
+    if (!e || e.status === 'rejected') return t;
+    if (e.status === 'pending_approval') return t; // show pending state
+  }
+  return null;
+}
+
+function compressImage(dataUrl, maxPx, callback) {
+  const img = new Image();
+  img.onload = function() {
+    const canvas = document.createElement('canvas');
+    let w = img.width, h = img.height;
+    if (w > h) { if (w > maxPx) { h = h * maxPx / w; w = maxPx; } }
+    else        { if (h > maxPx) { w = w * maxPx / h; h = maxPx; } }
+    canvas.width = w; canvas.height = h;
+    canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+    callback(canvas.toDataURL('image/jpeg', 0.7));
+  };
+  img.src = dataUrl;
+}
+
+function showToast(msg, duration = 2500) {
+  const existing = document.querySelector('.toast');
+  if (existing) existing.remove();
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), duration);
+}
+
+function formatCountdown(minutes) {
+  if (minutes <= 0) return '지금 출발!';
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h > 0) return `${h}시간 ${m}분`;
+  return `${m}분`;
+}
+
+/* =====================================================
+   SCREEN NAVIGATION
+   ===================================================== */
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById('screen-' + id);
+  if (el) el.classList.add('active');
+}
+
+/* =====================================================
+   CONFETTI & CELEBRATION FX
+   ===================================================== */
+
+function spawnConfetti() {
+  const container = document.createElement('div');
+  container.className = 'confetti-container';
+  document.body.appendChild(container);
+  const colors = ['#7c3aed','#f59e0b','#10b981','#ef4444','#3b82f6','#ec4899'];
+  for (let i = 0; i < 60; i++) {
+    const piece = document.createElement('div');
+    piece.className = 'confetti-piece';
+    piece.style.cssText = `
+      left: ${Math.random()*100}%;
+      background: ${colors[Math.floor(Math.random()*colors.length)]};
+      width: ${6 + Math.random()*8}px;
+      height: ${6 + Math.random()*8}px;
+      border-radius: ${Math.random() > 0.5 ? '50%' : '2px'};
+      animation-duration: ${1.5 + Math.random()*2}s;
+      animation-delay: ${Math.random()*0.5}s;
+    `;
+    container.appendChild(piece);
+  }
+  setTimeout(() => container.remove(), 4000);
+}
+
+/* =====================================================
+   WELCOME SCREEN
+   ===================================================== */
+
+function renderWelcome() {
+  const settings = getSettings();
+  const grid = document.getElementById('child-select-grid');
+  grid.innerHTML = '';
+  settings.children.forEach(child => {
+    const btn = document.createElement('div');
+    btn.className = 'child-select-btn';
+    btn.style.borderColor = child.color + '55';
+    btn.innerHTML = `
+      <span class="avatar">${child.avatar}</span>
+      <span class="cname">${child.name}</span>
+    `;
+    btn.addEventListener('click', () => enterChildMode(child.id));
+    grid.appendChild(btn);
+  });
+}
+
+/* =====================================================
+   CHILD MODE
+   ===================================================== */
+
+function enterChildMode(childId) {
+  currentChildId = childId;
+  const settings = getSettings();
+  const child = settings.children.find(c => c.id === childId);
+  if (!child) return;
+  document.getElementById('child-avatar-display').textContent = child.avatar;
+  document.getElementById('child-name-display').textContent = child.name;
+  showScreen('child-home');
+  renderChildHome();
+  startCountdown();
+}
+
+function renderChildHome() {
+  if (!currentChildId) return;
+  const slot = getCurrentSlot();
+  document.getElementById('child-slot-label').textContent = SLOT_NAMES[slot];
+  document.getElementById('child-coin-count').textContent = calcTotalCoins(currentChildId);
+  renderQuestArea(slot);
+}
+
+function renderQuestArea(slot) {
+  const area = document.getElementById('quest-area');
+  area.innerHTML = '';
+  const tasks = getSlotTasks(slot);
+  const log = getChildLog(currentChildId);
+
+  // progress dots
+  const dotsDiv = document.createElement('div');
+  dotsDiv.className = 'progress-dots';
+  const nextTask = getNextPendingTask(currentChildId, slot);
+  tasks.forEach(t => {
+    const dot = document.createElement('div');
+    const entry = log[t.id];
+    const isDone = entry && (entry.status === 'done' || entry.status === 'approved');
+    const isCurrent = nextTask && nextTask.id === t.id;
+    dot.className = 'dot' + (isDone ? ' done' : '') + (isCurrent ? ' current' : '');
+    dotsDiv.appendChild(dot);
+  });
+  area.appendChild(dotsDiv);
+
+  // all done in slot
+  if (isSlotComplete(currentChildId, slot)) {
+    const bonus = SLOT_BONUS;
+    const totalCoins = calcTotalCoins(currentChildId);
+    const settings = getSettings();
+    const gameMinutes = Math.floor(totalCoins / settings.coinsPerMinute);
+    area.innerHTML += `
+      <div class="card slot-done-card anim-fadeInUp">
+        <div class="slot-done-icon">🎉</div>
+        <div class="slot-done-title">${SLOT_NAMES[slot]} 완료!</div>
+        <div class="slot-done-desc">모든 퀘스트를 완료했어요!<br>보너스 +${bonus} 🪙 코인 획득!</div>
+        <div class="game-time-banner">
+          <div class="game-time-big">🎮 ${gameMinutes}분</div>
+          <div class="game-time-label">오늘 획득한 게임 시간</div>
+        </div>
+      </div>`;
+    return;
+  }
+
+  // show next task
+  if (nextTask) {
+    const entry = log[nextTask.id];
+    const isPending = entry && entry.status === 'pending_approval';
+
+    if (isPending) {
+      // Pending approval state
+      area.innerHTML += `
+        <div class="card quest-card anim-fadeInUp">
+          <span class="quest-card-icon">${nextTask.icon}</span>
+          <div class="quest-card-title">${nextTask.name}</div>
+          <div class="quest-card-desc">${nextTask.desc}</div>
+          <div class="pending-badge">⏳ 엄마 승인 대기 중...</div>
+          <div style="margin-top:16px">
+            ${entry.photoData ? `<img src="${entry.photoData}" style="width:120px;height:120px;object-fit:cover;border-radius:12px;border:2px solid rgba(255,255,255,0.15)">` : ''}
+          </div>
+          <div style="margin-top:16px;color:var(--muted);font-size:0.85rem">💡 엄마가 승인하면 코인을 받아요!</div>
+        </div>`;
+    } else {
+      // Normal task
+      celebrateTaskId = nextTask.id;
+      const btnHtml = nextTask.needsPhoto
+        ? `<label class="btn btn-accent" style="display:inline-block;cursor:pointer;">📸 사진 찍기<input type="file" accept="image/*" id="camera-input" style="position:absolute;width:0;height:0;opacity:0;overflow:hidden;" onchange="handleCameraChange(event)"></label>`
+        : `<button class="btn btn-success" id="btn-complete-task">✅ 완료!</button>`;
+      area.innerHTML += `
+        <div class="card quest-card anim-fadeInUp">
+          <span class="quest-card-icon">${nextTask.icon}</span>
+          <div class="quest-card-title">${nextTask.name}</div>
+          <div class="quest-card-desc">${nextTask.desc}</div>
+          <div class="quest-coin-badge">🪙 +${nextTask.coins} 코인 획득 가능!</div>
+          <div class="quest-card-btns">${btnHtml}</div>
+        </div>`;
+
+      if (!nextTask.needsPhoto) {
+        document.getElementById('btn-complete-task').addEventListener('click', () => {
+          completeTask(nextTask, false);
+        });
+      }
+    }
+  }
+
+  // game time at bottom
+  const totalCoins = calcTotalCoins(currentChildId);
+  const settings = getSettings();
+  const gameMinutes = Math.floor(totalCoins / settings.coinsPerMinute);
+  const gameDiv = document.createElement('div');
+  gameDiv.style.cssText = 'text-align:center;color:var(--muted);font-size:0.9rem;padding:16px 0;';
+  gameDiv.textContent = `🎮 오늘 획득한 게임 시간: ${gameMinutes}분`;
+  area.appendChild(gameDiv);
+}
+
+function completeTask(task, photoData) {
+  const status = task.needsPhoto ? 'pending_approval' : 'done';
+  setTaskStatus(currentChildId, task.id, status, photoData || null);
+
+  if (task.needsPhoto && photoData) {
+    // Show photo pending screen
+    document.getElementById('pending-photo-preview').src = photoData;
+    showScreen('photo-pending');
+    return;
+  }
+
+  // Show celebrate screen
+  showCelebrate(task);
+}
+
+function showCelebrate(task) {
+  spawnConfetti();
+  document.getElementById('cel-icon').textContent = task.icon;
+  document.getElementById('cel-coins').textContent = `+${task.coins} 🪙`;
+  document.getElementById('cel-msg').textContent = CELEBRATE_MSGS[Math.floor(Math.random() * CELEBRATE_MSGS.length)];
+  const total = calcTotalCoins(currentChildId);
+  document.getElementById('cel-total').textContent = `오늘 총 코인: ${total}개 🪙`;
+  showScreen('celebrate');
+  if (celebrateTimer) clearTimeout(celebrateTimer);
+  celebrateTimer = setTimeout(() => advanceFromCelebrate(), 2500);
+}
+
+function advanceFromCelebrate() {
+  if (celebrateTimer) clearTimeout(celebrateTimer);
+  showScreen('child-home');
+  renderChildHome();
+}
+
+/* ===== COUNTDOWN ===== */
+function startCountdown() {
+  if (countdownTimer) clearInterval(countdownTimer);
+  updateCountdown();
+  countdownTimer = setInterval(updateCountdown, 30000); // update every 30s
+}
+
+function updateCountdown() {
+  const settings = getSettings();
+  const [th, tm] = settings.taekwondoTime.split(':').map(Number);
+  const now = new Date();
+  const targetMinutes = th * 60 + tm;
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const diff = targetMinutes - nowMinutes;
+  const section = document.getElementById('countdown-section');
+
+  if (diff > 0 && diff < 180) { // show if within 3 hours
+    section.style.display = 'block';
+    document.getElementById('countdown-text').textContent = formatCountdown(diff);
+    const progress = Math.max(0, Math.min(100, (1 - diff / 180) * 100));
+    document.getElementById('countdown-bar').style.width = progress + '%';
+  } else {
+    section.style.display = 'none';
+  }
+}
+
+/* ===== CAMERA HANDLER ===== */
+function handleCameraChange(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    compressImage(ev.target.result, 400, (compressed) => {
+      const tasks = getActiveTasks();
+      const task = tasks.find(t => t.id === celebrateTaskId);
+      if (task) completeTask(task, compressed);
+    });
+  };
+  reader.readAsDataURL(file);
+}
+
+/* =====================================================
+   PARENT MODE
+   ===================================================== */
+
+let pinBuffer = '';
+
+function openPinScreen() {
+  pinBuffer = '';
+  document.getElementById('pin-error').textContent = '';
+  renderPinDots();
+  showScreen('pin');
+}
+
+function renderPinDots() {
+  const dots = document.querySelectorAll('#pin-dots .pin-dot');
+  dots.forEach((d, i) => {
+    d.classList.toggle('filled', i < pinBuffer.length);
+  });
+}
+
+document.getElementById('keypad').addEventListener('click', (e) => {
+  const key = e.target.closest('[data-key]');
+  if (!key) return;
+  const val = key.dataset.key;
+  if (val === 'del') {
+    pinBuffer = pinBuffer.slice(0, -1);
+    renderPinDots();
+    document.getElementById('pin-error').textContent = '';
+  } else if (pinBuffer.length < 4) {
+    pinBuffer += val;
+    renderPinDots();
+    if (pinBuffer.length === 4) {
+      const settings = getSettings();
+      if (pinBuffer === settings.parentPin) {
+        setTimeout(() => {
+          showScreen('parent-dashboard');
+          renderDashboard();
+        }, 200);
+      } else {
+        document.getElementById('pin-error').textContent = '비밀번호가 틀렸어요. 다시 입력해 주세요.';
+        pinBuffer = '';
+        renderPinDots();
+      }
+    }
+  }
+});
+
+/* =====================================================
+   PARENT DASHBOARD
+   ===================================================== */
+
+function renderDashboard() {
+  const settings = getSettings();
+  const tasks = getActiveTasks();
+  const content = document.getElementById('dashboard-content');
+  content.innerHTML = '';
+
+  // Per-child progress
+  settings.children.forEach(child => {
+    const log = getChildLog(child.id);
+    const totalCoins = calcTotalCoins(child.id);
+    const gameMinutes = Math.floor(totalCoins / settings.coinsPerMinute);
+    const doneTasks = tasks.filter(t => {
+      const e = log[t.id];
+      return e && (e.status === 'done' || e.status === 'approved');
+    });
+    const pct = tasks.length > 0 ? Math.round(doneTasks.length / tasks.length * 100) : 0;
+
+    const card = document.createElement('div');
+    card.className = 'card child-progress-card';
+    let taskListHtml = tasks.map(t => {
+      const e = log[t.id];
+      let icon = '⬜';
+      let cls = '';
+      if (e) {
+        if (e.status === 'done' || e.status === 'approved') { icon = '✅'; cls = 'done'; }
+        else if (e.status === 'pending_approval') icon = '⏳';
+        else if (e.status === 'rejected') icon = '❌';
+      }
+      return `<div class="task-mini-item ${cls}"><span class="status-icon">${icon}</span><span>${t.icon} ${t.name}</span></div>`;
+    }).join('');
+
+    card.innerHTML = `
+      <div class="child-progress-header">
+        <div class="child-progress-avatar">${child.avatar}</div>
+        <div class="child-progress-name">${child.name}</div>
+        <div class="child-coins-badge">🪙 ${totalCoins}</div>
+      </div>
+      <div class="progress-bar-track" style="margin-bottom:10px">
+        <div class="progress-bar-fill" style="width:${pct}%"></div>
+      </div>
+      <div style="font-size:0.8rem;color:var(--muted);margin-bottom:10px">${doneTasks.length} / ${tasks.length} 완료 · ${pct}%</div>
+      <div class="task-mini-list">${taskListHtml}</div>
+      <div class="game-time-badge">🎮 게임 시간: ${gameMinutes}분</div>`;
+    content.appendChild(card);
+  });
+
+  // Pending approvals
+  const pendingItems = [];
+  settings.children.forEach(child => {
+    const log = getChildLog(child.id);
+    tasks.forEach(t => {
+      const e = log[t.id];
+      if (e && e.status === 'pending_approval' && e.photoData) {
+        pendingItems.push({ child, task: t, entry: e });
+      }
+    });
+  });
+
+  if (pendingItems.length > 0) {
+    const approvalCard = document.createElement('div');
+    approvalCard.className = 'card approval-card';
+    let itemsHtml = pendingItems.map((p, i) => `
+      <div class="approval-item" id="approval-item-${i}">
+        <img class="approval-photo-thumb" src="${p.entry.photoData}" alt="사진">
+        <div class="approval-info">
+          <div class="approval-child">${p.child.avatar} ${p.child.name}</div>
+          <div class="approval-task">${p.task.icon} ${p.task.name}</div>
+        </div>
+        <div class="approval-btns">
+          <button class="btn btn-success" onclick="approvePhoto('${p.child.id}','${p.task.id}',${p.task.coins})">✅ 승인</button>
+          <button class="btn btn-danger"  onclick="rejectPhoto('${p.child.id}','${p.task.id}')">❌</button>
+        </div>
+      </div>`).join('');
+    approvalCard.innerHTML = `
+      <div class="approval-badge">📸 사진 승인 대기 ${pendingItems.length}건</div>
+      ${itemsHtml}`;
+    content.appendChild(approvalCard);
+  } else {
+    const emptyApproval = document.createElement('div');
+    emptyApproval.className = 'card';
+    emptyApproval.style.padding = '16px';
+    emptyApproval.innerHTML = `<div class="empty-state"><span>📸</span><span>승인 대기 중인 사진이 없어요</span></div>`;
+    content.appendChild(emptyApproval);
+  }
+
+  // Weekly view
+  const weekCard = document.createElement('div');
+  weekCard.className = 'card weekly-card';
+  const weekDays = ['일','월','화','수','목','금','토'];
+  let weekCells = '';
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    const key = `questApp_log_${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    let count = 0;
+    try {
+      const dayLog = JSON.parse(localStorage.getItem(key) || '{}');
+      settings.children.forEach(child => {
+        const cl = dayLog[child.id] || {};
+        Object.values(cl).forEach(e => {
+          if (e.status === 'done' || e.status === 'approved') count++;
+        });
+      });
+    } catch(e) {}
+    const isToday = i === 0;
+    weekCells += `<div class="week-cell ${count > 0 ? 'has-data' : ''} ${isToday ? 'today' : ''}">
+      <div class="day-label">${weekDays[d.getDay()]}</div>
+      <div>${count > 0 ? count : '-'}</div>
+    </div>`;
+  }
+  weekCard.innerHTML = `
+    <div class="section-title">📊 이번 주 퀘스트 현황</div>
+    <div style="font-size:0.75rem;color:var(--muted);margin-bottom:8px">숫자 = 완료한 퀘스트 수</div>
+    <div class="week-grid">${weekCells}</div>`;
+  content.appendChild(weekCard);
+}
+
+function approvePhoto(childId, taskId, coins) {
+  setTaskStatus(childId, taskId, 'approved', null);
+  showToast(`✅ 승인 완료! 🪙 ${coins}코인 지급!`);
+  renderDashboard();
+}
+
+function rejectPhoto(childId, taskId) {
+  setTaskStatus(childId, taskId, 'rejected', null);
+  showToast('❌ 다시 해보라고 했어요');
+  renderDashboard();
+}
+
+/* =====================================================
+   PARENT SETTINGS
+   ===================================================== */
+
+function renderSettings() {
+  const settings = getSettings();
+  const tasks = getTasks();
+  const content = document.getElementById('settings-content');
+  content.innerHTML = '';
+
+  // --- Children section ---
+  const childSection = document.createElement('div');
+  childSection.className = 'card settings-section';
+  let childHtml = '<div class="settings-section-title">👶 자녀 설정</div>';
+  settings.children.forEach((child, idx) => {
+    const avatarOpts = AVATAR_OPTIONS.map(a =>
+      `<div class="avatar-option ${a === child.avatar ? 'selected' : ''}"
+        onclick="changeAvatar(${idx},'${a}',this)">${a}</div>`
+    ).join('');
+    childHtml += `
+      <div class="child-edit-row" style="flex-direction:column;align-items:flex-start;gap:8px;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.06);margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:12px;width:100%">
+          <span style="font-size:2rem">${child.avatar}</span>
+          <input class="text-input" id="child-name-${idx}" value="${child.name}"
+            style="flex:1" placeholder="이름"
+            onchange="changeChildName(${idx},this.value)">
+        </div>
+        <div class="avatar-picker">${avatarOpts}</div>
+      </div>`;
+  });
+  childSection.innerHTML = childHtml;
+  content.appendChild(childSection);
+
+  // --- Schedule section ---
+  const schedSection = document.createElement('div');
+  schedSection.className = 'card settings-section';
+  schedSection.innerHTML = `
+    <div class="settings-section-title">⏰ 스케줄 설정</div>
+    <div class="setting-row">
+      <div class="setting-label">태권도 출발 시간</div>
+      <input type="time" class="text-input" id="taekwondo-time"
+        value="${settings.taekwondoTime}"
+        style="width:130px;margin-top:0"
+        onchange="saveTaekwondoTime(this.value)">
+    </div>
+    <div class="setting-row">
+      <div class="setting-label">코인 → 게임 시간</div>
+      <div class="setting-value">🪙 1코인 = 1분</div>
+    </div>`;
+  content.appendChild(schedSection);
+
+  // --- Tasks section ---
+  const taskSection = document.createElement('div');
+  taskSection.className = 'card settings-section';
+  let taskHtml = '<div class="settings-section-title">📋 퀘스트 관리</div>';
+  const slotOrder = ['morning','after','evening'];
+  slotOrder.forEach(slot => {
+    taskHtml += `<div style="font-size:0.8rem;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin:12px 0 8px">${SLOT_NAMES[slot]}</div>`;
+    tasks.filter(t => t.slot === slot).forEach(t => {
+      const isOn = t.enabled !== false;
+      taskHtml += `
+        <div class="task-edit-item">
+          <span class="task-edit-icon">${t.icon}</span>
+          <div class="task-edit-info">
+            <div class="task-edit-name">${t.name}</div>
+            <div class="task-edit-meta">${t.needsPhoto ? '📸 사진 필요' : '✅ 완료만'} ·
+              <input type="number" class="task-coin-input" value="${t.coins}" min="1" max="99"
+                onchange="changeTaskCoins('${t.id}',this.value)">🪙
+            </div>
+          </div>
+          <div class="toggle-switch ${isOn ? 'on' : ''}" onclick="toggleTask('${t.id}',this)">
+            <div class="toggle-knob"></div>
+          </div>
+        </div>`;
+    });
+  });
+  taskSection.innerHTML = taskHtml;
+  content.appendChild(taskSection);
+
+  // --- PIN section ---
+  const pinSection = document.createElement('div');
+  pinSection.className = 'card settings-section';
+  pinSection.innerHTML = `
+    <div class="settings-section-title">🔐 비밀번호 변경</div>
+    <div style="display:flex;gap:8px;align-items:flex-end">
+      <div style="flex:1">
+        <div style="font-size:0.8rem;color:var(--muted);margin-bottom:6px">새 비밀번호 (4자리)</div>
+        <input type="number" class="text-input" id="new-pin" placeholder="0000"
+          maxlength="4" style="margin-top:0" oninput="if(this.value.length>4)this.value=this.value.slice(0,4)">
+      </div>
+      <button class="btn btn-primary btn-sm" style="width:auto;min-width:80px" onclick="changePin()">변경</button>
+    </div>`;
+  content.appendChild(pinSection);
+
+  // --- Danger zone ---
+  const dangerSection = document.createElement('div');
+  dangerSection.className = 'card danger-zone';
+  dangerSection.innerHTML = `
+    <div class="settings-section-title">⚠️ 위험 구역</div>
+    <button class="btn btn-danger" onclick="resetTodayData()">오늘 데이터 초기화</button>
+    <div style="font-size:0.8rem;color:var(--muted);margin-top:8px;text-align:center">오늘의 퀘스트 기록이 모두 삭제됩니다</div>`;
+  content.appendChild(dangerSection);
+}
+
+function changeAvatar(childIdx, avatar, el) {
+  const settings = getSettings();
+  settings.children[childIdx].avatar = avatar;
+  saveSettings(settings);
+  // Update visual selection
+  el.closest('.avatar-picker').querySelectorAll('.avatar-option').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+  el.closest('.child-edit-row').querySelector('span').textContent = avatar;
+  showToast('아바타가 변경됐어요!');
+}
+
+function changeChildName(childIdx, name) {
+  if (!name.trim()) return;
+  const settings = getSettings();
+  settings.children[childIdx].name = name.trim();
+  saveSettings(settings);
+}
+
+function saveTaekwondoTime(time) {
+  const settings = getSettings();
+  settings.taekwondoTime = time;
+  saveSettings(settings);
+  showToast('태권도 시간이 저장됐어요!');
+}
+
+function toggleTask(taskId, toggleEl) {
+  const tasks = getTasks();
+  const task = tasks.find(t => t.id === taskId);
+  if (!task) return;
+  task.enabled = task.enabled === false ? true : false;
+  saveTasks(tasks);
+  toggleEl.classList.toggle('on', task.enabled !== false);
+}
+
+function changeTaskCoins(taskId, val) {
+  const coins = Math.max(1, Math.min(99, parseInt(val) || 1));
+  const tasks = getTasks();
+  const task = tasks.find(t => t.id === taskId);
+  if (!task) return;
+  task.coins = coins;
+  saveTasks(tasks);
+}
+
+function changePin() {
+  const newPin = document.getElementById('new-pin').value;
+  if (!/^\d{4}$/.test(newPin)) {
+    showToast('4자리 숫자를 입력해 주세요!');
+    return;
+  }
+  const settings = getSettings();
+  settings.parentPin = newPin;
+  saveSettings(settings);
+  document.getElementById('new-pin').value = '';
+  showToast('✅ 비밀번호가 변경됐어요!');
+}
+
+function resetTodayData() {
+  if (confirm('오늘의 퀘스트 기록을 모두 삭제할까요? 이 작업은 되돌릴 수 없어요.')) {
+    localStorage.removeItem(getTodayKey());
+    showToast('오늘 데이터가 초기화됐어요');
+    renderSettings();
+  }
+}
+
+/* =====================================================
+   EVENT LISTENERS
+   ===================================================== */
+
+// Welcome
+document.getElementById('btn-go-parent-mode').addEventListener('click', openPinScreen);
+
+// Child home - back to welcome when tapping avatar area (double-tap or long press not needed)
+// We'll add a small "홈" text link at bottom of quest area
+function addHomeLink() {
+  // Added via renderChildHome footer
+}
+
+// Celebrate next quest
+document.getElementById('btn-next-quest').addEventListener('click', () => {
+  if (celebrateTimer) clearTimeout(celebrateTimer);
+  advanceFromCelebrate();
+});
+
+// Photo pending back
+document.getElementById('btn-pending-back').addEventListener('click', () => {
+  showScreen('child-home');
+  renderChildHome();
+});
+
+// PIN back
+document.getElementById('btn-pin-back').addEventListener('click', () => {
+  showScreen('welcome');
+  renderWelcome();
+});
+
+// Dashboard back
+document.getElementById('btn-dashboard-back').addEventListener('click', () => {
+  showScreen('welcome');
+  renderWelcome();
+});
+
+// Go to settings
+document.getElementById('btn-go-settings').addEventListener('click', () => {
+  renderSettings();
+  showScreen('parent-settings');
+});
+
+// Settings back
+document.getElementById('btn-settings-back').addEventListener('click', () => {
+  renderDashboard();
+  showScreen('parent-dashboard');
+});
+
+/* =====================================================
+   INIT
+   ===================================================== */
+
+// Ensure default tasks are saved if not present
+(function init() {
+  if (!localStorage.getItem('questApp_tasks')) {
+    saveTasks(DEFAULT_TASKS);
+  }
+  if (!localStorage.getItem('questApp_settings')) {
+    saveSettings(DEFAULT_SETTINGS);
+  }
+  renderWelcome();
+
+  // Add a small home link at the top of child home for going back to welcome
+  const childHeader = document.querySelector('#screen-child-home .child-header');
+  const homeBtn = document.createElement('button');
+  homeBtn.className = 'icon-btn';
+  homeBtn.textContent = '🏠';
+  homeBtn.title = '홈';
+  homeBtn.style.marginLeft = '4px';
+  homeBtn.addEventListener('click', () => {
+    if (countdownTimer) clearInterval(countdownTimer);
+    currentChildId = null;
+    showScreen('welcome');
+    renderWelcome();
+  });
+  childHeader.appendChild(homeBtn);
+})();
+</script>
+</body>
+</html>
