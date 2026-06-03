@@ -706,7 +706,7 @@ html, body {
 </div>
 
 <!-- Hidden file input for camera -->
-<input type="file" id="camera-input" accept="image/*" capture="environment" style="position:fixed;top:-200px;left:-200px;width:1px;height:1px;opacity:0;">
+<input type="file" id="camera-input" accept="image/*" style="position:fixed;top:-200px;left:-200px;width:1px;height:1px;opacity:0;">
 
 <script>
 /* =====================================================
@@ -1040,8 +1040,9 @@ function renderQuestArea(slot) {
         </div>`;
     } else {
       // Normal task
+      celebrateTaskId = nextTask.id;
       const btnHtml = nextTask.needsPhoto
-        ? `<button class="btn btn-accent" id="btn-take-photo">📸 사진 찍기</button>`
+        ? `<label class="btn btn-accent" for="camera-input" style="display:inline-block;cursor:pointer;">📸 사진 찍기</label>`
         : `<button class="btn btn-success" id="btn-complete-task">✅ 완료!</button>`;
       area.innerHTML += `
         <div class="card quest-card anim-fadeInUp">
@@ -1052,12 +1053,7 @@ function renderQuestArea(slot) {
           <div class="quest-card-btns">${btnHtml}</div>
         </div>`;
 
-      if (nextTask.needsPhoto) {
-        document.getElementById('btn-take-photo').addEventListener('click', () => {
-          celebrateTaskId = nextTask.id;
-          document.getElementById('camera-input').click();
-        });
-      } else {
+      if (!nextTask.needsPhoto) {
         document.getElementById('btn-complete-task').addEventListener('click', () => {
           completeTask(nextTask, false);
         });
