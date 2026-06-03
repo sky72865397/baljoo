@@ -706,7 +706,7 @@ html, body {
 </div>
 
 <!-- Hidden file input for camera -->
-<input type="file" id="camera-input" accept="image/*" capture="environment" style="display:none">
+<input type="file" id="camera-input" accept="image/*" capture="environment" style="position:fixed;top:-200px;left:-200px;width:1px;height:1px;opacity:0;">
 
 <script>
 /* =====================================================
@@ -1140,7 +1140,7 @@ document.getElementById('camera-input').addEventListener('change', function(e) {
   if (!file) return;
   const reader = new FileReader();
   reader.onload = function(ev) {
-    compressImage(ev.target.result, 200, (compressed) => {
+    compressImage(ev.target.result, 400, (compressed) => {
       const tasks = getActiveTasks();
       const task = tasks.find(t => t.id === celebrateTaskId);
       if (task) completeTask(task, compressed);
