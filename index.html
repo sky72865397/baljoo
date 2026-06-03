@@ -705,8 +705,7 @@ html, body {
   </div>
 </div>
 
-<!-- Hidden file input for camera -->
-<input type="file" id="camera-input" accept="image/*" style="position:fixed;top:-200px;left:-200px;width:1px;height:1px;opacity:0;">
+<!-- camera input is injected inside label dynamically -->
 
 <script>
 /* =====================================================
@@ -1042,7 +1041,7 @@ function renderQuestArea(slot) {
       // Normal task
       celebrateTaskId = nextTask.id;
       const btnHtml = nextTask.needsPhoto
-        ? `<label class="btn btn-accent" for="camera-input" style="display:inline-block;cursor:pointer;">📸 사진 찍기</label>`
+        ? `<label class="btn btn-accent" style="display:inline-block;cursor:pointer;">📸 사진 찍기<input type="file" accept="image/*" id="camera-input" style="position:absolute;width:0;height:0;opacity:0;overflow:hidden;" onchange="handleCameraChange(event)"></label>`
         : `<button class="btn btn-success" id="btn-complete-task">✅ 완료!</button>`;
       area.innerHTML += `
         <div class="card quest-card anim-fadeInUp">
@@ -1131,7 +1130,7 @@ function updateCountdown() {
 }
 
 /* ===== CAMERA HANDLER ===== */
-document.getElementById('camera-input').addEventListener('change', function(e) {
+function handleCameraChange(e) {
   const file = e.target.files[0];
   if (!file) return;
   const reader = new FileReader();
@@ -1143,8 +1142,7 @@ document.getElementById('camera-input').addEventListener('change', function(e) {
     });
   };
   reader.readAsDataURL(file);
-  this.value = ''; // reset so same file can be picked again
-});
+}
 
 /* =====================================================
    PARENT MODE
