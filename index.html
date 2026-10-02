@@ -1517,7 +1517,7 @@ function toggleDuty(childId, dutyId) {
 
 const DEFAULT_REWARDS = [
   { id:'r1', name:'좋아하는 간식 선택',   emoji:'🍫', cost:3 },
-  { id:'r2', name:'게임 30분 추가',       emoji:'🎮', cost:5 },
+  { id:'r2', name:'게임 30분 추가',       emoji:'🎮', cost:5, for:['c1','c2'] },
   { id:'r3', name:'용돈 500원',           emoji:'💰', cost:5 },
   { id:'r4', name:'원하는 음식 저녁',     emoji:'🍕', cost:7 },
   { id:'r5', name:'영화 보기',            emoji:'🎬', cost:10 },
@@ -1603,6 +1603,10 @@ function init() {
     rewards = JSON.parse(JSON.stringify(DEFAULT_REWARDS));
     settings.children.forEach(c => { c.points = Math.floor(c.points / 20); });
     settings.dataVersion = 5;
+  }
+  if (settings.dataVersion === 5) {
+    rewards.filter(r => r.name.includes('게임')).forEach(r => { r.for = ['c1', 'c2']; });
+    settings.dataVersion = 6;
   }
 
   saveSettings();
@@ -2086,7 +2090,7 @@ function renderShopScreen() {
   document.getElementById('shop-points-display').textContent = `💎 보석 ${child.points}개`;
 
   const grid = document.getElementById('shop-grid');
-  grid.innerHTML = rewards.map(r => {
+  grid.innerHTML = rewards.filter(r => !r.for || r.for.includes(child.id)).map(r => {
     const canAfford = child.points >= r.cost;
     return `<div class="reward-card">
       <div class="reward-emoji">${r.emoji}</div>
@@ -2381,7 +2385,7 @@ function renderRewardsSettings() {
     <div class="card-sm flex-between">
       <div>
         <div style="font-weight:700;">${r.emoji} ${r.name}</div>
-        <div class="text-xs color-muted">💎 보석 ${r.cost}개</div>
+        <div class="text-xs color-muted">💎 보석 ${r.cost}개${r.for ? ` · ${r.for.map(id => (settings.children.find(c => c.id === id) || {}).name).join('/')}만` : ''}</div>
       </div>
       <button class="btn-danger btn-sm" onclick="deleteReward(${i})">삭제</button>
     </div>`).join('');
