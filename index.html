@@ -1113,6 +1113,7 @@ const DEFAULT_TASKS = [
   { id:'a4',  name:'알림장 보여주기',   emoji:'📒', xp:15, slot:'afterschool', for:['c1','c2'] },
   { id:'a6',  name:'온리원 공부',       emoji:'💻', xp:50, slot:'afterschool', for:['c1'] },
   { id:'a7',  name:'구몬 공부',         emoji:'📝', xp:50, slot:'afterschool', for:['c2'] },
+  { id:'a10', name:'자전거·킥보드 제자리에 정리하기', emoji:'🚲', xp:10, slot:'afterschool' },
   { id:'a8',  name:'책 읽기',           emoji:'📖', xp:30, slot:'afterschool' },
   { id:'a9',  name:'마음 공부',         emoji:'💬', xp:40, slot:'afterschool', for:['c1','c2'], type:'social' },
   { id:'e1',  name:'저녁 먹기',         emoji:'🍽️', xp:15, slot:'evening' },
@@ -1664,6 +1665,14 @@ function init() {
   if (settings.dataVersion === 10) {
     rewards.filter(r => r.name.includes('게임')).forEach(r => { r.cost = 10; });
     settings.dataVersion = 11;
+  }
+  if (settings.dataVersion === 11) {
+    if (!tasks.some(t => t.id === 'a10')) {
+      const d = JSON.parse(JSON.stringify(DEFAULT_TASKS.find(t => t.id === 'a10')));
+      const at = tasks.findIndex(t => t.id === 'a8');
+      tasks.splice(at >= 0 ? at : tasks.length, 0, d);
+    }
+    settings.dataVersion = 12;
   }
 
   saveSettings();
