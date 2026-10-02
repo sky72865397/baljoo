@@ -207,6 +207,20 @@ input, select, textarea { font-family: inherit; outline: none; }
 .pet-bounce { animation: petBounce 0.6s ease-out; }
 .pet-droop { animation: petDroop 2s ease-in-out infinite; }
 .pet-bigbounce { animation: bigBounce 0.8s ease-out infinite; }
+.pet-stage { position:relative; display:inline-block; }
+#pet-fx { position:absolute; inset:-20px -40px; pointer-events:none; overflow:visible; }
+.fx { position:absolute; font-size:1.4rem; line-height:1; animation: fxUp 1.4s ease-out forwards; }
+.fx.drip { animation: fxDrip 1.6s ease-in forwards; font-size:1.1rem; }
+.fx.zzz { animation: fxZzz 2.2s ease-out forwards; font-size:1.1rem; }
+@keyframes fxUp { 0%{opacity:0;transform:translateY(0) scale(.5)} 20%{opacity:1;transform:translateY(-10px) scale(1.1)} 100%{opacity:0;transform:translateY(-70px) scale(.9)} }
+@keyframes fxDrip { 0%{opacity:0;transform:translateY(0)} 20%{opacity:1} 100%{opacity:0;transform:translateY(40px)} }
+@keyframes fxZzz { 0%{opacity:0;transform:translate(0,0) scale(.6)} 30%{opacity:1} 100%{opacity:0;transform:translate(24px,-50px) scale(1.2)} }
+.pet-egg .pet-img { transform-origin:50% 95%; animation: eggWobble 3.6s ease-in-out infinite; }
+@keyframes eggWobble { 0%,70%,100%{transform:rotate(0)} 74%{transform:rotate(-9deg)} 78%{transform:rotate(8deg)} 82%{transform:rotate(-6deg)} 86%{transform:rotate(4deg)} 90%{transform:rotate(0)} }
+.pet-alive .pet-img { transform-origin:50% 100%; animation: breathe 2.8s ease-in-out infinite; }
+@keyframes breathe { 0%,100%{transform:scale(1,1)} 50%{transform:scale(1.04,0.96)} }
+.pet-tickle { animation: tickle 0.5s ease-in-out; }
+@keyframes tickle { 0%,100%{transform:rotate(0)} 20%{transform:rotate(-12deg) scale(1.05)} 40%{transform:rotate(10deg) scale(1.08)} 60%{transform:rotate(-8deg)} 80%{transform:rotate(5deg)} }
 
 /* ===== SPEECH BUBBLE ===== */
 .speech-bubble {
@@ -771,7 +785,7 @@ input, select, textarea { font-family: inherit; outline: none; }
       <div style="position:absolute;top:16px;right:16px;" id="home-diamond-chip"></div>
       <div class="home-name" id="pet-owner-label"></div>
       <div class="speech-bubble" id="speech-bubble" style="margin-bottom:14px;">...</div>
-      <div id="pet-emoji-big" style="font-size:6rem;line-height:1;display:block;cursor:pointer;" onclick="triggerPetPat()">🥚</div>
+      <div class="pet-stage"><div id="pet-emoji-big" style="font-size:6rem;line-height:1;display:block;cursor:pointer;" onclick="triggerPetPat()"></div><div id="pet-fx"></div></div>
       <div style="margin-top:8px;font-size:0.85rem;font-weight:700;color:var(--text-secondary);" id="pet-stage-label"></div>
       <div class="xp-bar-wrap" style="margin-top:14px;">
         <div class="xp-bar-labels">
@@ -1864,6 +1878,9 @@ function renderHomeScreen() {
   petEl.style.display = 'block';
   petEl.style.cursor = 'pointer';
   petEl.classList.add(moodClass);
+  petEl.classList.add(getPetStageIndex(child.level) === 0 ? 'pet-egg' : 'pet-alive');
+  petMood = mood;
+  petIsEgg = getPetStageIndex(child.level) === 0;
 
   document.getElementById('speech-bubble').textContent = speechText;
 
@@ -1980,8 +1997,9 @@ function awardXP(childId, xp, taskId) {
   renderHomeScreen();
   const petEl = document.getElementById('pet-emoji-big');
   const moodClass = petEl.className;
-  petEl.className = 'pet-bounce';
+  petEl.className = moodClass.replace(/pet-(float|droop|bigbounce)/, '') + ' pet-bounce';
   setTimeout(() => { petEl.className = moodClass; }, 700);
+  petBurst(['💖', '✨', '💛', '⭐'], 6);
   const pop = document.createElement('div');
   pop.className = 'xp-pop';
   pop.textContent = `+${xp} XP`;
@@ -2069,25 +2087,51 @@ function handlePhotoChange(event, childId, taskId, xp) {
 // =====================================================================
 // PET PAT
 // =====================================================================
+let petMood = 'normal';
+let petIsEgg = true;
+
+function petBurst(chars, n) {
+  const fx = document.getElementById('pet-fx');
+  if (!fx) return;
+  for (let i = 0; i < n; i++) {
+    const el = document.createElement('span');
+    el.className = 'fx';
+    el.textContent = chars[i % chars.length];
+    el.style.left = (25 + Math.random() * 50) + '%';
+    el.style.top = (30 + Math.random() * 30) + '%';
+    el.style.animationDelay = (i * 0.08) + 's';
+    fx.appendChild(el);
+    setTimeout(() => el.remove(), 1800);
+  }
+}
+
+function petAmbient() {
+  if (!document.getElementById('screen-home').classList.contains('active')) return;
+  const fx = document.getElementById('pet-fx');
+  if (!fx) return;
+  const el = document.createElement('span');
+  if (petMood === 'sad') {
+    el.className = petIsEgg ? 'fx zzz' : 'fx drip';
+    el.textContent = petIsEgg ? '💤' : '💧';
+    el.style.left = petIsEgg ? '62%' : '38%';
+    el.style.top = petIsEgg ? '20%' : '45%';
+  } else {
+    el.className = 'fx';
+    el.textContent = petMood === 'best' ? ['💖', '💗', '✨'][Math.floor(Math.random() * 3)] : '✨';
+    el.style.left = (20 + Math.random() * 60) + '%';
+    el.style.top = (20 + Math.random() * 40) + '%';
+  }
+  fx.appendChild(el);
+  setTimeout(() => el.remove(), 2400);
+}
+setInterval(petAmbient, 2200);
+
 function triggerPetPat() {
   const petEl = document.getElementById('pet-emoji-big');
   if (!petEl) return;
-  petEl.className = 'pet-bounce';
-  setTimeout(() => {
-    const child = getChild();
-    if (!child) return;
-    const log = loadLog();
-    const slot = getActiveSlot();
-    const slotTasks = getTasksForSlot(slot);
-    const done = slotTasks.filter(t => {
-      const e = log[`${child.id}_${t.id}`];
-      return e && e.done && (!t.photo || e.approved);
-    }).length;
-    const total = slotTasks.length;
-    const pct = total > 0 ? done / total : 0;
-    if (pct >= 1) petEl.className = 'pet-bigbounce';
-    else petEl.className = 'pet-float';
-  }, 700);
+  petEl.classList.add('pet-tickle');
+  petBurst(petIsEgg ? ['❓', '✨', '💛'] : ['💖', '😆', '💗'], 4);
+  setTimeout(() => petEl.classList.remove('pet-tickle'), 500);
 }
 
 // =====================================================================
