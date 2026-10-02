@@ -720,9 +720,10 @@ function getCharStage(type, level) {
 function getCharEmoji(type, level) { return getCharStage(type, level).emoji; }
 function getCharStageName(type, level) {
   const s = getCharStage(type, level);
-  const cname = CHARACTERS[type] ? CHARACTERS[type].name : '드래곤';
-  if (s.label === '견습생' || s.label === '전사') return `${cname} ${s.label}`;
-  if (s.label === '전설의') return `전설의 ${cname}`;
+  // 알 / 갓 태어난 단계에는 정체 숨기기
+  if (s.emoji === '🥚') return '??? 알 속에 있어요';
+  if (s.emoji === '🐣') return '??? 방금 태어났어요!';
+  const cname = CHARACTERS[type] ? CHARACTERS[type].name : '펫';
   return `${s.label} ${cname}`;
 }
 function getCharNextEvolveLevels(type, level) {
@@ -907,7 +908,7 @@ function renderWelcome() {
       <span class="profile-emoji">${emoji}</span>
       <div class="profile-info">
         <div class="profile-name">${esc(child.name)}</div>
-        <div class="profile-level">${stageName} · 오늘 ${done}/${childTasks.length} 완료</div>
+        <div class="profile-level">LV.${child.level} · 오늘 ${done}/${childTasks.length} 완료</div>
       </div>
       <span class="badge badge-primary">LV.${child.level}</span>
     `;
@@ -938,7 +939,7 @@ function renderHome() {
 
   // Header
   document.getElementById('home-child-name').textContent = child.name;
-  document.getElementById('home-child-level').textContent = `LV.${child.level} · ${getCharStageName(child.characterType, child.level)}`;
+  document.getElementById('home-child-level').textContent = `LV.${child.level}`;
   document.getElementById('home-points-chip').textContent = `💎 ${child.points}`;
 
   // Character
