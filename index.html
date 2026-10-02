@@ -2134,9 +2134,10 @@ function speak(text) {
     speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
     u.lang = 'ko-KR';
-    u.rate = 0.9;
-    u.pitch = 1.15;
-    const v = speechSynthesis.getVoices().find(v => v.lang && v.lang.startsWith('ko'));
+    u.rate = 0.85;
+    u.pitch = 0.9;
+    const ko = speechSynthesis.getVoices().filter(v => v.lang && v.lang.replace('_', '-').startsWith('ko'));
+    const v = ko.find(v => /premium|enhanced|향상|고급/i.test(v.name)) || ko.find(v => /yuna|유나/i.test(v.name)) || ko[0];
     if (v) u.voice = v;
     speechSynthesis.speak(u);
   } catch (e) {}
