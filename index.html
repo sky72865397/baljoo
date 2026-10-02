@@ -369,6 +369,14 @@ input, select, textarea { font-family: inherit; outline: none; }
 .wk-dot.part { background:#fde68a; }
 .today-banner { font-size:1.3rem; font-weight:900; color:var(--text); margin-top:6px; }
 
+/* ===== EGG PICK ===== */
+.egg-list { display:flex; justify-content:center; gap:20px; flex-wrap:wrap; padding:20px 0; }
+.egg-choice { font-size:7rem; line-height:1; background:var(--card); border:3px solid var(--border); border-radius:28px; padding:20px 26px; }
+.egg-choice .pet-img { height:1.2em; }
+.egg-choice.selected { border-color:#f59e0b; background:#fffbeb; box-shadow:0 6px 18px rgba(245,158,11,0.3); }
+.egg-choice.selected .pet-img { animation: eggWobble 1.2s ease-in-out infinite; transform-origin:50% 95%; }
+#eggpick-confirm:disabled { opacity:0.5; }
+
 /* ===== PET DEX ===== */
 .dex-title { font-size:1.6rem; color:var(--text); }
 .dex-summary { text-align:center; font-size:1.05rem; color:var(--text-secondary); }
@@ -377,12 +385,13 @@ input, select, textarea { font-family: inherit; outline: none; }
 .dex-card .dex-pic { font-size:5rem; line-height:1; height:1.25em; display:flex; align-items:flex-end; justify-content:center; }
 .dex-card .dex-pic .pet-img { height:1.2em; }
 .dex-card.locked { background:#f1f5f9; border-style:dashed; }
+.dex-card.growing { border-color:#fcd34d; background:#fffbeb; }
 .dex-q { width:1em; height:1.2em; border-radius:50% 50% 46% 46% / 58% 58% 42% 42%; background:#e2e8f0; color:#94a3b8; font-size:0.6em; display:flex; align-items:center; justify-content:center; }
 .dex-name { font-size:1.05rem; color:var(--text); }
 .dex-sub { font-size:0.8rem; color:var(--text-muted); }
 .dex-no { font-size:0.75rem; color:var(--primary); background:var(--primary-bg); border-radius:99px; padding:2px 10px; }
 .nav-btn .nav-sub { font-size:0.62rem; opacity:0.8; }
-@media (min-width: 900px) { .dex-grid { grid-template-columns:repeat(5,1fr); } }
+@media (min-width: 900px) { .dex-grid { grid-template-columns:repeat(4,1fr); } }
 
 /* ===== DUTY PICK ===== */
 .badge-ico { width:1.05em; height:1.2em; vertical-align:-0.22em; display:inline-block; }
@@ -825,6 +834,7 @@ input, select, textarea { font-family: inherit; outline: none; }
       <div class="speech-bubble" id="speech-bubble" style="margin-bottom:14px;">...</div>
       <div class="pet-stage"><div id="pet-emoji-big" style="font-size:6rem;line-height:1;display:block;cursor:pointer;" onclick="triggerPetPat()"></div><div id="pet-fx"></div></div>
       <div style="margin-top:8px;font-size:0.85rem;font-weight:700;color:var(--text-secondary);" id="pet-stage-label"></div>
+      <button class="duty-cta hidden" id="egg-cta" style="margin-top:10px;" onclick="openEggPick()">🥚 다 키웠어요! 새 알 고르기</button>
       <div class="xp-bar-wrap" style="margin-top:14px;">
         <div class="xp-bar-labels">
           <span id="home-level-label">LV.1</span>
@@ -864,6 +874,15 @@ input, select, textarea { font-family: inherit; outline: none; }
 <!-- ============================================================
      SCREEN 2b: REWARD SHOP (child)
      ============================================================ -->
+<div id="screen-eggpick" class="screen">
+  <div class="screen-inner" style="justify-content:center;">
+    <div class="dutypick-title centered" id="eggpick-title"></div>
+    <div class="text-sm color-muted centered" id="eggpick-sub"></div>
+    <div class="egg-list" id="eggpick-list"></div>
+    <button class="btn-primary" id="eggpick-confirm" onclick="confirmEggPick()">키우고 싶은 알을 골라요</button>
+  </div>
+</div>
+
 <div id="screen-dex" class="screen">
   <div class="screen-inner" style="padding-bottom:120px;">
     <div class="dex-title">📖 펫 도감</div>
@@ -1700,6 +1719,10 @@ function init() {
     }
     settings.dataVersion = 12;
   }
+  if (settings.dataVersion === 12) {
+    settings.children.forEach(c => { c.petStart = c.petStart || 1; c.collection = c.collection || []; c.needsEgg = false; c.met = {}; });
+    settings.dataVersion = 13;
+  }
 
   saveSettings();
   saveTasks();
@@ -1720,26 +1743,43 @@ function showScreen(id) {
 // =====================================================================
 // PET HELPERS
 // =====================================================================
-function getPetStageIndex(level) {
-  if (level <= 3)  return 0;
-  if (level <= 10) return 1;
-  if (level <= 20) return 2;
-  if (level <= 35) return 3;
+const ANIMALS = {
+  dog:    { name:'강아지', imgs:['img/pet-c1-0.png', 'img/pet-c1-1.png', 'img/pet-c1-2.png', 'img/pet-c1-3.png', 'img/pet-c1-4.png'] },
+  cat:    { name:'고양이', imgs:['img/pet-c2-0.png', 'img/pet-c2-1.png', 'img/pet-c2-2.png', 'img/pet-c2-3.png', 'img/pet-c2-4.png'] },
+  rabbit: { name:'토끼',   imgs:['img/pet-c3-0.png', 'img/pet-c3-1.png', 'img/pet-c3-2.png', 'img/pet-c3-3.png', 'img/pet-c3-4.png'] },
+};
+const PET_MAX_LEVEL = 20;
+const STAGE_STARTS = [1, 4, 8, 13, 20];
+
+function petLevel(child, level = child.level) {
+  return level - (child.petStart || 1) + 1;
+}
+
+function getPetStageIndex(petLv) {
+  if (petLv < 4)  return 0;
+  if (petLv < 8)  return 1;
+  if (petLv < 13) return 2;
+  if (petLv < 20) return 3;
   return 4;
 }
 
-const PET_IMAGES = {
-  c1: ['img/pet-c1-0.png', 'img/pet-c1-1.png', 'img/pet-c1-2.png', 'img/pet-c1-3.png', 'img/pet-c1-4.png'],
-  c2: ['img/pet-c2-0.png', 'img/pet-c2-1.png', 'img/pet-c2-2.png', 'img/pet-c2-3.png', 'img/pet-c2-4.png'],
-  c3: ['img/pet-c3-0.png', 'img/pet-c3-1.png', 'img/pet-c3-2.png', 'img/pet-c3-3.png', 'img/pet-c3-4.png'],
-};
+function petStageOf(child, level = child.level) {
+  return getPetStageIndex(petLevel(child, level));
+}
+
+function animalHTML(type, stage) {
+  const img = ANIMALS[type] && ANIMALS[type].imgs[stage];
+  if (img) return `<img class="pet-img pet-s${stage}" src="${img}" alt="">`;
+  const char = CHARACTER_TYPES[type] || CHARACTER_TYPES.chick;
+  return char.stages[stage];
+}
+
+function animalName(type) {
+  return (ANIMALS[type] || CHARACTER_TYPES[type] || { name:'펫' }).name;
+}
 
 function petHTML(child, level) {
-  const stage = getPetStageIndex(level);
-  const img = (PET_IMAGES[child.id] || [])[stage];
-  if (img) return `<img class="pet-img pet-s${stage}" src="${img}" alt="">`;
-  const char = CHARACTER_TYPES[child.characterType] || CHARACTER_TYPES.chick;
-  return char.stages[stage];
+  return animalHTML(child.characterType, petStageOf(child, level));
 }
 
 function getPetEmoji(child) {
@@ -1747,11 +1787,10 @@ function getPetEmoji(child) {
 }
 
 function getPetStageName(child) {
-  const stage = getPetStageIndex(child.level);
+  const stage = petStageOf(child);
   if (stage === 0) return '✨ 아직 알 속이에요. 무엇이 나올까?';
   if (stage === 1) return '🐣 알이 깨지고 있어요! 누가 나올까?';
-  const char = CHARACTER_TYPES[child.characterType] || CHARACTER_TYPES.chick;
-  return `${['', '', '귀여운 아기', '씩씩한', '다 자란 멋진'][stage]} ${char.name}`;
+  return `${['', '', '귀여운 아기', '씩씩한', '다 자란 멋진'][stage]} ${animalName(child.characterType)}`;
 }
 
 function xpNeeded(level) { return 200; }
@@ -2012,9 +2051,10 @@ function renderHomeScreen() {
   petEl.style.display = 'block';
   petEl.style.cursor = 'pointer';
   petEl.classList.add(moodClass);
-  petEl.classList.add(getPetStageIndex(child.level) <= 1 ? 'pet-egg' : 'pet-alive');
+  petEl.classList.add(petStageOf(child) <= 1 ? 'pet-egg' : 'pet-alive');
   petMood = mood;
-  petIsEgg = getPetStageIndex(child.level) <= 1;
+  petIsEgg = petStageOf(child) <= 1;
+  document.getElementById('egg-cta').classList.toggle('hidden', !child.needsEgg);
 
   document.getElementById('speech-bubble').textContent = speechText;
 
@@ -2108,7 +2148,8 @@ function awardXP(childId, xp, taskId) {
   // Level up check
   let leveled = false;
   let evolved = false;
-  const oldStage = getPetStageIndex(oldLevel);
+  const oldStage = petStageOf(child, oldLevel);
+  let graduated = false;
 
   while (child.xp >= xpNeeded(child.level)) {
     child.xp -= xpNeeded(child.level);
@@ -2119,7 +2160,14 @@ function awardXP(childId, xp, taskId) {
     child.points += bonus;
   }
 
-  const newStage = getPetStageIndex(child.level);
+  const newStage = petStageOf(child);
+  if (!child.needsEgg && petLevel(child) >= PET_MAX_LEVEL) {
+    const d = new Date();
+    child.collection = child.collection || [];
+    child.collection.push({ type: child.characterType, date: `${d.getMonth() + 1}월 ${d.getDate()}일` });
+    child.needsEgg = true;
+    graduated = true;
+  }
   if (newStage > oldStage) {
     evolved = true;
     const d = new Date();
@@ -2130,7 +2178,7 @@ function awardXP(childId, xp, taskId) {
   saveSettings();
 
   if (leveled) {
-    showLevelUpScreen(child, oldLevel, evolved);
+    showLevelUpScreen(child, oldLevel, evolved, graduated);
     return;
   }
   renderHomeScreen();
@@ -2162,12 +2210,14 @@ function showReactionScreen(child, xp, taskId, leveled, evolved, oldLevel) {
   }
 }
 
-function showLevelUpScreen(child, oldLevel, evolved) {
+function showLevelUpScreen(child, oldLevel, evolved, graduated) {
   const oldEmoji = getEmojiForLevel(child, oldLevel);
   const newEmoji = getPetEmoji(child);
   document.getElementById('levelup-pet').innerHTML = newEmoji;
 
-  if (evolved) {
+  if (graduated) {
+    document.getElementById('levelup-evolution').innerHTML = `🎉 ${animalName(child.characterType)}가 다 자랐어요!<br>📖 펫 도감에 등록됐어요. 이제 새 알을 골라요!`;
+  } else if (evolved) {
     document.getElementById('levelup-evolution').innerHTML = `${oldEmoji} → ${newEmoji} 진화했어요! ✨`;
   } else {
     document.getElementById('levelup-evolution').textContent = '';
@@ -2186,6 +2236,50 @@ function getEmojiForLevel(child, level) {
 }
 
 function closeLevelUp() {
+  document.querySelectorAll('.confetti-piece').forEach(el => el.remove());
+  const child = getChild();
+  if (child && child.needsEgg) { openEggPick(); return; }
+  renderHomeScreen();
+  showScreen('screen-home');
+}
+
+let pickingEgg = null;
+
+function eggChoices(child) {
+  const had = (child.collection || []).map(c => c.type);
+  const fresh = Object.keys(ANIMALS).filter(t => !had.includes(t) && t !== child.characterType);
+  return fresh.length ? fresh : Object.keys(ANIMALS);
+}
+
+function openEggPick() {
+  pickingEgg = null;
+  renderEggPick();
+  showScreen('screen-eggpick');
+}
+
+function renderEggPick() {
+  const child = getChild();
+  const choices = eggChoices(child);
+  const allDone = (child.collection || []).length >= Object.keys(ANIMALS).length;
+  document.getElementById('eggpick-title').textContent = `${child.name}, 이번엔 어떤 알을 키울까?`;
+  document.getElementById('eggpick-sub').textContent = allDone
+    ? '지금 있는 동물을 모두 다 키웠어요! 새 친구가 오기 전까지 다시 키워 볼까요?'
+    : '알 속에 누가 있을지는 깨어나야 알 수 있어요!';
+  document.getElementById('eggpick-list').innerHTML = choices.map(t => `
+    <button class="egg-choice${pickingEgg === t ? ' selected' : ''}" onclick="pickingEgg='${t}';renderEggPick()">${animalHTML(t, 0)}</button>`).join('');
+  const btn = document.getElementById('eggpick-confirm');
+  btn.disabled = !pickingEgg;
+  btn.textContent = pickingEgg ? '이 알로 할래요! 🥚' : '키우고 싶은 알을 골라요';
+}
+
+function confirmEggPick() {
+  const child = getChild();
+  if (!pickingEgg || !child) return;
+  child.characterType = pickingEgg;
+  child.petStart = child.level;
+  child.needsEgg = false;
+  child.met = {};
+  saveSettings();
   renderHomeScreen();
   showScreen('screen-home');
 }
@@ -2292,7 +2386,6 @@ function renderNavs() {
   });
 }
 
-const STAGE_MIN_LEVEL = [1, 4, 11, 21, 36];
 let dexChildId = null;
 
 function renderDex() {
@@ -2300,24 +2393,32 @@ function renderDex() {
   dexChildId = child.id;
   document.getElementById('dex-tabs').innerHTML = settings.children.map(c =>
     `<button class="slot-tab${c.id === child.id ? ' active' : ''}" onclick="dexChildId='${c.id}';renderDex()">${c.name}</button>`).join('');
-  const now = getPetStageIndex(child.level);
-  const char = CHARACTER_TYPES[child.characterType] || CHARACTER_TYPES.chick;
-  const names = ['알', '깨어나는 알', `아기 ${char.name}`, `씩씩한 ${char.name}`, `다 자란 ${char.name}`];
-  const met = child.met || {};
+  const collected = child.collection || [];
+  const types = Object.keys(ANIMALS);
   document.getElementById('dex-summary').textContent =
-    `${child.name}가 만난 모습 ${now + 1} / 5` + (now < 4 ? ` · 다음 모습은 Lv.${STAGE_MIN_LEVEL[now + 1]}에 만나요!` : ' · 모두 만났어요! 🎉');
-  document.getElementById('dex-grid').innerHTML = STAGE_MIN_LEVEL.map((lv, i) => {
-    if (i > now) return `<div class="dex-card locked">
+    `${child.name}가 다 키운 동물 ${new Set(collected.map(c => c.type)).size} / ${types.length}`;
+  document.getElementById('dex-grid').innerHTML = types.map((t, i) => {
+    const done = collected.filter(c => c.type === t);
+    if (done.length) return `<div class="dex-card">
+      <span class="dex-no">No.${i + 1}</span>
+      <div class="dex-pic">${animalHTML(t, 4)}</div>
+      <div class="dex-name">${animalName(t)}${done.length > 1 ? ` ×${done.length}` : ''}</div>
+      <div class="dex-sub">${done[done.length - 1].date}에 다 키웠어요</div>
+    </div>`;
+    if (t === child.characterType && !child.needsEgg) {
+      const st = petStageOf(child);
+      return `<div class="dex-card growing">
+        <span class="dex-no">No.${i + 1}</span>
+        <div class="dex-pic">${animalHTML(t, st)}</div>
+        <div class="dex-name">${st <= 1 ? '???' : animalName(t)}</div>
+        <div class="dex-sub">키우는 중 · 펫 Lv.${petLevel(child)} / ${PET_MAX_LEVEL}</div>
+      </div>`;
+    }
+    return `<div class="dex-card locked">
       <span class="dex-no">No.${i + 1}</span>
       <div class="dex-pic"><div class="dex-q">?</div></div>
       <div class="dex-name">???</div>
-      <div class="dex-sub">Lv.${lv}이 되면 만나요</div>
-    </div>`;
-    return `<div class="dex-card">
-      <span class="dex-no">No.${i + 1}</span>
-      <div class="dex-pic">${petHTML(child, lv)}</div>
-      <div class="dex-name">${i <= 1 ? names[i] : names[i]}</div>
-      <div class="dex-sub">${met[i] ? met[i] + '에 만났어요' : 'Lv.' + lv + '부터'}</div>
+      <div class="dex-sub">아직 못 만났어요</div>
     </div>`;
   }).join('');
 }
@@ -2582,7 +2683,7 @@ function renderChildrenSettings() {
       <div class="form-group" style="margin-top:8px;">
         <label class="form-label">캐릭터</label>
         <select class="input-field" id="cchar-${i}" onchange="updateChild(${i},'characterType',this.value)">
-          ${Object.entries(CHARACTER_TYPES).map(([k,v]) => `<option value="${k}" ${child.characterType===k?'selected':''}>${v.name}</option>`).join('')}
+          ${Object.entries(ANIMALS).map(([k,v]) => `<option value="${k}" ${child.characterType===k?'selected':''}>${v.name}</option>`).join('')}
         </select>
       </div>
     </div>`).join('');
