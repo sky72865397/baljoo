@@ -1650,18 +1650,50 @@ function getPetStageIndex(level) {
   return 4;
 }
 
-function getPetEmoji(child) {
+const EGG_COLORS = {
+  c1: ['#e3f3ff', '#8fcaf5'],
+  c2: ['#fff8d6', '#f6cf55'],
+  c3: ['#ffe6f0', '#f59cbf'],
+};
+let eggSeq = 0;
+
+function eggSVG(childId) {
+  const [light, main] = EGG_COLORS[childId] || ['#efeaff', '#b9a6f5'];
+  const id = 'egg' + (++eggSeq);
+  return `<svg viewBox="0 0 100 124" width="0.85em" height="1.05em" style="vertical-align:-0.1em;overflow:visible">
+    <defs>
+      <radialGradient id="${id}g" cx="35%" cy="28%" r="80%"><stop offset="0" stop-color="${light}"/><stop offset="1" stop-color="${main}"/></radialGradient>
+      <clipPath id="${id}c"><path d="M50 4C78 4 96 50 96 76C96 102 76 118 50 118C24 118 4 102 4 76C4 50 22 4 50 4Z"/></clipPath>
+    </defs>
+    <ellipse cx="50" cy="120" rx="32" ry="5" fill="rgba(0,0,0,0.08)"/>
+    <path d="M50 4C78 4 96 50 96 76C96 102 76 118 50 118C24 118 4 102 4 76C4 50 22 4 50 4Z" fill="url(#${id}g)"/>
+    <g clip-path="url(#${id}c)">
+      <path d="M-2 72L11 61L24 72L37 61L50 72L63 61L76 72L89 61L102 72" stroke="#fff" stroke-width="7" fill="none" stroke-linejoin="round" opacity="0.9"/>
+      <circle cx="30" cy="44" r="5" fill="#fff" opacity="0.75"/>
+      <circle cx="64" cy="34" r="4" fill="#fff" opacity="0.75"/>
+      <circle cx="70" cy="96" r="6" fill="#fff" opacity="0.75"/>
+      <circle cx="34" cy="98" r="4" fill="#fff" opacity="0.75"/>
+    </g>
+    <ellipse cx="33" cy="30" rx="8" ry="15" fill="#fff" opacity="0.55" transform="rotate(-25 33 30)"/>
+  </svg>`;
+}
+
+function petHTML(child, level) {
   const char = CHARACTER_TYPES[child.characterType] || CHARACTER_TYPES.chick;
-  return char.stages[getPetStageIndex(child.level)];
+  const e = char.stages[getPetStageIndex(level)];
+  return e === '🥚' ? eggSVG(child.id) : e;
+}
+
+function getPetEmoji(child) {
+  return petHTML(child, child.level);
 }
 
 function getPetStageName(child) {
-  const level = child.level;
-  if (level <= 2) return '🥚 아직 알 속이에요';
-  if (level <= 5) return '🐣 방금 태어났어요!';
+  const stage = getPetStageIndex(child.level);
+  if (stage === 0) return '✨ 아직 알 속이에요. 무엇이 나올까?';
+  if (stage === 1) return '🐣 알에서 막 깨어났어요!';
   const char = CHARACTER_TYPES[child.characterType] || CHARACTER_TYPES.chick;
-  const adj = STAGE_ADJECTIVES[Math.min(Math.floor((level - 6) / 4), 3)];
-  return `${adj} ${char.name}`;
+  return `${['', '', '귀여운 아기', '씩씩한', '다 자란 멋진'][stage]} ${char.name}`;
 }
 
 function xpNeeded(level) { return 200; }
@@ -1819,7 +1851,7 @@ function renderHomeScreen() {
 
   // Pet emoji element
   const petEl = document.getElementById('pet-emoji-big');
-  petEl.textContent = petEmoji;
+  petEl.innerHTML = petEmoji;
 
   // Determine mood
   const doneTasks = slotTasks.filter(t => {
@@ -1977,7 +2009,7 @@ function awardXP(childId, xp, taskId) {
 }
 
 function showReactionScreen(child, xp, taskId, leveled, evolved, oldLevel) {
-  document.getElementById('reaction-pet').textContent = getPetEmoji(child);
+  document.getElementById('reaction-pet').innerHTML = getPetEmoji(child);
   document.getElementById('reaction-xp').textContent = `+${xp} XP!`;
   document.getElementById('reaction-msg').textContent = `${child.name}의 펫이 기뻐해요! 🎉`;
   showScreen('screen-reaction');
@@ -1995,10 +2027,10 @@ function showReactionScreen(child, xp, taskId, leveled, evolved, oldLevel) {
 function showLevelUpScreen(child, oldLevel, evolved) {
   const oldEmoji = getEmojiForLevel(child, oldLevel);
   const newEmoji = getPetEmoji(child);
-  document.getElementById('levelup-pet').textContent = newEmoji;
+  document.getElementById('levelup-pet').innerHTML = newEmoji;
 
   if (evolved) {
-    document.getElementById('levelup-evolution').textContent = `${oldEmoji} → ${newEmoji} 진화했어요! ✨`;
+    document.getElementById('levelup-evolution').innerHTML = `${oldEmoji} → ${newEmoji} 진화했어요! ✨`;
   } else {
     document.getElementById('levelup-evolution').textContent = '';
   }
@@ -2012,8 +2044,7 @@ function showLevelUpScreen(child, oldLevel, evolved) {
 }
 
 function getEmojiForLevel(child, level) {
-  const char = CHARACTER_TYPES[child.characterType] || CHARACTER_TYPES.chick;
-  return char.stages[getPetStageIndex(level)];
+  return petHTML(child, level);
 }
 
 function closeLevelUp() {
