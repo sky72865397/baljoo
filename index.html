@@ -388,6 +388,11 @@ input, select, textarea { font-family: inherit; outline: none; }
 .egg-choice.selected .pet-img { animation: eggWobble 1.2s ease-in-out infinite; transform-origin:50% 95%; }
 #eggpick-confirm:disabled { opacity:0.5; }
 
+/* ===== KID PICKER ===== */
+.kid-picks { display:flex; gap:8px; flex-wrap:wrap; }
+.kid-pick { display:flex; align-items:center; gap:6px; background:var(--primary-bg); border-radius:12px; padding:8px 14px; font-size:1rem; }
+.kid-pick input { width:20px; height:20px; }
+
 /* ===== PET DEX ===== */
 .dex-title { font-size:1.6rem; color:var(--text); }
 .dex-summary { text-align:center; font-size:1.05rem; color:var(--text-secondary); }
@@ -1065,7 +1070,7 @@ input, select, textarea { font-family: inherit; outline: none; }
             <option value="evening">🌙 저녁</option>
           </select>
         </div>
-        <div class="toggle-wrap" style="margin-top:8px;"><span class="text-sm font-bold">사진 필요</span><div class="toggle" id="newtask-photo-toggle" onclick="this.classList.toggle('on')"></div></div>
+        <div class="form-group" style="margin-top:8px;"><label class="form-label">누가 하나요?</label><div id="newtask-kids"></div></div>
         <div style="display:flex;gap:8px;margin-top:12px;">
           <button class="btn-ghost" style="flex:1;" onclick="hideAddTaskForm()">취소</button>
           <button class="btn-primary" style="flex:1;" onclick="addNewTask()">추가</button>
@@ -2809,9 +2814,59 @@ function updateChild(idx, field, value) {
   renderChildrenSettings();
 }
 
+let editingTaskIdx = -1;
+
+function childPickerHTML(prefix, selected) {
+  return `<div class="kid-picks">${settings.children.map(c => `
+    <label class="kid-pick"><input type="checkbox" id="${prefix}-${c.id}" ${!selected || !selected.length || selected.includes(c.id) ? 'checked' : ''}> ${c.name}</label>`).join('')}</div>`;
+}
+
+function readChildPicker(prefix) {
+  const ids = settings.children.filter(c => document.getElementById(`${prefix}-${c.id}`).checked).map(c => c.id);
+  return ids.length === settings.children.length ? undefined : ids;
+}
+
+function editTask(idx) {
+  editingTaskIdx = idx;
+  renderTasksSettings();
+}
+
+function saveTaskEdit(idx) {
+  const t = tasks[idx];
+  const name = document.getElementById('et-name').value.trim();
+  if (!name) { alert('이름을 입력해 주세요'); return; }
+  const forIds = readChildPicker('et-kid');
+  if (forIds && !forIds.length) { alert('적어도 한 명은 골라 주세요'); return; }
+  t.name = name;
+  t.emoji = document.getElementById('et-emoji').value.trim() || t.emoji;
+  t.xp = parseInt(document.getElementById('et-xp').value) || t.xp;
+  t.slot = document.getElementById('et-slot').value;
+  if (forIds) t.for = forIds; else delete t.for;
+  saveTasks();
+  editingTaskIdx = -1;
+  renderTasksSettings();
+}
+
 function renderTasksSettings() {
   const el = document.getElementById('tasks-settings-list');
-  el.innerHTML = tasks.map((t, i) => `
+  el.innerHTML = tasks.map((t, i) => i === editingTaskIdx ? `
+    <div class="card" style="display:flex;flex-direction:column;gap:8px;border-color:var(--primary);">
+      <div class="form-group"><label class="form-label">이름</label><input class="input-field" id="et-name" value="${escText(t.name)}"></div>
+      <div style="display:flex;gap:8px;">
+        <div class="form-group" style="flex:1;"><label class="form-label">이모지</label><input class="input-field" id="et-emoji" value="${t.emoji}" maxlength="2"></div>
+        <div class="form-group" style="flex:1;"><label class="form-label">XP</label><input class="input-field" id="et-xp" type="number" value="${t.xp}" min="5" max="100"></div>
+      </div>
+      <div class="form-group"><label class="form-label">시간대</label>
+        <select class="input-field" id="et-slot">
+          ${['morning','afterschool','evening'].map(sl => `<option value="${sl}" ${t.slot === sl ? 'selected' : ''}>${getSlotLabel(sl)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">누가 하나요?</label>${childPickerHTML('et-kid', t.for)}</div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn-ghost" style="flex:1;" onclick="editingTaskIdx=-1;renderTasksSettings()">취소</button>
+        <button class="btn-primary" style="flex:1;" onclick="saveTaskEdit(${i})">저장</button>
+      </div>
+    </div>` : `
     <div class="card-sm flex-between">
       <div style="flex:1;">
         <div style="font-weight:700;">${t.emoji} ${t.name}</div>
@@ -2819,6 +2874,7 @@ function renderTasksSettings() {
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="toggle${t.enabled?' on':''}" onclick="toggleTask(${i})"></div>
+        <button class="btn-ghost btn-sm" onclick="editTask(${i})">수정</button>
         <button class="btn-danger btn-sm" onclick="deleteTask(${i})">삭제</button>
       </div>
     </div>`).join('');
@@ -2836,7 +2892,10 @@ function deleteTask(idx) {
   renderTasksSettings();
 }
 
-function showAddTaskForm() { document.getElementById('add-task-form').classList.remove('hidden'); }
+function showAddTaskForm() {
+  document.getElementById('newtask-kids').innerHTML = childPickerHTML('nt-kid');
+  document.getElementById('add-task-form').classList.remove('hidden');
+}
 function hideAddTaskForm() { document.getElementById('add-task-form').classList.add('hidden'); }
 
 function addNewTask() {
@@ -2844,9 +2903,12 @@ function addNewTask() {
   const emoji = document.getElementById('newtask-emoji').value.trim() || '⭐';
   const xp = parseInt(document.getElementById('newtask-xp').value) || 20;
   const slot = document.getElementById('newtask-slot').value;
-  const photo = document.getElementById('newtask-photo-toggle').classList.contains('on');
   if (!name) { alert('이름을 입력해 주세요'); return; }
-  tasks.push({ id: 't_' + Date.now(), name, emoji, xp, slot, photo, enabled: true });
+  const forIds = readChildPicker('nt-kid');
+  if (forIds && !forIds.length) { alert('적어도 한 명은 골라 주세요'); return; }
+  const t = { id: 't_' + Date.now(), name, emoji, xp, slot, photo: false, enabled: true };
+  if (forIds) t.for = forIds;
+  tasks.push(t);
   saveTasks();
   hideAddTaskForm();
   renderTasksSettings();
