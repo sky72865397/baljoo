@@ -1604,7 +1604,7 @@ const DEFAULT_REWARDS = [
   { id:'r7', name:'엄마랑 30분 놀기',     emoji:'👩', cost:1 },
   { id:'r8', name:'아빠랑 30분 놀기',     emoji:'👨', cost:1 },
   { id:'r1', name:'좋아하는 간식 선택',   emoji:'🍫', cost:3 },
-  { id:'r2', name:'게임 30분',       emoji:'🎮', cost:10, for:['c1','c2'] },
+  { id:'r2', name:'게임 30분',       emoji:'🎮', cost:7, for:['c1','c2'] },
   { id:'r3', name:'용돈 1000원',          emoji:'💰', cost:5, for:['c1','c2'] },
   { id:'r4', name:'원하는 음식 저녁',     emoji:'🍕', cost:7 },
   { id:'r5', name:'영화 보기',            emoji:'🎬', cost:10 },
@@ -1754,6 +1754,10 @@ function init() {
       tasks.splice(at >= 0 ? at : tasks.length, 0, d);
     }
     settings.dataVersion = 16;
+  }
+  if (settings.dataVersion === 16) {
+    rewards.filter(r => r.name.includes('게임')).forEach(r => { r.cost = 7; });
+    settings.dataVersion = 17;
   }
 
   saveSettings();
