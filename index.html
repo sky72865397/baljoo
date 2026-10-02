@@ -967,6 +967,7 @@ input, select, textarea { font-family: inherit; outline: none; }
       <button class="tab-btn" onclick="switchSettingsTab('tasks')" id="stab-tasks">할 일</button>
       <button class="tab-btn" onclick="switchSettingsTab('rewards')" id="stab-rewards">보상</button>
       <button class="tab-btn" onclick="switchSettingsTab('points')" id="stab-points">포인트</button>
+      <button class="tab-btn" onclick="switchSettingsTab('lessons')" id="stab-lessons">마음 공부</button>
       <button class="tab-btn" onclick="switchSettingsTab('misc')" id="stab-misc">기타</button>
     </div>
 
@@ -1015,6 +1016,22 @@ input, select, textarea { font-family: inherit; outline: none; }
     <!-- Tab: Points -->
     <div id="stab-content-points" class="hidden">
       <div style="display:flex;flex-direction:column;gap:12px;" id="points-settings-list"></div>
+    </div>
+    <!-- Tab: Lessons -->
+    <div id="stab-content-lessons" class="hidden">
+      <div class="card" style="display:flex;flex-direction:column;gap:12px;">
+        <div style="font-weight:800;font-size:1.05rem;">➕ 새 이야기 추가</div>
+        <div class="text-sm color-secondary">ChatGPT가 준 이야기 내용(코드 블록)을 그대로 붙여넣고, 같이 받은 그림을 골라주세요.</div>
+        <textarea class="input-field" id="lesson-json" rows="7" placeholder="여기에 붙여넣기" style="font-family:monospace;font-size:0.8rem;"></textarea>
+        <label class="btn-ghost" style="position:relative;overflow:hidden;text-align:center;">🖼️ 그림 고르기
+          <input type="file" accept="image/*" style="position:absolute;width:0;height:0;opacity:0;" onchange="pickLessonImage(event)">
+        </label>
+        <img id="lesson-img-preview" class="hidden" style="width:100%;border-radius:12px;">
+        <div id="lesson-msg" class="text-sm"></div>
+        <button class="btn-primary" onclick="addCustomLesson()">이야기 추가하기</button>
+      </div>
+      <div class="section-label" style="margin:16px 0 8px 4px;" id="lesson-count"></div>
+      <div style="display:flex;flex-direction:column;gap:8px;" id="custom-lesson-list"></div>
     </div>
     <!-- Tab: Misc -->
     <div id="stab-content-misc" class="hidden">
@@ -1194,10 +1211,126 @@ function renderScene(sc) {
 
 let socialState = null;
 
+SOCIAL_LESSONS.forEach((l, i) => { l.id = 'b' + (i + 1); });
+
+function loadCustomLessons() {
+  try { return JSON.parse(localStorage.getItem('routinepet_lessons') || '[]'); } catch(e) { return []; }
+}
+
+function allLessons() {
+  return SOCIAL_LESSONS.concat(loadCustomLessons());
+}
+
 function lessonForToday(childId) {
-  const day = Math.floor(Date.now() / 86400000);
+  const lessons = allLessons();
+  const done = (settings.lessonsDone || {})[childId] || [];
   const idx = settings.children.findIndex(c => c.id === childId);
-  return SOCIAL_LESSONS[(day + idx * 5) % SOCIAL_LESSONS.length];
+  const fresh = lessons.filter(l => !done.includes(l.id));
+  if (fresh.length) return fresh[idx % fresh.length];
+  const day = Math.floor(Date.now() / 86400000);
+  return lessons[(day + idx * 5) % lessons.length];
+}
+
+function escText(v) {
+  return String(v).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+}
+
+let pendingLessonImg = null;
+
+function pickLessonImage(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, 900 / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width * scale);
+      c.height = Math.round(img.height * scale);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      pendingLessonImg = c.toDataURL('image/jpeg', 0.75);
+      const pv = document.getElementById('lesson-img-preview');
+      pv.src = pendingLessonImg;
+      pv.classList.remove('hidden');
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function parseLesson(text) {
+  const raw = text.replace(/```(json)?/g, '').trim();
+  const l = JSON.parse(raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1));
+  if (l.type !== 'purpose' && l.type !== 'choice') throw new Error('type은 purpose 또는 choice여야 해요');
+  if (l.type === 'purpose' && (!l.situation || !Array.isArray(l.bubbles) || !l.bubbles.length)) throw new Error('situation 또는 bubbles가 없어요');
+  if (l.type === 'choice' && (!l.title || !l.story)) throw new Error('title 또는 story가 없어요');
+  if (!Array.isArray(l.questions) || !l.questions.length) throw new Error('questions가 없어요');
+  const q = l.questions.map(x => {
+    if (!x.q || !Array.isArray(x.choices) || x.choices.length < 2) throw new Error('질문이나 보기가 비어 있어요');
+    return { q: escText(x.q), choices: x.choices.map(escText), answer: x.open ? undefined : 0, open: !!x.open, explain: escText(x.explain || '') };
+  });
+  const out = { id: 'u' + Date.now(), type: l.type, questions: q };
+  if (l.type === 'purpose') {
+    out.situation = escText(l.situation);
+    out.bubbles = l.bubbles.map(b => ({ who: escText(b.who || ''), text: escText(b.text || '') }));
+  } else {
+    out.title = escText(l.title);
+    out.story = escText(l.story);
+  }
+  return out;
+}
+
+function addCustomLesson() {
+  const msg = document.getElementById('lesson-msg');
+  let lesson;
+  try {
+    lesson = parseLesson(document.getElementById('lesson-json').value);
+  } catch (e) {
+    msg.style.color = 'var(--danger)';
+    msg.textContent = e instanceof SyntaxError
+      ? '내용을 읽을 수 없어요. ChatGPT가 준 코드 블록 전체를 복사했는지 확인해 주세요.'
+      : '내용이 조금 빠졌어요: ' + e.message;
+    return;
+  }
+  if (!pendingLessonImg) {
+    msg.style.color = 'var(--danger)';
+    msg.textContent = '그림을 골라주세요.';
+    return;
+  }
+  lesson.img = pendingLessonImg;
+  const list = loadCustomLessons();
+  list.push(lesson);
+  try {
+    localStorage.setItem('routinepet_lessons', JSON.stringify(list));
+  } catch (e) {
+    msg.style.color = 'var(--danger)';
+    msg.textContent = '저장 공간이 꽉 찼어요. 예전 이야기를 몇 개 지워주세요.';
+    return;
+  }
+  pendingLessonImg = null;
+  document.getElementById('lesson-json').value = '';
+  document.getElementById('lesson-img-preview').classList.add('hidden');
+  msg.style.color = 'var(--success)';
+  msg.textContent = '추가됐어요! 아이들이 아직 안 본 이야기부터 나와요.';
+  renderLessonSettings();
+}
+
+function deleteCustomLesson(id) {
+  if (!confirm('이 이야기를 지울까요?')) return;
+  localStorage.setItem('routinepet_lessons', JSON.stringify(loadCustomLessons().filter(l => l.id !== id)));
+  renderLessonSettings();
+}
+
+function renderLessonSettings() {
+  const list = loadCustomLessons();
+  document.getElementById('lesson-count').textContent = `기본 이야기 ${SOCIAL_LESSONS.length}개 · 추가한 이야기 ${list.length}개`;
+  document.getElementById('custom-lesson-list').innerHTML = list.map(l => `
+    <div class="card-sm flex-between" style="gap:10px;">
+      <img src="${l.img}" style="width:72px;height:48px;object-fit:cover;border-radius:8px;">
+      <div style="flex:1;font-weight:700;font-size:0.9rem;">${l.type === 'purpose' ? '🔍 ' + l.situation : '🤔 ' + l.title}</div>
+      <button class="btn-danger btn-sm" onclick="deleteCustomLesson('${l.id}')">삭제</button>
+    </div>`).join('');
 }
 
 function openSocial(childId, task) {
@@ -1270,7 +1403,11 @@ function nextSocial() {
 }
 
 function finishSocial() {
-  const { childId, task } = socialState;
+  const { childId, task, lesson } = socialState;
+  settings.lessonsDone = settings.lessonsDone || {};
+  const done = settings.lessonsDone[childId] || [];
+  if (!done.includes(lesson.id)) settings.lessonsDone[childId] = done.concat(lesson.id);
+  saveSettings();
   socialState = null;
   showScreen('screen-home');
   completeTask(childId, task.id, task.xp);
@@ -2148,7 +2285,7 @@ function ackRedeem(idx) {
 // =====================================================================
 function switchSettingsTab(tab) {
   currentSettingsTab = tab;
-  ['children','tasks','rewards','points','misc'].forEach(t => {
+  ['children','tasks','rewards','points','lessons','misc'].forEach(t => {
     document.getElementById(`stab-${t}`).classList.toggle('active', t === tab);
     document.getElementById(`stab-content-${t}`).classList.toggle('hidden', t !== tab);
   });
@@ -2157,6 +2294,7 @@ function switchSettingsTab(tab) {
   if (tab === 'rewards') renderRewardsSettings();
   if (tab === 'points') renderPointsSettings();
   if (tab === 'misc') renderMiscSettings();
+  if (tab === 'lessons') renderLessonSettings();
 }
 
 function renderChildrenSettings() {
