@@ -381,6 +381,14 @@ input, select, textarea { font-family: inherit; outline: none; }
 .duty-cell.empty .duty-cell-kid { color:var(--text-muted); font-size:0.95rem; }
 
 .pet-img { height:1.1em; width:auto; vertical-align:middle; display:inline-block; }
+.pet-img.pet-s2 { height:1em; }
+.pet-img.pet-s3 { height:1.2em; }
+.pet-img.pet-s4 { height:1.4em; }
+#pet-emoji-big .pet-img { height:1.3em; }
+#pet-emoji-big .pet-img.pet-s2 { height:1.25em; }
+#pet-emoji-big .pet-img.pet-s3 { height:1.45em; }
+#pet-emoji-big .pet-img.pet-s4 { height:1.65em; }
+#levelup-pet .pet-img { height:2.2em; }
 /* ===== SCENE ILLUSTRATION ===== */
 .scene-img { width:100%; border-radius:16px; display:block; }
 .scene { position:relative; width:100%; aspect-ratio:2/1; border-radius:16px; overflow:hidden; }
@@ -1666,7 +1674,7 @@ function getPetStageIndex(level) {
 }
 
 const PET_IMAGES = {
-  c1: ['img/pet-c1-0.png'],
+  c1: ['img/pet-c1-0.png', 'img/pet-c1-1.png', 'img/pet-c1-2.png', 'img/pet-c1-3.png', 'img/pet-c1-4.png'],
   c2: ['img/pet-c2-0.png'],
   c3: ['img/pet-c3-0.png'],
 };
@@ -1674,7 +1682,7 @@ const PET_IMAGES = {
 function petHTML(child, level) {
   const stage = getPetStageIndex(level);
   const img = (PET_IMAGES[child.id] || [])[stage];
-  if (img) return `<img class="pet-img" src="${img}" alt="">`;
+  if (img) return `<img class="pet-img pet-s${stage}" src="${img}" alt="">`;
   const char = CHARACTER_TYPES[child.characterType] || CHARACTER_TYPES.chick;
   return char.stages[stage];
 }
@@ -1686,7 +1694,7 @@ function getPetEmoji(child) {
 function getPetStageName(child) {
   const stage = getPetStageIndex(child.level);
   if (stage === 0) return '✨ 아직 알 속이에요. 무엇이 나올까?';
-  if (stage === 1) return '🐣 알에서 막 깨어났어요!';
+  if (stage === 1) return '🐣 알이 깨지고 있어요! 누가 나올까?';
   const char = CHARACTER_TYPES[child.characterType] || CHARACTER_TYPES.chick;
   return `${['', '', '귀여운 아기', '씩씩한', '다 자란 멋진'][stage]} ${char.name}`;
 }
@@ -1878,9 +1886,9 @@ function renderHomeScreen() {
   petEl.style.display = 'block';
   petEl.style.cursor = 'pointer';
   petEl.classList.add(moodClass);
-  petEl.classList.add(getPetStageIndex(child.level) === 0 ? 'pet-egg' : 'pet-alive');
+  petEl.classList.add(getPetStageIndex(child.level) <= 1 ? 'pet-egg' : 'pet-alive');
   petMood = mood;
-  petIsEgg = getPetStageIndex(child.level) === 0;
+  petIsEgg = getPetStageIndex(child.level) <= 1;
 
   document.getElementById('speech-bubble').textContent = speechText;
 
