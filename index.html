@@ -540,7 +540,8 @@ input, select, textarea { font-family: inherit; outline: none; }
 /* ===== REACTION SCREEN ===== */
 #screen-reaction {
   background: white;
-  display: flex;
+}
+#screen-reaction.active {
   align-items: center;
   justify-content: center;
 }
@@ -557,7 +558,8 @@ input, select, textarea { font-family: inherit; outline: none; }
 /* ===== LEVEL UP SCREEN ===== */
 #screen-levelup {
   background: white;
-  display: flex;
+}
+#screen-levelup.active {
   align-items: center;
   justify-content: center;
 }
@@ -656,7 +658,7 @@ input, select, textarea { font-family: inherit; outline: none; }
     </div>
 
     <!-- TASKS SECTION -->
-    <div class="section-label" style="padding-left:4px;">오늘의 퀘스트</div>
+    <div class="section-label" style="padding-left:4px;">오늘 할 일</div>
 
     <!-- Current task -->
     <div id="current-task-area"></div>
@@ -673,7 +675,7 @@ input, select, textarea { font-family: inherit; outline: none; }
     <!-- All done card -->
     <div class="card centered hidden" id="all-done-card" style="padding:32px 20px;">
       <div style="font-size:3rem;">🎉</div>
-      <div style="font-size:1.1rem;font-weight:800;margin-top:12px;color:var(--primary);">오늘 퀘스트 모두 완료!</div>
+      <div style="font-size:1.1rem;font-weight:800;margin-top:12px;color:var(--primary);">오늘 할 일 모두 완료!</div>
       <div style="font-size:0.85rem;color:var(--text-secondary);margin-top:6px;">정말 최고예요! 펫이 행복해해요 😊</div>
     </div>
   </div>
@@ -681,7 +683,7 @@ input, select, textarea { font-family: inherit; outline: none; }
   <!-- Bottom Nav -->
   <nav class="bottom-nav">
     <button class="nav-btn active" onclick="switchTab('quest')" id="nav-quest">
-      <span>⚔️</span><span>퀘스트</span>
+      <span>📋</span><span>할 일</span>
     </button>
     <button class="nav-btn" onclick="switchTab('shop')" id="nav-shop">
       <span>💎</span><span>보상 상점</span>
@@ -707,7 +709,7 @@ input, select, textarea { font-family: inherit; outline: none; }
 
   <nav class="bottom-nav">
     <button class="nav-btn" onclick="switchTab('quest')" id="snav-quest">
-      <span>⚔️</span><span>퀘스트</span>
+      <span>📋</span><span>할 일</span>
     </button>
     <button class="nav-btn active" onclick="switchTab('shop')" id="snav-shop">
       <span>💎</span><span>보상 상점</span>
@@ -822,7 +824,7 @@ input, select, textarea { font-family: inherit; outline: none; }
 
     <div class="tab-bar" id="settings-tabs">
       <button class="tab-btn active" onclick="switchSettingsTab('children')" id="stab-children">아이</button>
-      <button class="tab-btn" onclick="switchSettingsTab('tasks')" id="stab-tasks">퀘스트</button>
+      <button class="tab-btn" onclick="switchSettingsTab('tasks')" id="stab-tasks">할 일</button>
       <button class="tab-btn" onclick="switchSettingsTab('rewards')" id="stab-rewards">보상</button>
       <button class="tab-btn" onclick="switchSettingsTab('points')" id="stab-points">포인트</button>
       <button class="tab-btn" onclick="switchSettingsTab('misc')" id="stab-misc">기타</button>
@@ -835,9 +837,9 @@ input, select, textarea { font-family: inherit; outline: none; }
     <!-- Tab: Tasks -->
     <div id="stab-content-tasks" class="hidden">
       <div style="display:flex;flex-direction:column;gap:8px;" id="tasks-settings-list"></div>
-      <button class="btn-ghost" style="margin-top:12px;width:100%;" onclick="showAddTaskForm()">+ 퀘스트 추가</button>
+      <button class="btn-ghost" style="margin-top:12px;width:100%;" onclick="showAddTaskForm()">+ 할 일 추가</button>
       <div id="add-task-form" class="card hidden" style="margin-top:8px;">
-        <div style="font-weight:700;margin-bottom:10px;">새 퀘스트 추가</div>
+        <div style="font-weight:700;margin-bottom:10px;">새 할 일 추가</div>
         <div class="form-group"><label class="form-label">이름</label><input class="input-field" id="newtask-name" placeholder="예: 손씻기"></div>
         <div class="form-group" style="margin-top:8px;"><label class="form-label">이모지</label><input class="input-field" id="newtask-emoji" placeholder="🧼" maxlength="2"></div>
         <div class="form-group" style="margin-top:8px;"><label class="form-label">XP</label><input class="input-field" id="newtask-xp" type="number" value="20" min="5" max="100"></div>
@@ -1056,10 +1058,8 @@ function xpNeeded(level) { return 100; }
 function renderWelcome() {
   const log = loadLog();
   const el = document.getElementById('profile-list');
-  const slottedTasks = getSlottedTasks();
-  const allEnabled = slottedTasks.filter(t => t.enabled);
-
   el.innerHTML = settings.children.map(child => {
+    const allEnabled = tasksForChild(child.id);
     const done = allEnabled.filter(t => {
       const entry = log[`${child.id}_${t.id}`];
       return entry && entry.done && (!t.photo || entry.approved);
@@ -1118,6 +1118,10 @@ function getSlotLabel(slot) {
   if (slot === 'morning') return '🌅 아침 루틴';
   if (slot === 'afterschool') return '🏫 하교 후';
   return '🌙 저녁 루틴';
+}
+
+function tasksForChild(childId) {
+  return tasks.filter(t => t.enabled && (!t.for || t.for.length === 0 || t.for.includes(childId)));
 }
 
 function getTasksForSlot(slot) {
@@ -1246,7 +1250,7 @@ function renderTasks(child, log, slot, slotTasks, doneCount, totalCount) {
   progressText.textContent = `${doneCount}/${totalCount} 완료`;
 
   if (totalCount === 0) {
-    currentArea.innerHTML = `<div class="card centered" style="padding:32px 20px;color:var(--text-secondary);">이 시간대에 퀘스트가 없어요</div>`;
+    currentArea.innerHTML = `<div class="card centered" style="padding:32px 20px;color:var(--text-secondary);">지금은 할 일이 없어요</div>`;
     doneList.innerHTML = '';
     allDoneCard.classList.add('hidden');
     progressRow.classList.add('hidden');
@@ -1562,7 +1566,7 @@ function renderParentDashboard() {
   const log = loadLog();
   const overview = document.getElementById('parent-child-overview');
   overview.innerHTML = settings.children.map(child => {
-    const slotTasks = tasks.filter(t => t.enabled);
+    const slotTasks = tasksForChild(child.id);
     const done = slotTasks.filter(t => {
       const e = log[`${child.id}_${t.id}`];
       return e && e.done && (!t.photo || e.approved);
@@ -1747,7 +1751,7 @@ function toggleTask(idx) {
   renderTasksSettings();
 }
 function deleteTask(idx) {
-  if (!confirm('이 퀘스트를 삭제할까요?')) return;
+  if (!confirm('이 할 일을 삭제할까요?')) return;
   tasks.splice(idx, 1);
   saveTasks();
   renderTasksSettings();
