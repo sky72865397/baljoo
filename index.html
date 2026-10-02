@@ -54,7 +54,7 @@ input, select, textarea { font-family: inherit; outline: none; }
 .screen.active { display: flex; flex-direction: column; }
 .screen-inner {
   width: 100%;
-  max-width: 480px;
+  max-width: 640px;
   margin: 0 auto;
   padding: 20px 16px 100px;
   min-height: 100%;
@@ -270,6 +270,21 @@ input, select, textarea { font-family: inherit; outline: none; }
   padding: 4px 10px;
 }
 
+/* ===== CHECKLIST ===== */
+.slot-tabs { display:flex; gap:6px; background:var(--primary-bg); padding:5px; border-radius:16px; }
+.slot-tab { flex:1; padding:12px 4px; border-radius:12px; font-weight:800; font-size:0.95rem; background:none; color:var(--text-secondary); }
+.slot-tab.active { background:var(--card); color:var(--primary); box-shadow:var(--shadow); }
+.check-item { display:flex; align-items:center; gap:14px; width:100%; padding:16px 18px; background:var(--card); border:2px solid var(--border); border-radius:18px; text-align:left; transition:transform 0.1s; }
+.check-item:active { transform:scale(0.98); }
+.check-box { width:36px; height:36px; border-radius:11px; border:3px solid #c7d2fe; flex-shrink:0; display:flex; align-items:center; justify-content:center; color:white; font-size:1.2rem; font-weight:900; }
+.check-emoji { font-size:2rem; line-height:1; }
+.check-name { flex:1; font-size:1.2rem; font-weight:800; color:var(--text); }
+.check-item.done { background:var(--success-bg); border-color:transparent; }
+.check-item.done .check-box { background:var(--success); border-color:var(--success); animation:checkPop 0.3s ease; }
+.check-item.done .check-name { color:var(--text-muted); text-decoration:line-through; }
+.xp-pop { position:fixed; left:50%; top:30%; transform:translateX(-50%); background:var(--success); color:white; font-weight:900; font-size:1.4rem; padding:10px 22px; border-radius:99px; z-index:500; pointer-events:none; animation:xpPop 1.2s ease forwards; }
+@keyframes xpPop { 0%{opacity:0;transform:translate(-50%,10px) scale(.8)} 20%{opacity:1;transform:translate(-50%,0) scale(1.1)} 80%{opacity:1} 100%{opacity:0;transform:translate(-50%,-30px)} }
+
 /* ===== COMPLETED TASKS ===== */
 .task-done-item {
   display: flex;
@@ -312,7 +327,7 @@ input, select, textarea { font-family: inherit; outline: none; }
   border-top: 1px solid var(--border);
   display: flex;
   z-index: 100;
-  max-width: 480px;
+  max-width: 640px;
   margin: 0 auto;
 }
 .nav-btn {
@@ -649,7 +664,7 @@ input, select, textarea { font-family: inherit; outline: none; }
     </div>
 
     <!-- TIME BADGE -->
-    <div class="centered"><div class="time-badge" id="time-slot-badge">🌅 아침 루틴</div></div>
+    <div class="slot-tabs" id="slot-tabs"></div>
 
     <!-- TAEKWONDO ALERT (hidden by default) -->
     <div class="alert-card hidden" id="taekwondo-alert">
@@ -658,19 +673,10 @@ input, select, textarea { font-family: inherit; outline: none; }
     </div>
 
     <!-- TASKS SECTION -->
-    <div class="section-label" style="padding-left:4px;">오늘 할 일</div>
+    <div class="section-label" style="padding-left:4px;" id="checklist-label">오늘 할 일</div>
 
-    <!-- Current task -->
-    <div id="current-task-area"></div>
-
-    <!-- Progress -->
-    <div class="flex-between" style="padding:0 4px;" id="progress-row">
-      <div class="progress-dots" id="progress-dots"></div>
-      <div class="text-sm color-muted" id="progress-text"></div>
-    </div>
-
-    <!-- Completed tasks -->
-    <div style="display:flex;flex-direction:column;gap:8px;" id="done-tasks-list"></div>
+    <div class="text-sm color-muted" style="padding:0 4px;margin-top:-6px;" id="progress-text"></div>
+    <div style="display:flex;flex-direction:column;gap:10px;" id="checklist"></div>
 
     <!-- All done card -->
     <div class="card centered hidden" id="all-done-card" style="padding:32px 20px;">
@@ -682,6 +688,9 @@ input, select, textarea { font-family: inherit; outline: none; }
 
   <!-- Bottom Nav -->
   <nav class="bottom-nav">
+    <button class="nav-btn" onclick="renderWelcome();showScreen('screen-welcome')">
+      <span>👨‍👧‍👧</span><span>다른 아이</span>
+    </button>
     <button class="nav-btn active" onclick="switchTab('quest')" id="nav-quest">
       <span>📋</span><span>할 일</span>
     </button>
@@ -918,19 +927,19 @@ const DEFAULT_CHILDREN = [
 ];
 
 const DEFAULT_TASKS = [
-  { id:'t1',  name:'세수하기',    emoji:'🚿', xp:30, slot:'morning',    photo:true,  enabled:true },
-  { id:'t2',  name:'양치하기',    emoji:'🦷', xp:30, slot:'morning',    photo:true,  enabled:true },
+  { id:'t1',  name:'세수하기',    emoji:'🚿', xp:30, slot:'morning',    photo:false, enabled:true },
+  { id:'t2',  name:'양치하기',    emoji:'🦷', xp:30, slot:'morning',    photo:false, enabled:true },
   { id:'t3',  name:'밥먹기',      emoji:'🍚', xp:20, slot:'morning',    photo:false, enabled:true },
-  { id:'t4',  name:'가방챙기기',  emoji:'🎒', xp:20, slot:'morning',    photo:true,  enabled:true },
+  { id:'t4',  name:'가방챙기기',  emoji:'🎒', xp:20, slot:'morning',    photo:false, enabled:true },
   { id:'t5',  name:'손씻기',      emoji:'🙌', xp:15, slot:'afterschool',photo:false, enabled:true },
   { id:'t6',  name:'간식먹기',    emoji:'🍎', xp:15, slot:'afterschool',photo:false, enabled:true },
-  { id:'t7',  name:'온리원 공부', emoji:'💻', xp:50, slot:'afterschool',photo:true,  enabled:true, for:['c1'] },
-  { id:'t8',  name:'구몬 공부',   emoji:'📝', xp:50, slot:'afterschool',photo:true,  enabled:true, for:['c2'] },
+  { id:'t7',  name:'온리원 공부', emoji:'💻', xp:50, slot:'afterschool',photo:false, enabled:true, for:['c1'] },
+  { id:'t8',  name:'구몬 공부',   emoji:'📝', xp:50, slot:'afterschool',photo:false, enabled:true, for:['c2'] },
   { id:'t9',  name:'책 읽기',     emoji:'📖', xp:30, slot:'afterschool',photo:false, enabled:true },
   { id:'t10', name:'태권도준비',  emoji:'🥋', xp:20, slot:'afterschool',photo:false, enabled:true, for:['c1'] },
   { id:'t11', name:'저녁먹기',    emoji:'🍽️', xp:15, slot:'evening',    photo:false, enabled:true },
-  { id:'t12', name:'샤워',        emoji:'🚿', xp:30, slot:'evening',    photo:true,  enabled:true },
-  { id:'t13', name:'양치',        emoji:'🦷', xp:30, slot:'evening',    photo:true,  enabled:true },
+  { id:'t12', name:'샤워',        emoji:'🚿', xp:30, slot:'evening',    photo:false, enabled:true },
+  { id:'t13', name:'양치',        emoji:'🦷', xp:30, slot:'evening',    photo:false, enabled:true },
 ];
 
 const DEFAULT_REWARDS = [
@@ -949,6 +958,7 @@ let settings = {};  // { pin, taekwondoTime, children }
 let tasks = [];
 let rewards = [];
 let currentChildId = null;
+let viewSlot = null;
 let pendingPin = '';
 let pinTarget = 'parent';  // 'parent'
 let currentSettingsTab = 'children';
@@ -1008,6 +1018,11 @@ function init() {
     const raw = localStorage.getItem('routinepet_rewards');
     rewards = raw ? JSON.parse(raw) : JSON.parse(JSON.stringify(DEFAULT_REWARDS));
   } catch(e) { rewards = JSON.parse(JSON.stringify(DEFAULT_REWARDS)); }
+
+  if (settings.dataVersion !== 2) {
+    tasks = JSON.parse(JSON.stringify(DEFAULT_TASKS));
+    settings.dataVersion = 2;
+  }
 
   saveSettings();
   saveTasks();
@@ -1088,6 +1103,7 @@ function renderWelcome() {
 // =====================================================================
 function enterChild(childId) {
   currentChildId = childId;
+  viewSlot = getActiveSlot();
   renderHomeScreen();
   showScreen('screen-home');
 }
@@ -1138,7 +1154,7 @@ function renderHomeScreen() {
   if (!child) return;
 
   const log = loadLog();
-  const slot = getActiveSlot();
+  const slot = viewSlot || getActiveSlot();
   const slotTasks = getTasksForSlot(slot);
 
   // Diamond chip
@@ -1197,8 +1213,8 @@ function renderHomeScreen() {
 
   document.getElementById('speech-bubble').textContent = speechText;
 
-  // Time slot badge
-  document.getElementById('time-slot-badge').textContent = getSlotLabel(slot);
+  document.getElementById('slot-tabs').innerHTML = ['morning','afterschool','evening'].map(sl =>
+    `<button class="slot-tab${sl===slot?' active':''}" onclick="setViewSlot('${sl}')">${getSlotLabel(sl)}</button>`).join('');
 
   // Taekwondo alert
   renderTaekwondoAlert();
@@ -1224,90 +1240,48 @@ function renderTaekwondoAlert() {
     `태권도 출발까지 ${diffH > 0 ? diffH + '시간 ' : ''}${diffM}분!`;
 }
 
+function setViewSlot(slot) {
+  viewSlot = slot;
+  renderHomeScreen();
+}
+
 function renderTasks(child, log, slot, slotTasks, doneCount, totalCount) {
-  const currentArea = document.getElementById('current-task-area');
-  const doneList = document.getElementById('done-tasks-list');
-  const progressDots = document.getElementById('progress-dots');
-  const progressText = document.getElementById('progress-text');
+  const list = document.getElementById('checklist');
   const allDoneCard = document.getElementById('all-done-card');
-  const progressRow = document.getElementById('progress-row');
-
-  // Find current (first undone) task
-  const pendingTasks = slotTasks.filter(t => {
-    const entry = log[`${child.id}_${t.id}`];
-    return !(entry && entry.done && (!t.photo || entry.approved));
-  });
-  const doneTasks = slotTasks.filter(t => {
-    const entry = log[`${child.id}_${t.id}`];
-    return entry && entry.done && (!t.photo || entry.approved);
-  });
-
-  // Progress dots
-  progressDots.innerHTML = slotTasks.map(t => {
-    const isDone = doneTasks.find(d => d.id === t.id);
-    return `<div class="dot${isDone?' done':''}"></div>`;
-  }).join('');
-  progressText.textContent = `${doneCount}/${totalCount} 완료`;
+  document.getElementById('progress-text').textContent = totalCount ? `${doneCount}/${totalCount} 완료` : '';
+  allDoneCard.classList.toggle('hidden', !(totalCount > 0 && doneCount === totalCount));
 
   if (totalCount === 0) {
-    currentArea.innerHTML = `<div class="card centered" style="padding:32px 20px;color:var(--text-secondary);">지금은 할 일이 없어요</div>`;
-    doneList.innerHTML = '';
-    allDoneCard.classList.add('hidden');
-    progressRow.classList.add('hidden');
+    list.innerHTML = `<div class="card centered" style="padding:32px 20px;color:var(--text-secondary);">이 시간엔 할 일이 없어요</div>`;
     return;
   }
+  list.innerHTML = slotTasks.map(t => {
+    const e = log[`${child.id}_${t.id}`];
+    const done = !!(e && e.done);
+    return `<button class="check-item${done?' done':''}" onclick="toggleCheck('${child.id}','${t.id}')">
+      <div class="check-box">${done?'✓':''}</div>
+      <span class="check-emoji">${t.emoji}</span>
+      <span class="check-name">${t.name}</span>
+      <span class="xp-badge">+${t.xp} XP</span>
+    </button>`;
+  }).join('');
+}
 
-  progressRow.classList.remove('hidden');
-
-  if (pendingTasks.length === 0) {
-    currentArea.innerHTML = '';
-    allDoneCard.classList.remove('hidden');
-  } else {
-    allDoneCard.classList.add('hidden');
-    const task = pendingTasks[0];
-    const entry = log[`${child.id}_${task.id}`] || {};
-    const waitingPhoto = task.photo && entry.done && !entry.approved;
-
-    let actionBtn = '';
-    if (waitingPhoto) {
-      actionBtn = `<div style="background:var(--accent-bg);border-radius:12px;padding:12px;text-align:center;font-size:0.85rem;font-weight:700;color:var(--accent);">📸 사진 승인 대기 중...</div>`;
-    } else if (task.photo) {
-      actionBtn = `<label class="btn-primary" style="position:relative;overflow:hidden;">
-        📸 사진 찍기
-        <input type="file" accept="image/*" capture="environment" style="position:absolute;width:100%;height:100%;top:0;left:0;opacity:0;cursor:pointer;" onchange="handlePhotoChange(event,'${child.id}','${task.id}',${task.xp})">
-      </label>`;
-    } else {
-      actionBtn = `<button class="btn-success" onclick="completeTask('${child.id}','${task.id}',${task.xp})">✅ 완료!</button>`;
-    }
-
-    currentArea.innerHTML = `
-      <div class="task-card">
-        <div class="flex-between" style="margin-bottom:14px;">
-          <div class="task-emoji">${task.emoji}</div>
-          <div class="xp-badge">+${task.xp} XP</div>
-        </div>
-        <div style="font-size:1.1rem;font-weight:800;color:var(--text);margin-bottom:16px;">${task.name}</div>
-        ${actionBtn}
-      </div>`;
+function toggleCheck(childId, taskId) {
+  const task = tasks.find(t => t.id === taskId);
+  const child = settings.children.find(c => c.id === childId);
+  if (!task || !child) return;
+  const log = loadLog();
+  const key = `${childId}_${taskId}`;
+  if (log[key] && log[key].done) {
+    delete log[key];
+    saveLog(log);
+    child.xp = Math.max(0, child.xp - task.xp);
+    saveSettings();
+    renderHomeScreen();
+    return;
   }
-
-  // Done tasks
-  doneList.innerHTML = doneTasks.map(t => `
-    <div class="task-done-item">
-      <div class="check-circle">✓</div>
-      <span style="font-size:1.2rem;">${t.emoji}</span>
-      <span style="font-size:0.9rem;font-weight:600;color:var(--text-secondary);flex:1;">${t.name}</span>
-      <span class="text-xs color-muted">+${t.xp} XP</span>
-    </div>`).join('');
-
-  // Also show tasks waiting for photo approval
-  const waitingTasks = slotTasks.filter(t => {
-    const entry = log[`${child.id}_${t.id}`];
-    return t.photo && entry && entry.done && !entry.approved;
-  });
-  if (waitingTasks.length > 0 && pendingTasks.length > 0 && waitingTasks[0].id === pendingTasks[0].id) {
-    // Already shown in current task area
-  }
+  completeTask(childId, taskId, task.xp);
 }
 
 // =====================================================================
@@ -1346,15 +1320,20 @@ function awardXP(childId, xp, taskId) {
 
   saveSettings();
 
-  // Animate pet
-  const petEl = document.getElementById('pet-emoji-big');
-  if (petEl) {
-    petEl.className = 'pet-bounce';
-    setTimeout(() => { petEl.className = 'pet-float'; }, 700);
+  if (leveled) {
+    showLevelUpScreen(child, oldLevel, evolved);
+    return;
   }
-
-  // Show reaction
-  showReactionScreen(child, xp, taskId, leveled, evolved, oldLevel);
+  renderHomeScreen();
+  const petEl = document.getElementById('pet-emoji-big');
+  const moodClass = petEl.className;
+  petEl.className = 'pet-bounce';
+  setTimeout(() => { petEl.className = moodClass; }, 700);
+  const pop = document.createElement('div');
+  pop.className = 'xp-pop';
+  pop.textContent = `+${xp} XP`;
+  document.body.appendChild(pop);
+  setTimeout(() => pop.remove(), 1300);
 }
 
 function showReactionScreen(child, xp, taskId, leveled, evolved, oldLevel) {
