@@ -456,6 +456,7 @@ label { display: block; font-size: 0.875rem; color: var(--muted); margin-bottom:
     <div class="card char-display" id="home-char-card">
       <span id="home-char-emoji" class="char-emoji-big" onclick="charTap()">🥚</span>
       <div id="home-char-stage" class="char-stage-name"></div>
+      <div id="home-char-mood" style="font-size:0.85rem;margin:4px 0 2px;color:#f472b6;font-weight:600;"></div>
       <div id="home-char-hint" class="char-evolve-hint"></div>
       <!-- XP bar -->
       <div style="width:100%; margin-top:8px;">
@@ -661,51 +662,51 @@ const CHARACTERS = {
   dragon: {
     name: '드래곤',
     stages: [
-      { minLv:1,  maxLv:3,  emoji:'🥚',      label:'아기' },
-      { minLv:4,  maxLv:6,  emoji:'🐣',      label:'어린' },
-      { minLv:7,  maxLv:9,  emoji:'🦎',      label:'견습생' },
-      { minLv:10, maxLv:14, emoji:'🐲',      label:'전사' },
-      { minLv:15, maxLv:999, emoji:'🐉',     label:'전설의' },
+      { minLv:1,  maxLv:3,  emoji:'🥚',   label:'알 속의' },
+      { minLv:4,  maxLv:6,  emoji:'🐣',   label:'갓 태어난' },
+      { minLv:7,  maxLv:9,  emoji:'🐲',   label:'아기' },
+      { minLv:10, maxLv:14, emoji:'🐲✨',  label:'무럭무럭 자라는' },
+      { minLv:15, maxLv:999, emoji:'🐉',  label:'전설의' },
     ]
   },
-  robot: {
-    name: '로봇',
+  chick: {
+    name: '병아리',
     stages: [
-      { minLv:1,  maxLv:3,  emoji:'🔩',      label:'아기' },
-      { minLv:4,  maxLv:6,  emoji:'🤖',      label:'어린' },
-      { minLv:7,  maxLv:9,  emoji:'⚙️🤖',    label:'견습생' },
-      { minLv:10, maxLv:14, emoji:'🦾',      label:'전사' },
-      { minLv:15, maxLv:999, emoji:'🦾✨',   label:'전설의' },
+      { minLv:1,  maxLv:3,  emoji:'🥚',   label:'알 속의' },
+      { minLv:4,  maxLv:6,  emoji:'🐣',   label:'갓 태어난' },
+      { minLv:7,  maxLv:9,  emoji:'🐥',   label:'아기' },
+      { minLv:10, maxLv:14, emoji:'🐤',   label:'씩씩한' },
+      { minLv:15, maxLv:999, emoji:'🐓',  label:'멋진' },
     ]
   },
   cat: {
     name: '고양이',
     stages: [
-      { minLv:1,  maxLv:3,  emoji:'🐱',      label:'아기' },
-      { minLv:4,  maxLv:6,  emoji:'😸',      label:'어린' },
-      { minLv:7,  maxLv:9,  emoji:'🐈',      label:'견습생' },
-      { minLv:10, maxLv:14, emoji:'🐈‍⬛',     label:'전사' },
-      { minLv:15, maxLv:999, emoji:'👑🐱',   label:'전설의' },
+      { minLv:1,  maxLv:3,  emoji:'🐱',   label:'아기' },
+      { minLv:4,  maxLv:6,  emoji:'😺',   label:'귀여운' },
+      { minLv:7,  maxLv:9,  emoji:'😸',   label:'활발한' },
+      { minLv:10, maxLv:14, emoji:'🐈',   label:'의젓한' },
+      { minLv:15, maxLv:999, emoji:'😻',  label:'사랑스러운' },
     ]
   },
   rabbit: {
     name: '토끼',
     stages: [
-      { minLv:1,  maxLv:3,  emoji:'🐰',      label:'아기' },
-      { minLv:4,  maxLv:6,  emoji:'🐇',      label:'어린' },
-      { minLv:7,  maxLv:9,  emoji:'🐇✨',    label:'견습생' },
-      { minLv:10, maxLv:14, emoji:'🌙🐇',    label:'전사' },
-      { minLv:15, maxLv:999, emoji:'🦸🐇',   label:'전설의' },
+      { minLv:1,  maxLv:3,  emoji:'🐰',   label:'아기' },
+      { minLv:4,  maxLv:6,  emoji:'🐇',   label:'귀여운' },
+      { minLv:7,  maxLv:9,  emoji:'🐇✨',  label:'활발한' },
+      { minLv:10, maxLv:14, emoji:'🐰💛',  label:'의젓한' },
+      { minLv:15, maxLv:999, emoji:'👑🐰', label:'왕토끼' },
     ]
   },
-  bear: {
-    name: '곰',
+  dog: {
+    name: '강아지',
     stages: [
-      { minLv:1,  maxLv:3,  emoji:'🐻',      label:'아기' },
-      { minLv:4,  maxLv:6,  emoji:'🐼',      label:'어린' },
-      { minLv:7,  maxLv:9,  emoji:'🐻‍❄️',    label:'견습생' },
-      { minLv:10, maxLv:14, emoji:'👑🐻',    label:'전사' },
-      { minLv:15, maxLv:999, emoji:'🦁',     label:'전설의' },
+      { minLv:1,  maxLv:3,  emoji:'🐶',   label:'아기' },
+      { minLv:4,  maxLv:6,  emoji:'🐕',   label:'귀여운' },
+      { minLv:7,  maxLv:9,  emoji:'🐕✨',  label:'활발한' },
+      { minLv:10, maxLv:14, emoji:'🦮',   label:'믿음직한' },
+      { minLv:15, maxLv:999, emoji:'🐕‍🦺', label:'최고의' },
     ]
   }
 };
@@ -763,7 +764,7 @@ const DEFAULT_SETTINGS = {
   milestoneBonus: 50,
   milestoneInterval: 5,
   children: [
-    { id:'c1', name:'아들', characterType:'dragon', level:1, xp:0, points:0, color:'#7c3aed' },
+    { id:'c1', name:'아들', characterType:'dog', level:1, xp:0, points:0, color:'#7c3aed' },
     { id:'c2', name:'딸', characterType:'rabbit', level:1, xp:0, points:0, color:'#ec4899' },
   ]
 };
@@ -944,8 +945,19 @@ function renderHome() {
   document.getElementById('home-char-stage').textContent = getCharStageName(child.characterType, child.level);
   const nextEvolveLevels = getCharNextEvolveLevels(child.characterType, child.level);
   document.getElementById('home-char-hint').textContent = nextEvolveLevels
-    ? `✨ 다음 단계까지 ${nextEvolveLevels}레벨`
-    : '🏆 최강 용사!';
+    ? `✨ 진화까지 ${nextEvolveLevels}레벨 남았어요!`
+    : '🏆 완전히 다 자랐어요!';
+  // Pet mood based on today's task completion
+  const allTasks = tasks.filter(t => t.enabled);
+  const doneCount = allTasks.filter(t => childLog[t.id]).length;
+  const pct = allTasks.length ? doneCount / allTasks.length : 0;
+  const charName = CHARACTERS[child.characterType]?.name || '펫';
+  let mood;
+  if (pct === 0)       mood = `${charName}가 심심해해요... 같이 놀아요! 🥺`;
+  else if (pct < 0.5)  mood = `${charName}가 응원하고 있어요! 🌟`;
+  else if (pct < 1)    mood = `거의 다 왔어요, 화이팅! 💪`;
+  else                 mood = `${charName}가 너무 행복해요! 🎉`;
+  document.getElementById('home-char-mood').textContent = mood;
 
   // XP bar
   const xpNeeded = s.xpPerLevel || 100;
@@ -1678,7 +1690,7 @@ function deleteChild(childId) {
 function addChild() {
   const s = loadSettings();
   const newId = 'c_' + Date.now();
-  s.children.push({ id: newId, name: '새 아이', characterType: 'dragon', level: 1, xp: 0, points: 0, color: '#7c3aed' });
+  s.children.push({ id: newId, name: '새 아이', characterType: 'rabbit', level: 1, xp: 0, points: 0, color: '#7c3aed' });
   saveSettings(s);
   editChild(newId);
 }
