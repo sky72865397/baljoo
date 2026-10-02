@@ -1687,7 +1687,7 @@ function init() {
     rewards = raw ? JSON.parse(raw) : JSON.parse(JSON.stringify(DEFAULT_REWARDS));
   } catch(e) { rewards = JSON.parse(JSON.stringify(DEFAULT_REWARDS)); }
 
-  if (settings.dataVersion !== 4) {
+  if (!(settings.dataVersion >= 4)) {
     tasks = JSON.parse(JSON.stringify(DEFAULT_TASKS));
     settings.duties = JSON.parse(JSON.stringify(DEFAULT_DUTIES));
     settings.dutyPicks = {};
