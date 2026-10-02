@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>오늘의 루틴 🐾</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
 <style>
 /* ===== DESIGN TOKENS ===== */
 :root {
@@ -32,7 +35,8 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 html, body {
   height: 100%;
-  font-family: -apple-system, BlinkMacSystemFont, 'Noto Sans KR', 'Segoe UI', sans-serif;
+  font-family: 'Jua', -apple-system, BlinkMacSystemFont, 'Noto Sans KR', 'Segoe UI', sans-serif;
+  font-synthesis: none;
   background: var(--bg);
   color: var(--text);
   -webkit-font-smoothing: antialiased;
@@ -1516,6 +1520,8 @@ function toggleDuty(childId, dutyId) {
 }
 
 const DEFAULT_REWARDS = [
+  { id:'r7', name:'엄마랑 30분 놀기',     emoji:'👩', cost:1 },
+  { id:'r8', name:'아빠랑 30분 놀기',     emoji:'👨', cost:1 },
   { id:'r1', name:'좋아하는 간식 선택',   emoji:'🍫', cost:3 },
   { id:'r2', name:'게임 30분 추가',       emoji:'🎮', cost:5, for:['c1','c2'] },
   { id:'r3', name:'용돈 500원',           emoji:'💰', cost:5 },
@@ -1607,6 +1613,11 @@ function init() {
   if (settings.dataVersion === 5) {
     rewards.filter(r => r.name.includes('게임')).forEach(r => { r.for = ['c1', 'c2']; });
     settings.dataVersion = 6;
+  }
+  if (settings.dataVersion === 6) {
+    DEFAULT_REWARDS.filter(d => d.cost === 1 && !rewards.some(r => r.name === d.name))
+      .reverse().forEach(d => rewards.unshift(JSON.parse(JSON.stringify(d))));
+    settings.dataVersion = 7;
   }
 
   saveSettings();
