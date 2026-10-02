@@ -3,16 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>오늘의 퀘스트 ⚔️</title>
+<title>퀘스트 용사단 ⚔️</title>
 <style>
-/* ===== CSS VARIABLES & RESET ===== */
+/* ===== CSS VARIABLES ===== */
 :root {
-  --bg-start: #0f0c29;
-  --bg-mid: #302b63;
-  --bg-end: #24243e;
+  --bg: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
   --card: rgba(255,255,255,0.07);
   --card-hover: rgba(255,255,255,0.12);
-  --card-border: rgba(255,255,255,0.12);
+  --border: rgba(255,255,255,0.12);
   --primary: #7c3aed;
   --primary-light: #a855f7;
   --accent: #f59e0b;
@@ -21,1554 +19,1975 @@
   --success-light: #34d399;
   --danger: #ef4444;
   --danger-light: #f87171;
+  --diamond: #38bdf8;
+  --diamond-light: #7dd3fc;
   --text: #f1f5f9;
   --muted: #94a3b8;
   --muted2: #64748b;
 }
-* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+/* ===== RESET ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 html, body {
-  height: 100%;
-  overflow: hidden;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-mid) 50%, var(--bg-end) 100%);
-  color: var(--text);
+  height: 100%; overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Noto Sans KR', 'Segoe UI', sans-serif;
+  background: var(--bg); color: var(--text);
   -webkit-font-smoothing: antialiased;
 }
+button { font-family: inherit; cursor: pointer; border: none; outline: none; }
+input, select, textarea { font-family: inherit; }
+img { max-width: 100%; }
 
 /* ===== SCREEN MANAGEMENT ===== */
 .screen {
-  display: none;
-  position: fixed;
-  inset: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
+  display: none; position: fixed; inset: 0;
+  overflow-y: auto; overflow-x: hidden;
+  background: var(--bg);
+  -webkit-overflow-scrolling: touch;
 }
 .screen.active { display: flex; flex-direction: column; }
+.screen-inner {
+  width: 100%; max-width: 480px; margin: 0 auto;
+  padding: 0 16px 100px; min-height: 100%;
+  display: flex; flex-direction: column;
+}
 
 /* ===== ANIMATIONS ===== */
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(24px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-@keyframes popIn {
-  0%   { transform: scale(0.5); opacity: 0; }
-  70%  { transform: scale(1.1); }
-  100% { transform: scale(1); opacity: 1; }
+@keyframes fadeIn {
+  from { opacity: 0; } to { opacity: 1; }
 }
-@keyframes shimmer {
-  0%   { background-position: -200% center; }
-  100% { background-position: 200% center; }
+@keyframes bounce {
+  0%, 100% { transform: translateY(0) scale(1); }
+  30%       { transform: translateY(-18px) scale(1.15); }
+  60%       { transform: translateY(-8px) scale(1.05); }
 }
-@keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50%       { transform: translateY(-8px); }
+@keyframes pulse {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 8px rgba(124,58,237,0.6)); }
+  50%       { transform: scale(1.06); filter: drop-shadow(0 0 20px rgba(168,85,247,0.9)); }
 }
-@keyframes pulse-ring {
-  0%   { transform: scale(0.8); opacity: 1; }
-  100% { transform: scale(2); opacity: 0; }
+@keyframes xpFlash {
+  0%   { transform: scale(0.5) translateY(20px); opacity: 0; }
+  40%  { transform: scale(1.3) translateY(-10px); opacity: 1; }
+  70%  { transform: scale(1.0) translateY(0); }
+  100% { transform: scale(1.0) translateY(0); opacity: 1; }
 }
-@keyframes star-burst {
-  0%   { transform: scale(0) rotate(0deg); opacity: 1; }
-  100% { transform: scale(1) rotate(180deg); opacity: 0; }
-}
-@keyframes confetti-fall {
+@keyframes confettiFall {
   0%   { transform: translateY(-20px) rotate(0deg); opacity: 1; }
   100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
 }
-@keyframes bounce-in {
-  0%   { transform: scale(0.3); opacity: 0; }
-  50%  { transform: scale(1.05); opacity: 0.9; }
-  70%  { transform: scale(0.9); }
-  100% { transform: scale(1); opacity: 1; }
+@keyframes starPop {
+  0%   { transform: scale(0) rotate(-30deg); opacity: 0; }
+  60%  { transform: scale(1.3) rotate(10deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
 }
-@keyframes glow-pulse {
-  0%, 100% { box-shadow: 0 0 20px rgba(124,58,237,0.4); }
-  50%       { box-shadow: 0 0 40px rgba(124,58,237,0.8), 0 0 60px rgba(124,58,237,0.3); }
+@keyframes progressFill {
+  from { width: 0; } to { width: var(--target-width); }
 }
-@keyframes coin-spin {
-  0%   { transform: rotateY(0deg); }
-  100% { transform: rotateY(360deg); }
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
-@keyframes progress-fill {
-  from { width: 0%; }
+@keyframes slideDown {
+  from { transform: translateY(-100%); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
 }
-@keyframes countdown-tick {
-  0%  { transform: scale(1); }
-  50% { transform: scale(1.05); }
-  100%{ transform: scale(1); }
+@keyframes wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  25%       { transform: rotate(-8deg); }
+  75%       { transform: rotate(8deg); }
 }
 
-.anim-fadeInUp  { animation: fadeInUp 0.4s ease forwards; }
-.anim-popIn     { animation: popIn 0.5s cubic-bezier(0.175,0.885,0.32,1.275) forwards; }
-.anim-float     { animation: float 3s ease-in-out infinite; }
-.anim-glow      { animation: glow-pulse 2s ease-in-out infinite; }
+.anim-fadeinup { animation: fadeInUp 0.4s ease both; }
+.anim-bounce   { animation: bounce 0.8s ease infinite; }
+.anim-pulse    { animation: pulse 2.5s ease-in-out infinite; }
 
-/* ===== CONFETTI PIECES ===== */
+/* ===== TYPOGRAPHY ===== */
+.title-xl  { font-size: 2rem; font-weight: 800; letter-spacing: -0.5px; }
+.title-lg  { font-size: 1.5rem; font-weight: 700; }
+.title-md  { font-size: 1.2rem; font-weight: 600; }
+.body-md   { font-size: 1rem; }
+.body-sm   { font-size: 0.875rem; }
+.body-xs   { font-size: 0.75rem; }
+.text-muted { color: var(--muted); }
+.text-accent { color: var(--accent); }
+.text-success { color: var(--success); }
+.text-danger  { color: var(--danger); }
+.text-diamond { color: var(--diamond); }
+.text-center  { text-align: center; }
+.fw-bold { font-weight: 700; }
+
+/* ===== CARD ===== */
+.card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 20px; padding: 20px;
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+}
+.card-sm { border-radius: 14px; padding: 14px; }
+.card-tight { padding: 12px 14px; }
+
+/* ===== BUTTONS ===== */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: 8px; padding: 14px 24px; border-radius: 14px;
+  font-size: 1rem; font-weight: 700; letter-spacing: 0.2px;
+  transition: all 0.18s ease; position: relative; overflow: hidden;
+  -webkit-user-select: none; user-select: none;
+}
+.btn:active { transform: scale(0.96); }
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:hover { background: var(--primary-light); }
+.btn-accent  { background: var(--accent); color: #1a1a1a; }
+.btn-accent:hover { background: var(--accent-light); }
+.btn-success { background: var(--success); color: #fff; }
+.btn-success:hover { background: var(--success-light); }
+.btn-danger  { background: var(--danger); color: #fff; }
+.btn-danger:hover  { background: var(--danger-light); }
+.btn-ghost   { background: var(--card); border: 1px solid var(--border); color: var(--text); }
+.btn-ghost:hover { background: var(--card-hover); }
+.btn-full    { width: 100%; }
+.btn-sm      { padding: 10px 18px; font-size: 0.9rem; border-radius: 10px; }
+.btn-disabled { background: var(--card); color: var(--muted2); pointer-events: none; border: 1px solid var(--border); }
+
+/* ===== BADGE / CHIP ===== */
+.badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: 600;
+}
+.badge-primary  { background: rgba(124,58,237,0.3); color: var(--primary-light); }
+.badge-accent   { background: rgba(245,158,11,0.3); color: var(--accent-light); }
+.badge-success  { background: rgba(16,185,129,0.3); color: var(--success-light); }
+.badge-diamond  { background: rgba(56,189,248,0.2); color: var(--diamond-light); }
+.badge-muted    { background: rgba(148,163,184,0.15); color: var(--muted); }
+
+/* ===== XP BAR ===== */
+.xp-bar-wrap {
+  background: rgba(255,255,255,0.08); border-radius: 99px;
+  height: 14px; overflow: hidden; position: relative;
+}
+.xp-bar-fill {
+  height: 100%; border-radius: 99px;
+  background: linear-gradient(90deg, var(--primary), var(--primary-light), #c084fc);
+  background-size: 200% 100%;
+  animation: shimmer 2s linear infinite;
+  transition: width 0.6s cubic-bezier(.4,0,.2,1);
+  position: relative;
+}
+.xp-bar-fill::after {
+  content: '';
+  position: absolute; right: 0; top: 0; bottom: 0; width: 6px;
+  background: rgba(255,255,255,0.5);
+  border-radius: 0 99px 99px 0;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* ===== CHARACTER DISPLAY ===== */
+.char-display {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 8px; padding: 24px;
+}
+.char-emoji-big {
+  font-size: 80px; line-height: 1;
+  animation: pulse 2.5s ease-in-out infinite;
+  filter: drop-shadow(0 0 20px rgba(124,58,237,0.7));
+  display: block; cursor: pointer;
+}
+.char-emoji-big:active { animation: bounce 0.8s ease; }
+.char-stage-name { font-size: 1rem; color: var(--muted); font-weight: 600; }
+.char-evolve-hint { font-size: 0.78rem; color: var(--primary-light); }
+
+/* ===== BOTTOM NAV ===== */
+.bottom-nav {
+  position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+  width: 100%; max-width: 480px;
+  background: rgba(15,12,41,0.95); border-top: 1px solid var(--border);
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  display: flex; z-index: 100; padding-bottom: env(safe-area-inset-bottom, 0);
+}
+.nav-btn {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  gap: 4px; padding: 12px 8px; color: var(--muted2);
+  font-size: 0.7rem; font-weight: 600; cursor: pointer;
+  transition: color 0.2s; border: none; background: none;
+}
+.nav-btn.active { color: var(--primary-light); }
+.nav-btn .nav-icon { font-size: 1.4rem; }
+
+/* ===== CONFETTI ===== */
 .confetti-container {
-  position: fixed; inset: 0; pointer-events: none; z-index: 999; overflow: hidden;
+  position: fixed; inset: 0; pointer-events: none; z-index: 200; overflow: hidden;
 }
 .confetti-piece {
-  position: absolute;
-  top: -20px;
-  width: 10px; height: 10px;
-  border-radius: 2px;
-  animation: confetti-fall linear forwards;
+  position: absolute; top: -20px; width: 10px; height: 10px;
+  border-radius: 2px; animation: confettiFall linear forwards;
 }
 
-/* ===== COMMON UI ===== */
-.btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  min-height: 56px; padding: 0 28px;
-  border: none; border-radius: 9999px;
-  font-size: 1.05rem; font-weight: 700; cursor: pointer;
-  transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
-  width: 100%;
-  letter-spacing: 0.5px;
+/* ===== MODAL ===== */
+.modal-overlay {
+  display: none; position: fixed; inset: 0; z-index: 300;
+  background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+  align-items: center; justify-content: center; padding: 20px;
 }
-.btn:active { transform: scale(0.95); }
-.btn-primary {
-  background: linear-gradient(135deg, #7c3aed, #9333ea);
-  color: #fff;
-  box-shadow: 0 4px 20px rgba(124,58,237,0.5);
-}
-.btn-primary:hover { box-shadow: 0 6px 28px rgba(124,58,237,0.7); }
-.btn-accent {
-  background: linear-gradient(135deg, #f59e0b, #f97316);
-  color: #fff;
-  box-shadow: 0 4px 20px rgba(245,158,11,0.5);
-}
-.btn-success {
-  background: linear-gradient(135deg, #10b981, #059669);
-  color: #fff;
-  box-shadow: 0 4px 20px rgba(16,185,129,0.5);
-}
-.btn-danger {
-  background: linear-gradient(135deg, #ef4444, #dc2626);
-  color: #fff;
-  box-shadow: 0 4px 20px rgba(239,68,68,0.4);
-}
-.btn-ghost {
-  background: var(--card);
-  color: var(--text);
-  border: 1px solid var(--card-border);
-}
-.btn-sm {
-  min-height: 42px; padding: 0 18px; font-size: 0.9rem; border-radius: 12px;
-}
-.card {
-  background: var(--card);
-  border: 1px solid var(--card-border);
-  border-radius: 16px;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-}
-.page-padding { padding: 20px 16px; }
-.section-title {
-  font-size: 0.8rem; font-weight: 700; letter-spacing: 1.5px;
-  text-transform: uppercase; color: var(--muted); margin-bottom: 12px;
-}
-.spacer { flex: 1; }
-
-/* ===== WELCOME SCREEN ===== */
-#screen-welcome {
-  align-items: center; justify-content: center;
-  padding: 40px 24px;
-  background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
-}
-.welcome-logo {
-  font-size: 5rem; margin-bottom: 16px;
-  animation: float 3s ease-in-out infinite;
-}
-.welcome-title {
-  font-size: 2rem; font-weight: 900; letter-spacing: -0.5px;
-  background: linear-gradient(135deg, #a78bfa, #f59e0b);
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-  background-clip: text; text-align: center; margin-bottom: 8px;
-}
-.welcome-subtitle {
-  color: var(--muted); font-size: 0.95rem; text-align: center; margin-bottom: 40px;
-}
-.child-select-grid {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
-  width: 100%; max-width: 340px; margin-bottom: 32px;
-}
-.child-select-btn {
-  background: var(--card);
-  border: 2px solid var(--card-border);
-  border-radius: 20px;
-  padding: 24px 16px;
-  cursor: pointer;
-  transition: transform 0.15s, border-color 0.2s, box-shadow 0.2s;
-  display: flex; flex-direction: column; align-items: center; gap: 10px;
-  backdrop-filter: blur(10px);
-}
-.child-select-btn:active { transform: scale(0.93); }
-.child-select-btn .avatar { font-size: 3rem; }
-.child-select-btn .cname { font-size: 1.05rem; font-weight: 700; }
-.parent-link {
-  color: var(--muted2); font-size: 0.85rem; text-decoration: none;
-  padding: 12px 24px; border-radius: 9999px;
-  border: 1px solid rgba(255,255,255,0.08);
-  background: rgba(255,255,255,0.03);
-  cursor: pointer; transition: color 0.2s;
-}
-.parent-link:hover { color: var(--muted); }
-
-/* ===== CHILD HOME SCREEN ===== */
-#screen-child-home { padding: 0; background: transparent; }
-.child-header {
-  padding: 20px 20px 16px;
-  display: flex; align-items: center; gap: 14px;
-  background: rgba(0,0,0,0.25);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(255,255,255,0.06);
-}
-.child-header-avatar { font-size: 2.4rem; }
-.child-header-info { flex: 1; }
-.child-header-name { font-size: 1.3rem; font-weight: 800; }
-.child-header-slot {
-  font-size: 0.75rem; color: var(--muted);
-  background: rgba(255,255,255,0.08);
-  padding: 2px 10px; border-radius: 9999px;
-  display: inline-block; margin-top: 4px;
-}
-.coin-display {
-  display: flex; align-items: center; gap: 6px;
-  background: rgba(245,158,11,0.15);
-  border: 1px solid rgba(245,158,11,0.3);
-  border-radius: 9999px;
-  padding: 8px 14px;
-}
-.coin-display .coin-icon { font-size: 1.4rem; }
-.coin-display .coin-count { font-size: 1.3rem; font-weight: 900; color: var(--accent-light); }
-.coin-display .coin-label { font-size: 0.7rem; color: var(--accent); font-weight: 600; }
-
-/* Countdown bar */
-.countdown-section { padding: 14px 20px 0; }
-.countdown-label {
-  display: flex; justify-content: space-between; align-items: center;
-  font-size: 0.85rem; color: var(--muted); margin-bottom: 8px;
-}
-.countdown-label strong { color: var(--text); font-size: 1rem; }
-.countdown-bar-track {
-  height: 10px; background: rgba(255,255,255,0.08);
-  border-radius: 9999px; overflow: hidden;
-}
-.countdown-bar-fill {
-  height: 100%; border-radius: 9999px;
-  background: linear-gradient(90deg, #7c3aed, #f59e0b);
-  transition: width 1s linear;
-}
-
-/* Task quest area */
-.quest-area { padding: 16px 20px; flex: 1; }
-.progress-dots { display: flex; gap: 8px; justify-content: center; margin-bottom: 20px; }
-.dot {
-  width: 10px; height: 10px; border-radius: 50%;
-  background: rgba(255,255,255,0.15);
-  transition: all 0.3s;
-}
-.dot.done { background: var(--success); }
-.dot.current { background: var(--accent); width: 24px; border-radius: 5px; }
-
-.quest-card {
-  padding: 28px 24px;
-  text-align: center;
-  position: relative;
-  overflow: hidden;
-  animation: fadeInUp 0.4s ease;
-}
-.quest-card::before {
-  content: '';
-  position: absolute; inset: 0;
-  background: linear-gradient(135deg, rgba(124,58,237,0.1), rgba(245,158,11,0.05));
-  border-radius: 16px;
-}
-.quest-card-icon { font-size: 4.5rem; margin-bottom: 16px; display: block; }
-.quest-card-title { font-size: 1.8rem; font-weight: 900; margin-bottom: 10px; letter-spacing: -0.5px; }
-.quest-card-desc { color: var(--muted); font-size: 0.95rem; margin-bottom: 24px; line-height: 1.5; }
-.quest-coin-badge {
-  display: inline-flex; align-items: center; gap: 6px;
-  background: rgba(245,158,11,0.2);
-  border: 1px solid rgba(245,158,11,0.4);
-  border-radius: 9999px; padding: 6px 16px;
-  font-size: 0.95rem; font-weight: 700; color: var(--accent-light);
-  margin-bottom: 24px;
-}
-.quest-card-btns { display: flex; flex-direction: column; gap: 12px; }
-
-.pending-badge {
-  display: inline-flex; align-items: center; gap: 6px;
-  background: rgba(245,158,11,0.15);
-  border: 1px solid rgba(245,158,11,0.3);
-  border-radius: 9999px; padding: 8px 20px;
-  font-size: 0.9rem; color: var(--accent);
-  animation: bounce-in 0.4s ease;
-}
-
-/* All done in slot */
-.slot-done-card { padding: 40px 24px; text-align: center; }
-.slot-done-icon { font-size: 5rem; margin-bottom: 16px; animation: float 3s infinite; }
-.slot-done-title { font-size: 1.6rem; font-weight: 900; margin-bottom: 8px; }
-.slot-done-desc { color: var(--muted); margin-bottom: 24px; }
-.game-time-banner {
-  background: linear-gradient(135deg, rgba(16,185,129,0.2), rgba(5,150,105,0.1));
-  border: 1px solid rgba(16,185,129,0.3);
-  border-radius: 16px; padding: 20px;
-  text-align: center;
-}
-.game-time-big { font-size: 2.5rem; font-weight: 900; color: var(--success-light); }
-.game-time-label { font-size: 0.9rem; color: var(--success); margin-top: 4px; }
-
-/* ===== CELEBRATION SCREEN ===== */
-#screen-celebrate {
-  align-items: center; justify-content: center;
-  background: radial-gradient(ellipse at center, #1e1045 0%, #0f0c29 70%);
-}
-.celebrate-content { text-align: center; padding: 40px 24px; }
-.celebrate-icon { font-size: 6rem; animation: bounce-in 0.5s ease; display: block; margin-bottom: 20px; }
-.celebrate-coins {
-  font-size: 3.5rem; font-weight: 900; color: var(--accent-light);
-  animation: popIn 0.5s 0.2s both;
-  text-shadow: 0 0 30px rgba(245,158,11,0.6);
-}
-.celebrate-msg {
-  font-size: 1.4rem; font-weight: 700; margin: 16px 0;
-  animation: fadeInUp 0.4s 0.4s both;
-}
-.celebrate-total {
-  color: var(--muted); font-size: 0.95rem;
-  animation: fadeInUp 0.4s 0.6s both;
-  margin-bottom: 28px;
-}
-.celebrate-btn { animation: fadeInUp 0.4s 0.8s both; max-width: 280px; margin: 0 auto; }
-
-/* Stars decoration */
-.star-burst {
-  position: fixed; pointer-events: none;
-  font-size: 2rem;
-  animation: star-burst 1s ease-out forwards;
-}
-
-/* ===== PHOTO PENDING SCREEN ===== */
-#screen-photo-pending {
-  align-items: center; justify-content: center; padding: 40px 24px;
-}
-.photo-pending-card { padding: 32px 24px; text-align: center; max-width: 360px; width: 100%; }
-.photo-pending-icon { font-size: 4rem; margin-bottom: 16px; animation: float 3s infinite; }
-.photo-pending-title { font-size: 1.4rem; font-weight: 800; margin-bottom: 8px; }
-.photo-pending-desc { color: var(--muted); margin-bottom: 20px; line-height: 1.5; }
-.photo-thumb {
-  width: 160px; height: 160px; object-fit: cover;
-  border-radius: 16px; border: 2px solid rgba(255,255,255,0.15);
-  margin-bottom: 20px;
-}
-.pending-hint {
-  font-size: 0.9rem; color: var(--accent);
-  background: rgba(245,158,11,0.1);
-  border: 1px solid rgba(245,158,11,0.2);
-  border-radius: 12px; padding: 12px 16px;
-  margin-bottom: 20px;
-}
-
-/* ===== PARENT PIN SCREEN ===== */
-#screen-pin {
-  align-items: center; justify-content: center; padding: 40px 24px;
-}
-.pin-card { padding: 32px 24px; text-align: center; max-width: 320px; width: 100%; }
-.pin-title { font-size: 1.3rem; font-weight: 800; margin-bottom: 8px; }
-.pin-subtitle { color: var(--muted); font-size: 0.9rem; margin-bottom: 28px; }
-.pin-dots { display: flex; justify-content: center; gap: 12px; margin-bottom: 28px; }
-.pin-dot {
-  width: 18px; height: 18px; border-radius: 50%;
-  border: 2px solid var(--muted2);
-  background: transparent;
-  transition: background 0.15s, border-color 0.15s;
-}
-.pin-dot.filled { background: var(--primary-light); border-color: var(--primary-light); }
-.pin-error { color: var(--danger); font-size: 0.85rem; min-height: 20px; margin-bottom: 12px; }
-.keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-.key-btn {
-  height: 64px; border-radius: 16px;
-  background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1);
-  color: var(--text); font-size: 1.4rem; font-weight: 700; cursor: pointer;
-  transition: background 0.15s, transform 0.1s;
-  display: flex; align-items: center; justify-content: center;
-}
-.key-btn:active { background: rgba(124,58,237,0.3); transform: scale(0.93); }
-.key-btn.key-del { font-size: 1rem; color: var(--muted); }
-.key-btn.key-empty { visibility: hidden; }
-
-/* ===== PARENT DASHBOARD ===== */
-#screen-parent-dashboard { padding: 0; }
-.parent-header {
-  padding: 20px 20px 16px;
-  background: rgba(0,0,0,0.3);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(255,255,255,0.06);
-  display: flex; align-items: center; gap: 12px;
-}
-.parent-header-title { font-size: 1.2rem; font-weight: 800; flex: 1; }
-.icon-btn {
-  width: 44px; height: 44px; border-radius: 12px;
-  background: var(--card); border: 1px solid var(--card-border);
-  color: var(--text); font-size: 1.2rem; cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  transition: background 0.15s;
-}
-.icon-btn:active { background: var(--card-hover); }
-.dashboard-content { padding: 16px; display: flex; flex-direction: column; gap: 16px; }
-
-/* Child progress cards */
-.child-progress-card { padding: 18px; }
-.child-progress-header { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
-.child-progress-avatar { font-size: 2rem; }
-.child-progress-name { font-size: 1.1rem; font-weight: 700; flex: 1; }
-.child-coins-badge {
-  background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.3);
-  border-radius: 9999px; padding: 4px 12px;
-  font-size: 0.9rem; font-weight: 700; color: var(--accent-light);
-}
-.task-mini-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
-.task-mini-item {
-  display: flex; align-items: center; gap: 8px;
-  font-size: 0.85rem; color: var(--muted);
-}
-.task-mini-item .status-icon { font-size: 1rem; }
-.task-mini-item.done { color: var(--text); }
-.progress-bar-track {
-  height: 8px; background: rgba(255,255,255,0.08); border-radius: 9999px; overflow: hidden;
-}
-.progress-bar-fill {
-  height: 100%; border-radius: 9999px;
-  background: linear-gradient(90deg, #7c3aed, #10b981);
-  transition: width 0.5s ease;
-}
-.game-time-badge {
-  margin-top: 10px;
-  font-size: 0.85rem; color: var(--success);
-  background: rgba(16,185,129,0.1);
-  border: 1px solid rgba(16,185,129,0.2);
-  border-radius: 9999px; padding: 4px 14px;
-  display: inline-flex; align-items: center; gap: 4px;
-}
-
-/* Pending approvals */
-.approval-card { padding: 18px; }
-.approval-badge {
-  display: inline-flex; align-items: center; gap: 6px;
-  background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3);
-  border-radius: 9999px; padding: 4px 12px;
-  font-size: 0.8rem; font-weight: 700; color: var(--danger-light);
-  margin-bottom: 14px;
-}
-.approval-item {
-  display: flex; align-items: center; gap: 12px;
-  padding: 14px; border-radius: 12px;
-  background: rgba(255,255,255,0.04); margin-bottom: 10px;
-}
-.approval-photo-thumb {
-  width: 64px; height: 64px; object-fit: cover;
-  border-radius: 10px; border: 1px solid rgba(255,255,255,0.15);
-  flex-shrink: 0;
-}
-.approval-info { flex: 1; min-width: 0; }
-.approval-child { font-size: 0.9rem; font-weight: 700; }
-.approval-task { font-size: 0.8rem; color: var(--muted); margin-top: 2px; }
-.approval-btns { display: flex; gap: 8px; flex-shrink: 0; }
-.approval-btns .btn { min-height: 36px; padding: 0 12px; font-size: 0.85rem; border-radius: 10px; width: auto; }
-
-/* Weekly view */
-.weekly-card { padding: 18px; }
-.week-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-top: 12px; }
-.week-cell {
-  aspect-ratio: 1;
-  border-radius: 8px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 0.7rem; font-weight: 700;
-  background: rgba(255,255,255,0.05);
-  color: var(--muted2);
-  flex-direction: column; gap: 2px;
-}
-.week-cell .day-label { font-size: 0.6rem; }
-.week-cell.has-data { background: rgba(124,58,237,0.25); color: var(--text); }
-.week-cell.today { border: 2px solid var(--primary-light); }
-
-/* ===== PARENT SETTINGS ===== */
-#screen-parent-settings { padding: 0; }
-.settings-content { padding: 16px; display: flex; flex-direction: column; gap: 16px; }
-.settings-section { padding: 18px; }
-.settings-section-title {
-  font-size: 0.85rem; font-weight: 700; letter-spacing: 1px;
-  text-transform: uppercase; color: var(--primary-light);
-  margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
-}
-.child-edit-row {
-  display: flex; align-items: center; gap: 12px; margin-bottom: 14px;
-}
-.avatar-picker {
-  display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;
-}
-.avatar-option {
-  width: 44px; height: 44px; border-radius: 12px; font-size: 1.6rem;
-  background: rgba(255,255,255,0.07); border: 2px solid transparent;
-  cursor: pointer; display: flex; align-items: center; justify-content: center;
-  transition: border-color 0.15s, transform 0.1s;
-}
-.avatar-option.selected { border-color: var(--primary-light); }
-.avatar-option:active { transform: scale(0.9); }
-.setting-row {
-  display: flex; align-items: center; gap: 12px;
-  padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
-}
-.setting-row:last-child { border-bottom: none; }
-.setting-label { flex: 1; font-size: 0.95rem; }
-.setting-value { color: var(--muted); font-size: 0.9rem; }
-.toggle-switch {
-  position: relative; width: 48px; height: 26px;
-  background: rgba(255,255,255,0.1); border-radius: 9999px;
-  cursor: pointer; transition: background 0.2s; flex-shrink: 0;
-}
-.toggle-switch.on { background: var(--primary); }
-.toggle-knob {
-  position: absolute; top: 3px; left: 3px;
-  width: 20px; height: 20px; border-radius: 50%;
-  background: white; transition: transform 0.2s;
-}
-.toggle-switch.on .toggle-knob { transform: translateX(22px); }
-.text-input {
-  background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 12px; padding: 10px 14px; color: var(--text);
-  font-size: 0.95rem; width: 100%; margin-top: 8px; outline: none;
-}
-.text-input:focus { border-color: var(--primary-light); }
-.task-edit-item {
-  display: flex; align-items: center; gap: 10px;
-  padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
-}
-.task-edit-item:last-child { border-bottom: none; }
-.task-edit-icon { font-size: 1.4rem; flex-shrink: 0; }
-.task-edit-info { flex: 1; min-width: 0; }
-.task-edit-name { font-size: 0.9rem; font-weight: 600; }
-.task-edit-meta { font-size: 0.75rem; color: var(--muted); }
-.task-coin-input {
-  width: 56px; background: rgba(255,255,255,0.07);
-  border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
-  padding: 6px 8px; color: var(--text); font-size: 0.9rem; text-align: center;
-}
-.danger-zone { padding: 18px; border: 1px solid rgba(239,68,68,0.2); }
-.danger-zone .settings-section-title { color: var(--danger-light); }
-
-/* ===== MISC ===== */
-.back-btn {
-  width: 36px; height: 36px; border-radius: 10px;
-  background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1);
-  color: var(--text); font-size: 1.1rem; cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-}
-.divider { height: 1px; background: rgba(255,255,255,0.06); margin: 4px 0; }
-.toast {
-  position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%);
-  background: rgba(30,20,60,0.95); border: 1px solid rgba(255,255,255,0.15);
-  border-radius: 12px; padding: 12px 24px; font-size: 0.95rem; font-weight: 600;
-  z-index: 1000; white-space: nowrap;
+.modal-overlay.active { display: flex; }
+.modal-box {
+  background: linear-gradient(135deg, #1e1b4b, #312e81);
+  border: 1px solid var(--border); border-radius: 24px;
+  padding: 28px; width: 100%; max-width: 360px;
   animation: fadeInUp 0.3s ease;
 }
-.empty-state {
-  text-align: center; color: var(--muted); font-size: 0.9rem;
-  padding: 24px; display: flex; flex-direction: column; align-items: center; gap: 8px;
+
+/* ===== MISC ===== */
+.divider { height: 1px; background: var(--border); margin: 16px 0; }
+.spacer-sm { height: 8px; }
+.spacer-md { height: 16px; }
+.spacer-lg { height: 24px; }
+.row { display: flex; align-items: center; gap: 10px; }
+.row-between { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.col  { display: flex; flex-direction: column; gap: 8px; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.tag { padding: 6px 14px; border-radius: 99px; font-size: 0.8rem; font-weight: 600; }
+.tag-morning    { background: rgba(245,158,11,0.2); color: var(--accent-light); }
+.tag-afterschool { background: rgba(16,185,129,0.2); color: var(--success-light); }
+.tag-evening    { background: rgba(124,58,237,0.2); color: var(--primary-light); }
+.photo-thumb    { width: 100%; border-radius: 12px; object-fit: cover; max-height: 200px; }
+input[type="range"] { width: 100%; accent-color: var(--primary); }
+input[type="text"], input[type="number"], input[type="password"] {
+  background: rgba(255,255,255,0.08); border: 1px solid var(--border);
+  border-radius: 12px; padding: 12px 14px; color: var(--text);
+  font-size: 1rem; width: 100%; outline: none;
 }
-.empty-state span { font-size: 2rem; }
+input[type="text"]:focus, input[type="number"]:focus, input[type="password"]:focus {
+  border-color: var(--primary-light);
+}
+select {
+  background: rgba(255,255,255,0.08); border: 1px solid var(--border);
+  border-radius: 12px; padding: 12px 14px; color: var(--text);
+  font-size: 1rem; width: 100%; outline: none; appearance: none;
+}
+textarea {
+  background: rgba(255,255,255,0.08); border: 1px solid var(--border);
+  border-radius: 12px; padding: 12px 14px; color: var(--text);
+  font-size: 1rem; width: 100%; outline: none; resize: none;
+}
+label { display: block; font-size: 0.875rem; color: var(--muted); margin-bottom: 6px; }
+.form-group { margin-bottom: 14px; }
+.toggle-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.toggle {
+  position: relative; width: 48px; height: 26px;
+  background: var(--muted2); border-radius: 99px; cursor: pointer;
+  transition: background 0.2s; flex-shrink: 0;
+}
+.toggle.on { background: var(--primary); }
+.toggle::after {
+  content: ''; position: absolute; top: 3px; left: 3px;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: #fff; transition: left 0.2s;
+}
+.toggle.on::after { left: 25px; }
+.pin-dots { display: flex; gap: 16px; justify-content: center; margin: 24px 0; }
+.pin-dot {
+  width: 20px; height: 20px; border-radius: 50%;
+  border: 2px solid var(--muted); background: transparent;
+  transition: all 0.2s;
+}
+.pin-dot.filled { background: var(--primary-light); border-color: var(--primary-light); }
+.numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px; }
+.numkey {
+  background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+  padding: 18px; font-size: 1.4rem; font-weight: 700; color: var(--text);
+  text-align: center; cursor: pointer; transition: all 0.15s; user-select: none;
+}
+.numkey:active { transform: scale(0.92); background: var(--card-hover); }
+.numkey.del { font-size: 1.1rem; }
+.section-title { font-size: 0.85rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+.progress-dots { display: flex; gap: 8px; justify-content: center; padding: 8px 0; }
+.progress-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--card-hover); border: 1.5px solid var(--border);
+  transition: all 0.3s;
+}
+.progress-dot.done { background: var(--success); border-color: var(--success); }
+.progress-dot.active { background: var(--primary-light); border-color: var(--primary-light); transform: scale(1.3); }
+.tabs { display: flex; gap: 6px; overflow-x: auto; padding: 4px 0; -webkit-overflow-scrolling: touch; }
+.tab-btn {
+  flex-shrink: 0; padding: 8px 16px; border-radius: 99px;
+  font-size: 0.85rem; font-weight: 600; cursor: pointer;
+  background: var(--card); border: 1px solid var(--border); color: var(--muted);
+  transition: all 0.2s;
+}
+.tab-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+.reward-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.reward-card {
+  background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+  padding: 16px; display: flex; flex-direction: column; align-items: center;
+  gap: 8px; text-align: center;
+}
+.reward-icon { font-size: 2.5rem; }
+.reward-name { font-size: 0.9rem; font-weight: 600; }
+.reward-cost { font-size: 0.85rem; color: var(--diamond); font-weight: 700; }
+.child-selector-row { display: flex; gap: 10px; overflow-x: auto; padding: 4px 0; -webkit-overflow-scrolling: touch; }
+.child-chip {
+  flex-shrink: 0; display: flex; align-items: center; gap: 8px;
+  padding: 10px 16px; border-radius: 99px; cursor: pointer;
+  border: 1.5px solid var(--border); background: var(--card);
+  transition: all 0.2s; font-size: 0.9rem; font-weight: 600;
+}
+.child-chip.active { border-color: var(--primary-light); background: rgba(124,58,237,0.2); }
+.taekwondo-banner {
+  background: linear-gradient(135deg, rgba(239,68,68,0.25), rgba(220,38,38,0.15));
+  border: 1px solid rgba(239,68,68,0.4); border-radius: 16px;
+  padding: 16px; display: flex; align-items: center; gap: 12px;
+  animation: wiggle 0.5s ease 0s 3;
+}
+.streak-flame { font-size: 1.8rem; }
+
+/* ===== WELCOME SCREEN SPECIFIC ===== */
+#screen-welcome .screen-inner { justify-content: center; min-height: 100vh; padding-top: 60px; padding-bottom: 40px; }
+.welcome-logo { font-size: 3.5rem; text-align: center; margin-bottom: 8px; }
+.welcome-title { font-size: 2rem; font-weight: 900; text-align: center; background: linear-gradient(135deg, #c084fc, #f59e0b, #38bdf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.welcome-sub { text-align: center; color: var(--muted); font-size: 0.95rem; margin-bottom: 32px; }
+.profile-btn {
+  display: flex; align-items: center; gap: 14px;
+  padding: 18px 20px; border-radius: 20px; width: 100%; cursor: pointer;
+  background: var(--card); border: 1px solid var(--border);
+  transition: all 0.2s; margin-bottom: 10px; text-align: left;
+}
+.profile-btn:active { transform: scale(0.98); background: var(--card-hover); }
+.profile-emoji { font-size: 2.4rem; }
+.profile-info { flex: 1; }
+.profile-name { font-size: 1.1rem; font-weight: 700; }
+.profile-level { font-size: 0.8rem; color: var(--muted); }
+.parent-btn {
+  margin-top: 20px; background: none; border: 1px solid var(--border);
+  padding: 12px 20px; border-radius: 12px; color: var(--muted); font-size: 0.9rem;
+  width: 100%; cursor: pointer; transition: all 0.2s;
+}
+.parent-btn:active { background: var(--card); }
+
+/* ===== LEVEL UP SCREEN ===== */
+#screen-levelup .screen-inner { align-items: center; justify-content: center; min-height: 100vh; }
+.levelup-stars { display: flex; gap: 12px; margin-bottom: 16px; font-size: 2rem; }
+.levelup-stars span { animation: starPop 0.5s ease both; }
+.levelup-stars span:nth-child(2) { animation-delay: 0.15s; }
+.levelup-stars span:nth-child(3) { animation-delay: 0.3s; }
+
+/* ===== HEADER ===== */
+.screen-header {
+  position: sticky; top: 0; z-index: 50;
+  background: rgba(15,12,41,0.85); backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px); border-bottom: 1px solid var(--border);
+  padding: 14px 16px; width: 100%; display: flex; align-items: center; gap: 10px;
+  max-width: 480px; margin: 0 auto;
+}
+.back-btn {
+  background: none; border: none; color: var(--text); font-size: 1.4rem;
+  cursor: pointer; padding: 4px; line-height: 1; transition: opacity 0.2s;
+}
+.back-btn:active { opacity: 0.6; }
+.header-title { font-size: 1.1rem; font-weight: 700; flex: 1; }
+
+/* ===== PARENT SETTINGS SPECIFIC ===== */
+.emoji-picker { display: flex; flex-wrap: wrap; gap: 10px; }
+.emoji-opt {
+  font-size: 1.8rem; padding: 8px; border-radius: 12px; cursor: pointer;
+  border: 2px solid transparent; background: var(--card); transition: all 0.2s;
+}
+.emoji-opt.selected { border-color: var(--primary-light); background: rgba(124,58,237,0.2); }
+
+/* ===== XP GAIN SCREEN ===== */
+#screen-xpgain .screen-inner { align-items: center; justify-content: center; min-height: 100vh; }
+.xp-gain-text {
+  font-size: 5rem; font-weight: 900; color: var(--accent);
+  text-shadow: 0 0 40px rgba(245,158,11,0.6);
+  animation: xpFlash 0.8s ease both;
+}
+
+/* ===== TASK SCREEN ===== */
+.task-icon-big { font-size: 60px; line-height: 1; display: block; text-align: center; margin-bottom: 12px; }
+
+/* ===== PENDING PHOTO ===== */
+.pending-photo-box { border-radius: 16px; overflow: hidden; }
+
+/* ===== SCROLLBAR (hide) ===== */
+::-webkit-scrollbar { display: none; }
+
+/* ===== SAFE AREA ===== */
+.safe-bottom { height: calc(env(safe-area-inset-bottom, 0px) + 8px); }
 </style>
 </head>
 <body>
 
-<!-- ===== WELCOME SCREEN ===== -->
-<div id="screen-welcome" class="screen active">
-  <div class="welcome-logo">⚔️</div>
-  <div class="welcome-title">오늘의 퀘스트</div>
-  <div class="welcome-subtitle">매일 퀘스트를 완료하고<br>게임 시간을 획득하자! 🎮</div>
-
-  <div class="child-select-grid" id="child-select-grid">
-    <!-- populated by JS -->
-  </div>
-
-  <div class="parent-link" id="btn-go-parent-mode">🔐 엄마 모드</div>
-</div>
-
-<!-- ===== CHILD HOME SCREEN ===== -->
-<div id="screen-child-home" class="screen">
-  <div class="child-header">
-    <div class="child-header-avatar" id="child-avatar-display">🦊</div>
-    <div class="child-header-info">
-      <div class="child-header-name" id="child-name-display">아들</div>
-      <div class="child-header-slot" id="child-slot-label">하교 후 루틴</div>
-    </div>
-    <div class="coin-display">
-      <span class="coin-icon">🪙</span>
-      <span class="coin-count" id="child-coin-count">0</span>
-      <span class="coin-label">코인</span>
-    </div>
-  </div>
-
-  <div class="countdown-section" id="countdown-section" style="display:none">
-    <div class="countdown-label">
-      <span>⏰ 태권도까지</span>
-      <strong id="countdown-text">2시간 30분</strong>
-    </div>
-    <div class="countdown-bar-track">
-      <div class="countdown-bar-fill" id="countdown-bar" style="width:50%"></div>
-    </div>
-  </div>
-
-  <div class="quest-area" id="quest-area">
-    <!-- populated by JS -->
+<!-- ======== SCREEN: WELCOME ======== -->
+<div class="screen active" id="screen-welcome">
+  <div class="screen-inner">
+    <div class="welcome-logo">⚔️</div>
+    <div class="welcome-title">퀘스트 용사단</div>
+    <p class="welcome-sub">매일 미션을 완료하고 용사를 키워봐요!</p>
+    <div id="welcome-profiles"></div>
+    <button class="parent-btn" onclick="showParentPin()">🔒 엄마/아빠 모드</button>
   </div>
 </div>
 
-<!-- ===== CELEBRATE SCREEN ===== -->
-<div id="screen-celebrate" class="screen">
-  <div class="celebrate-content">
-    <span class="celebrate-icon" id="cel-icon">✨</span>
-    <div class="celebrate-coins" id="cel-coins">+5 🪙</div>
-    <div class="celebrate-msg" id="cel-msg">대단해!</div>
-    <div class="celebrate-total" id="cel-total">오늘 총 코인: 15개</div>
-    <div class="celebrate-btn">
-      <button class="btn btn-accent" id="btn-next-quest">다음 퀘스트 ➡️</button>
+<!-- ======== SCREEN: HOME ======== -->
+<div class="screen" id="screen-home">
+  <div id="home-header" class="screen-header">
+    <div style="flex:1;">
+      <div id="home-child-name" class="title-md"></div>
+      <div id="home-child-level" class="body-xs text-muted"></div>
     </div>
+    <div id="home-points-chip" class="badge badge-diamond" style="cursor:pointer" onclick="showScreen('screen-shop'); renderShop();"></div>
+  </div>
+  <div class="screen-inner" style="padding-top:0;">
+    <div class="spacer-md"></div>
+    <!-- Taekwondo banner -->
+    <div id="taekwondo-banner" class="taekwondo-banner" style="display:none; margin-bottom:12px;">
+      <span>🥋</span>
+      <div>
+        <div class="fw-bold" style="font-size:0.95rem;">태권도 출발 시간이 다가오고 있어요!</div>
+        <div id="taekwondo-countdown" class="body-sm text-muted"></div>
+      </div>
+    </div>
+    <!-- Character display -->
+    <div class="card char-display" id="home-char-card">
+      <span id="home-char-emoji" class="char-emoji-big" onclick="charTap()">🥚</span>
+      <div id="home-char-stage" class="char-stage-name"></div>
+      <div id="home-char-hint" class="char-evolve-hint"></div>
+      <!-- XP bar -->
+      <div style="width:100%; margin-top:8px;">
+        <div class="row-between" style="margin-bottom:6px;">
+          <span id="xp-label" class="body-sm text-muted"></span>
+          <span id="xp-numbers" class="body-sm fw-bold"></span>
+        </div>
+        <div class="xp-bar-wrap">
+          <div id="xp-bar-fill" class="xp-bar-fill" style="width:0%"></div>
+        </div>
+      </div>
+    </div>
+    <div class="spacer-md"></div>
+    <!-- Slot badge -->
+    <div class="row-between" style="margin-bottom:12px;">
+      <div id="home-slot-badge" class="tag"></div>
+      <div id="home-progress-text" class="body-sm text-muted"></div>
+    </div>
+    <!-- Task list -->
+    <div id="home-tasks"></div>
+    <!-- All done state -->
+    <div id="home-all-done" style="display:none; text-align:center; padding:32px 0;">
+      <div style="font-size:3rem;">🎉</div>
+      <div class="title-md" style="margin:12px 0 8px;">이 시간 퀘스트 완료!</div>
+      <div class="body-sm text-muted">다음 퀘스트 시간까지 푹 쉬어요</div>
+    </div>
+    <div class="safe-bottom"></div>
+  </div>
+  <nav class="bottom-nav">
+    <button class="nav-btn active" onclick="navTo('quests')">
+      <span class="nav-icon">⚔️</span><span>오늘 퀘스트</span>
+    </button>
+    <button class="nav-btn" onclick="navTo('shop')">
+      <span class="nav-icon">💎</span><span>보상 상점</span>
+    </button>
+  </nav>
+</div>
+
+<!-- ======== SCREEN: XP GAIN ======== -->
+<div class="screen" id="screen-xpgain">
+  <div class="screen-inner" style="align-items:center; justify-content:center; min-height:100vh;">
+    <div id="xpgain-char" style="font-size:72px; margin-bottom:16px; animation: bounce 0.8s ease infinite;"></div>
+    <div id="xpgain-text" class="xp-gain-text"></div>
+    <div class="body-md text-muted" style="margin-top:12px;">경험치 획득!</div>
   </div>
 </div>
 
-<!-- ===== PHOTO PENDING SCREEN ===== -->
-<div id="screen-photo-pending" class="screen">
-  <div class="card photo-pending-card">
-    <div class="photo-pending-icon">📱</div>
-    <div class="photo-pending-title">사진을 엄마한테<br>보여주세요!</div>
-    <div class="photo-pending-desc">사진을 찍었어요.<br>엄마가 확인하면 코인을 받을 수 있어요! 🪙</div>
-    <img class="photo-thumb" id="pending-photo-preview" src="" alt="제출한 사진">
-    <div class="pending-hint">💡 엄마 모드에서 승인을 받으면<br>코인이 추가돼요!</div>
-    <button class="btn btn-ghost" id="btn-pending-back" style="margin-top:8px">← 다음 퀘스트</button>
+<!-- ======== SCREEN: LEVEL UP ======== -->
+<div class="screen" id="screen-levelup">
+  <div class="screen-inner" style="align-items:center; justify-content:center; min-height:100vh; text-align:center;">
+    <div class="confetti-container" id="levelup-confetti"></div>
+    <div class="levelup-stars"><span>⭐</span><span>⭐</span><span>⭐</span></div>
+    <div style="font-size:2.2rem; font-weight:900; color:var(--accent); margin-bottom:8px; text-shadow:0 0 30px rgba(245,158,11,0.5);">⬆️ 레벨 업!</div>
+    <div id="levelup-nums" class="title-xl" style="margin-bottom:20px; color:var(--primary-light);"></div>
+    <div id="levelup-char-emoji" style="font-size:88px; margin-bottom:12px; animation: bounce 0.9s ease infinite;"></div>
+    <div id="levelup-evolution-msg" class="title-md" style="color:var(--accent-light); margin-bottom:8px; display:none;"></div>
+    <div id="levelup-points-msg" class="badge badge-diamond" style="font-size:1rem; padding:10px 20px; margin-bottom:8px;"></div>
+    <div id="levelup-milestone-msg" style="display:none; margin-bottom:8px;" class="badge badge-accent" style="font-size:1rem; padding:10px 20px;"></div>
+    <div class="spacer-lg"></div>
+    <button class="btn btn-accent btn-full" onclick="afterLevelUp()">계속하기 →</button>
   </div>
 </div>
 
-<!-- ===== PARENT PIN SCREEN ===== -->
-<div id="screen-pin" class="screen">
-  <div class="card pin-card">
-    <div style="font-size:2.5rem;margin-bottom:12px">🔐</div>
-    <div class="pin-title">엄마 모드</div>
-    <div class="pin-subtitle">비밀번호 4자리를 입력해 주세요</div>
+<!-- ======== SCREEN: PHOTO PENDING ======== -->
+<div class="screen" id="screen-photopending">
+  <div class="screen-inner" style="align-items:center; justify-content:center; min-height:100vh; text-align:center; padding-top:60px;">
+    <div style="font-size:3rem; margin-bottom:12px;">📱</div>
+    <div class="title-md" style="margin-bottom:8px;">사진을 엄마/아빠한테 보여주세요!</div>
+    <div class="body-sm text-muted" style="margin-bottom:24px;">승인되면 XP를 받아요!</div>
+    <div id="photopending-img-wrap" style="width:100%; margin-bottom:24px;"></div>
+    <button class="btn btn-ghost btn-full" onclick="showScreen('screen-home'); renderHome();">홈으로 →</button>
+  </div>
+</div>
+
+<!-- ======== SCREEN: SHOP ======== -->
+<div class="screen" id="screen-shop">
+  <div class="screen-header">
+    <button class="back-btn" onclick="showScreen('screen-home');">◀</button>
+    <div class="header-title">보상 상점 💎</div>
+    <div id="shop-points-badge" class="badge badge-diamond"></div>
+  </div>
+  <div class="screen-inner" style="padding-top:0;">
+    <div class="spacer-md"></div>
+    <div id="shop-rewards"></div>
+    <div class="safe-bottom"></div>
+  </div>
+</div>
+
+<!-- ======== SCREEN: REDEEM SUCCESS ======== -->
+<div class="screen" id="screen-redeem">
+  <div class="screen-inner" style="align-items:center; justify-content:center; min-height:100vh; text-align:center;">
+    <div style="font-size:3rem; margin-bottom:8px;">🎉</div>
+    <div class="title-lg" style="margin-bottom:8px;">교환 완료!</div>
+    <div id="redeem-icon" style="font-size:3.5rem; margin:12px 0;"></div>
+    <div id="redeem-name" class="title-md" style="margin-bottom:4px;"></div>
+    <div id="redeem-cost" class="body-md text-danger" style="margin-bottom:4px;"></div>
+    <div class="body-md text-muted" style="margin-bottom:8px;">엄마/아빠에게 보여주고 받아요! 💎</div>
+    <div id="redeem-remaining" class="badge badge-diamond" style="font-size:1rem; padding:10px 20px; margin-bottom:24px;"></div>
+    <button class="btn btn-primary btn-full" onclick="showScreen('screen-shop'); renderShop();">상점으로 →</button>
+    <div class="spacer-sm"></div>
+    <button class="btn btn-ghost btn-full" onclick="showScreen('screen-home'); renderHome();">홈으로 →</button>
+  </div>
+</div>
+
+<!-- ======== SCREEN: PARENT PIN ======== -->
+<div class="screen" id="screen-pin">
+  <div class="screen-inner" style="align-items:center; justify-content:center; min-height:100vh;">
+    <div class="title-lg text-center" style="margin-bottom:8px;">🔒 엄마/아빠 확인</div>
+    <div class="body-sm text-muted text-center" style="margin-bottom:24px;">4자리 비밀번호를 입력하세요</div>
     <div class="pin-dots" id="pin-dots">
-      <div class="pin-dot"></div>
-      <div class="pin-dot"></div>
-      <div class="pin-dot"></div>
-      <div class="pin-dot"></div>
+      <div class="pin-dot" id="pd0"></div>
+      <div class="pin-dot" id="pd1"></div>
+      <div class="pin-dot" id="pd2"></div>
+      <div class="pin-dot" id="pd3"></div>
     </div>
-    <div class="pin-error" id="pin-error"></div>
-    <div class="keypad" id="keypad">
-      <button class="key-btn" data-key="1">1</button>
-      <button class="key-btn" data-key="2">2</button>
-      <button class="key-btn" data-key="3">3</button>
-      <button class="key-btn" data-key="4">4</button>
-      <button class="key-btn" data-key="5">5</button>
-      <button class="key-btn" data-key="6">6</button>
-      <button class="key-btn" data-key="7">7</button>
-      <button class="key-btn" data-key="8">8</button>
-      <button class="key-btn" data-key="9">9</button>
-      <button class="key-btn key-empty"></button>
-      <button class="key-btn" data-key="0">0</button>
-      <button class="key-btn key-del" data-key="del">⌫</button>
+    <div id="pin-error" class="body-sm text-danger text-center" style="min-height:20px; margin-bottom:8px;"></div>
+    <div class="numpad" style="max-width:320px; width:100%;">
+      <div class="numkey" onclick="pinInput('1')">1</div>
+      <div class="numkey" onclick="pinInput('2')">2</div>
+      <div class="numkey" onclick="pinInput('3')">3</div>
+      <div class="numkey" onclick="pinInput('4')">4</div>
+      <div class="numkey" onclick="pinInput('5')">5</div>
+      <div class="numkey" onclick="pinInput('6')">6</div>
+      <div class="numkey" onclick="pinInput('7')">7</div>
+      <div class="numkey" onclick="pinInput('8')">8</div>
+      <div class="numkey" onclick="pinInput('9')">9</div>
+      <div class="numkey del" onclick="pinBack()">⬅</div>
+      <div class="numkey" onclick="pinInput('0')">0</div>
+      <div class="numkey del" onclick="pinCancel()">✕</div>
     </div>
-    <button class="btn btn-ghost" id="btn-pin-back" style="margin-top:20px;border-radius:12px">← 돌아가기</button>
   </div>
 </div>
 
-<!-- ===== PARENT DASHBOARD ===== -->
-<div id="screen-parent-dashboard" class="screen">
-  <div class="parent-header">
-    <button class="back-btn" id="btn-dashboard-back">←</button>
-    <div class="parent-header-title">🏠 엄마 대시보드</div>
-    <button class="icon-btn" id="btn-go-settings" title="설정">⚙️</button>
+<!-- ======== SCREEN: PARENT DASHBOARD ======== -->
+<div class="screen" id="screen-dashboard">
+  <div class="screen-header">
+    <button class="back-btn" onclick="showScreen('screen-welcome'); renderWelcome();">◀</button>
+    <div class="header-title">🛡️ 부모 대시보드</div>
+    <button class="btn btn-sm btn-ghost" onclick="showParentSettings()">⚙️ 설정</button>
   </div>
-  <div class="dashboard-content" id="dashboard-content">
-    <!-- populated by JS -->
-  </div>
-</div>
-
-<!-- ===== PARENT SETTINGS ===== -->
-<div id="screen-parent-settings" class="screen">
-  <div class="parent-header">
-    <button class="back-btn" id="btn-settings-back">←</button>
-    <div class="parent-header-title">⚙️ 설정</div>
-  </div>
-  <div class="settings-content" id="settings-content">
-    <!-- populated by JS -->
+  <div class="screen-inner" style="padding-top:0;">
+    <div class="spacer-md"></div>
+    <div id="dashboard-children"></div>
+    <div class="spacer-md"></div>
+    <div id="dashboard-photos"></div>
+    <div class="spacer-md"></div>
+    <div id="dashboard-redeems"></div>
+    <div class="safe-bottom"></div>
   </div>
 </div>
 
-<!-- camera input is injected inside label dynamically -->
+<!-- ======== SCREEN: PARENT SETTINGS ======== -->
+<div class="screen" id="screen-settings">
+  <div class="screen-header">
+    <button class="back-btn" onclick="showScreen('screen-dashboard'); renderDashboard();">◀</button>
+    <div class="header-title">⚙️ 설정</div>
+  </div>
+  <div class="screen-inner" style="padding-top:0;">
+    <div class="spacer-md"></div>
+    <div class="tabs" id="settings-tabs">
+      <button class="tab-btn active" onclick="settingsTab('children')">아이 관리</button>
+      <button class="tab-btn" onclick="settingsTab('quests')">퀘스트</button>
+      <button class="tab-btn" onclick="settingsTab('rewards')">보상 상점</button>
+      <button class="tab-btn" onclick="settingsTab('points')">포인트</button>
+      <button class="tab-btn" onclick="settingsTab('other')">기타</button>
+    </div>
+    <div class="spacer-md"></div>
+    <div id="settings-content"></div>
+    <div class="safe-bottom"></div>
+  </div>
+</div>
+
+<!-- ======== MODAL: CONFIRM REDEEM ======== -->
+<div class="modal-overlay" id="modal-redeem">
+  <div class="modal-box">
+    <div class="text-center" style="margin-bottom:16px;">
+      <div id="modal-redeem-icon" style="font-size:3rem; margin-bottom:8px;"></div>
+      <div id="modal-redeem-name" class="title-md" style="margin-bottom:4px;"></div>
+      <div id="modal-redeem-cost" class="body-sm text-diamond"></div>
+    </div>
+    <div class="body-sm text-muted text-center" style="margin-bottom:20px;">이 보상으로 교환할까요?</div>
+    <div style="display:flex; gap:10px;">
+      <button class="btn btn-ghost" style="flex:1;" onclick="closeModal('modal-redeem')">취소</button>
+      <button class="btn btn-success" style="flex:1;" id="modal-redeem-confirm">교환하기 ✓</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======== MODAL: CONFIRM PIN CHANGE ======== -->
+<div class="modal-overlay" id="modal-msg">
+  <div class="modal-box text-center">
+    <div id="modal-msg-icon" style="font-size:2.5rem; margin-bottom:8px;"></div>
+    <div id="modal-msg-text" class="body-md" style="margin-bottom:20px;"></div>
+    <button class="btn btn-primary btn-full" onclick="closeModal('modal-msg')">확인</button>
+  </div>
+</div>
 
 <script>
-/* =====================================================
-   DATA & DEFAULTS
-   ===================================================== */
-
-const DEFAULT_SETTINGS = {
-  parentPin: '0000',
-  taekwondoTime: '14:25',
-  children: [
-    { id: 'c1', name: '아들', avatar: '🦊', color: '#7c3aed' },
-    { id: 'c2', name: '딸', avatar: '🐰', color: '#ec4899' }
-  ],
-  coinsPerMinute: 1
+// ================================================================
+// DATA DEFINITIONS
+// ================================================================
+const CHARACTERS = {
+  dragon: {
+    name: '드래곤',
+    stages: [
+      { minLv:1,  maxLv:3,  emoji:'🥚',      label:'아기' },
+      { minLv:4,  maxLv:6,  emoji:'🐣',      label:'어린' },
+      { minLv:7,  maxLv:9,  emoji:'🦎',      label:'견습생' },
+      { minLv:10, maxLv:14, emoji:'🐲',      label:'전사' },
+      { minLv:15, maxLv:999, emoji:'🐉',     label:'전설의' },
+    ]
+  },
+  robot: {
+    name: '로봇',
+    stages: [
+      { minLv:1,  maxLv:3,  emoji:'🔩',      label:'아기' },
+      { minLv:4,  maxLv:6,  emoji:'🤖',      label:'어린' },
+      { minLv:7,  maxLv:9,  emoji:'⚙️🤖',    label:'견습생' },
+      { minLv:10, maxLv:14, emoji:'🦾',      label:'전사' },
+      { minLv:15, maxLv:999, emoji:'🦾✨',   label:'전설의' },
+    ]
+  },
+  cat: {
+    name: '고양이',
+    stages: [
+      { minLv:1,  maxLv:3,  emoji:'🐱',      label:'아기' },
+      { minLv:4,  maxLv:6,  emoji:'😸',      label:'어린' },
+      { minLv:7,  maxLv:9,  emoji:'🐈',      label:'견습생' },
+      { minLv:10, maxLv:14, emoji:'🐈‍⬛',     label:'전사' },
+      { minLv:15, maxLv:999, emoji:'👑🐱',   label:'전설의' },
+    ]
+  },
+  rabbit: {
+    name: '토끼',
+    stages: [
+      { minLv:1,  maxLv:3,  emoji:'🐰',      label:'아기' },
+      { minLv:4,  maxLv:6,  emoji:'🐇',      label:'어린' },
+      { minLv:7,  maxLv:9,  emoji:'🐇✨',    label:'견습생' },
+      { minLv:10, maxLv:14, emoji:'🌙🐇',    label:'전사' },
+      { minLv:15, maxLv:999, emoji:'🦸🐇',   label:'전설의' },
+    ]
+  },
+  bear: {
+    name: '곰',
+    stages: [
+      { minLv:1,  maxLv:3,  emoji:'🐻',      label:'아기' },
+      { minLv:4,  maxLv:6,  emoji:'🐼',      label:'어린' },
+      { minLv:7,  maxLv:9,  emoji:'🐻‍❄️',    label:'견습생' },
+      { minLv:10, maxLv:14, emoji:'👑🐻',    label:'전사' },
+      { minLv:15, maxLv:999, emoji:'🦁',     label:'전설의' },
+    ]
+  }
 };
 
-const DEFAULT_TASKS = [
-  // 아침 루틴
-  { id: 't_morning_1', slot: 'morning', icon: '🚿', name: '세수하기',    desc: '깨끗하게 세수해요!',         needsPhoto: true,  coins: 5  },
-  { id: 't_morning_2', slot: 'morning', icon: '🦷', name: '양치하기',    desc: '이를 깨끗이 닦아요!',         needsPhoto: true,  coins: 5  },
-  { id: 't_morning_3', slot: 'morning', icon: '🍚', name: '밥 먹기',     desc: '아침밥을 맛있게 먹어요!',     needsPhoto: false, coins: 5  },
-  { id: 't_morning_4', slot: 'morning', icon: '🎒', name: '가방 챙기기', desc: '준비물 다 챙겼나요?',         needsPhoto: true,  coins: 5  },
-  // 하교 후 루틴
-  { id: 't_after_1',  slot: 'after',   icon: '🙌', name: '손 씻기',     desc: '학교 다녀와서 손 씻기!',     needsPhoto: false, coins: 3  },
-  { id: 't_after_2',  slot: 'after',   icon: '🍎', name: '간식 먹기',   desc: '맛있는 간식 시간!',           needsPhoto: false, coins: 3  },
-  { id: 't_after_3',  slot: 'after',   icon: '📚', name: '오늘의 학습', desc: '오늘 배운 것을 복습해요!',   needsPhoto: true,  coins: 20 },
-  { id: 't_after_4',  slot: 'after',   icon: '🥋', name: '태권도 준비', desc: '태권도 가방 챙겨요!',         needsPhoto: false, coins: 5  },
-  // 저녁 루틴
-  { id: 't_evening_1', slot: 'evening', icon: '🍽️', name: '저녁 먹기',  desc: '저녁밥 맛있게 먹어요!',     needsPhoto: false, coins: 3  },
-  { id: 't_evening_2', slot: 'evening', icon: '🚿', name: '샤워하기',   desc: '깨끗하게 씻어요!',           needsPhoto: true,  coins: 10 },
-  { id: 't_evening_3', slot: 'evening', icon: '🦷', name: '양치하기',   desc: '잠들기 전 양치!',            needsPhoto: true,  coins: 5  },
-  { id: 't_evening_4', slot: 'evening', icon: '📖', name: '책 읽기',    desc: '책 한 권 읽어볼까요?',       needsPhoto: true,  coins: 10 }
-];
+const CHAR_TYPES = Object.keys(CHARACTERS);
 
-const SLOT_BONUS = 10;
-const SLOT_HOURS = { morning: [6, 12], after: [12, 18], evening: [18, 23] };
-const SLOT_NAMES = { morning: '아침 루틴', after: '하교 후 루틴', evening: '저녁 루틴' };
-const CELEBRATE_MSGS = ['대단해! 🌟', '최고야! 🏆', '퀘스트 클리어! ⚔️', '완벽해! ✨', '굉장해! 🎉'];
-const AVATAR_OPTIONS = ['🦊','🐰','🐻','🐯','🦁','🐸','🐧','🦄','🐺','🦋','🐉','⭐'];
-
-/* =====================================================
-   STATE
-   ===================================================== */
-
-let currentChildId = null;
-let celebrateTimer = null;
-let countdownTimer = null;
-let celebrateTaskId = null;
-
-/* =====================================================
-   STORAGE HELPERS
-   ===================================================== */
-
-function getSettings() {
-  try {
-    const s = localStorage.getItem('questApp_settings');
-    return s ? { ...DEFAULT_SETTINGS, ...JSON.parse(s) } : { ...DEFAULT_SETTINGS };
-  } catch(e) { return { ...DEFAULT_SETTINGS }; }
+function getCharStage(type, level) {
+  const c = CHARACTERS[type] || CHARACTERS.dragon;
+  return c.stages.find(s => level >= s.minLv && level <= s.maxLv) || c.stages[c.stages.length - 1];
 }
-function saveSettings(s) { localStorage.setItem('questApp_settings', JSON.stringify(s)); }
-
-function getTasks() {
-  try {
-    const t = localStorage.getItem('questApp_tasks');
-    return t ? JSON.parse(t) : [...DEFAULT_TASKS];
-  } catch(e) { return [...DEFAULT_TASKS]; }
+function getCharEmoji(type, level) { return getCharStage(type, level).emoji; }
+function getCharStageName(type, level) {
+  const s = getCharStage(type, level);
+  const cname = CHARACTERS[type] ? CHARACTERS[type].name : '드래곤';
+  if (s.label === '견습생' || s.label === '전사') return `${cname} ${s.label}`;
+  if (s.label === '전설의') return `전설의 ${cname}`;
+  return `${s.label} ${cname}`;
 }
-function saveTasks(t) { localStorage.setItem('questApp_tasks', JSON.stringify(t)); }
-
-function getTodayKey() {
-  const d = new Date();
-  return `questApp_log_${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-}
-function getLog() {
-  try {
-    const l = localStorage.getItem(getTodayKey());
-    return l ? JSON.parse(l) : {};
-  } catch(e) { return {}; }
-}
-function saveLog(log) { localStorage.setItem(getTodayKey(), JSON.stringify(log)); }
-
-function getChildLog(childId) {
-  const log = getLog();
-  return log[childId] || {};
-}
-function setTaskStatus(childId, taskId, status, photoData = null) {
-  const log = getLog();
-  if (!log[childId]) log[childId] = {};
-  log[childId][taskId] = {
-    status,
-    photoData: photoData || (log[childId][taskId] ? log[childId][taskId].photoData : null),
-    completedAt: new Date().toISOString()
-  };
-  saveLog(log);
-}
-
-/* =====================================================
-   UTILITY
-   ===================================================== */
-
-function getCurrentSlot() {
-  const h = new Date().getHours();
-  if (h >= SLOT_HOURS.morning[0] && h < SLOT_HOURS.morning[1]) return 'morning';
-  if (h >= SLOT_HOURS.after[0]   && h < SLOT_HOURS.after[1])   return 'after';
-  if (h >= SLOT_HOURS.evening[0] && h < SLOT_HOURS.evening[1]) return 'evening';
-  // default fallback
-  if (h < SLOT_HOURS.morning[0]) return 'morning';
-  return 'evening';
-}
-
-function getActiveTasks() {
-  return getTasks().filter(t => t.enabled !== false);
-}
-
-function getSlotTasks(slot) {
-  return getActiveTasks().filter(t => t.slot === slot);
-}
-
-function calcTotalCoins(childId) {
-  const log = getChildLog(childId);
-  const tasks = getActiveTasks();
-  let total = 0;
-  const slots = { morning: false, after: false, evening: false };
-  const slotDone = { morning: true, after: true, evening: true };
-  for (const t of tasks) {
-    const entry = log[t.id];
-    if (entry && (entry.status === 'done' || entry.status === 'approved')) {
-      total += t.coins;
-      slots[t.slot] = true;
-    } else {
-      slotDone[t.slot] = false;
-    }
-  }
-  // bonus for completed slots
-  for (const slot of ['morning','after','evening']) {
-    const slotTasks = tasks.filter(t => t.slot === slot);
-    if (slotTasks.length > 0 && slotDone[slot]) total += SLOT_BONUS;
-  }
-  return total;
-}
-
-function isSlotComplete(childId, slot) {
-  const tasks = getSlotTasks(slot);
-  const log = getChildLog(childId);
-  return tasks.every(t => {
-    const e = log[t.id];
-    return e && (e.status === 'done' || e.status === 'approved');
-  });
-}
-
-function getNextPendingTask(childId, slot) {
-  const tasks = getSlotTasks(slot);
-  const log = getChildLog(childId);
-  for (const t of tasks) {
-    const e = log[t.id];
-    if (!e || e.status === 'rejected') return t;
-    if (e.status === 'pending_approval') return t; // show pending state
+function getCharNextEvolveLevels(type, level) {
+  const c = CHARACTERS[type] || CHARACTERS.dragon;
+  for (let s of c.stages) {
+    if (s.minLv > level) return s.minLv - level;
   }
   return null;
 }
 
-function compressImage(dataUrl, maxPx, callback) {
-  const img = new Image();
-  img.onload = function() {
-    const canvas = document.createElement('canvas');
-    let w = img.width, h = img.height;
-    if (w > h) { if (w > maxPx) { h = h * maxPx / w; w = maxPx; } }
-    else        { if (h > maxPx) { w = w * maxPx / h; h = maxPx; } }
-    canvas.width = w; canvas.height = h;
-    canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-    callback(canvas.toDataURL('image/jpeg', 0.7));
-  };
-  img.src = dataUrl;
+const DEFAULT_TASKS = [
+  { id:'t1', name:'세수하기', icon:'🚿', xp:30, slot:'morning',     needsPhoto:true,  enabled:true, tip:'깨끗하게 세수하고 하루를 시작해요!' },
+  { id:'t2', name:'양치하기', icon:'🦷', xp:30, slot:'morning',     needsPhoto:true,  enabled:true, tip:'치카치카 양치질!' },
+  { id:'t3', name:'밥 먹기',  icon:'🍚', xp:20, slot:'morning',     needsPhoto:false, enabled:true, tip:'든든하게 아침밥을 먹어요!' },
+  { id:'t4', name:'가방 챙기기', icon:'🎒', xp:20, slot:'morning',  needsPhoto:true,  enabled:true, tip:'필요한 준비물을 다 챙겼나요?' },
+  { id:'t5', name:'손 씻기',  icon:'🙌', xp:15, slot:'afterschool', needsPhoto:false, enabled:true, tip:'학교에서 돌아오면 먼저 손 씻기!' },
+  { id:'t6', name:'간식 먹기', icon:'🍎', xp:15, slot:'afterschool', needsPhoto:false, enabled:true, tip:'맛있는 간식으로 에너지 충전!' },
+  { id:'t7', name:'오늘의 학습', icon:'📚', xp:50, slot:'afterschool', needsPhoto:true, enabled:true, tip:'오늘 배운 것을 복습해봐요!' },
+  { id:'t8', name:'태권도 준비', icon:'🥋', xp:20, slot:'afterschool', needsPhoto:false, enabled:true, tip:'태권도 도복이랑 가방 챙겼나요?' },
+  { id:'t9', name:'저녁 먹기',  icon:'🍽️', xp:15, slot:'evening',   needsPhoto:false, enabled:true, tip:'가족과 함께 맛있는 저녁!' },
+  { id:'t10', name:'샤워하기', icon:'🚿', xp:30, slot:'evening',    needsPhoto:true,  enabled:true, tip:'하루 동안의 피로를 씻어내요!' },
+  { id:'t11', name:'양치하기', icon:'🦷', xp:30, slot:'evening',    needsPhoto:true,  enabled:true, tip:'자기 전에 꼭 양치해요!' },
+];
+
+const DEFAULT_REWARDS = [
+  { id:'r1', name:'편의점 간식', icon:'🏪', cost:50 },
+  { id:'r2', name:'좋아하는 간식 선택', icon:'🍫', cost:80 },
+  { id:'r3', name:'게임 30분 추가', icon:'🎮', cost:100 },
+  { id:'r4', name:'영화 보기', icon:'🎬', cost:200 },
+  { id:'r5', name:'원하는 저녁 선택', icon:'🍕', cost:150 },
+  { id:'r6', name:'특별 선물 (엄마 선택)', icon:'🎁', cost:500 },
+];
+
+const DEFAULT_SETTINGS = {
+  parentPin: '0000',
+  taekwondoTime: '14:25',
+  xpPerLevel: 100,
+  pointsPerLevel: 20,
+  milestoneBonus: 50,
+  milestoneInterval: 5,
+  children: [
+    { id:'c1', name:'아들', characterType:'dragon', level:1, xp:0, points:0, color:'#7c3aed' },
+    { id:'c2', name:'딸', characterType:'rabbit', level:1, xp:0, points:0, color:'#ec4899' },
+  ]
+};
+
+// ================================================================
+// STATE
+// ================================================================
+let state = {
+  currentChildId: null,
+  pinCallback: null,
+  pendingPhotoTask: null,
+  pendingPhotoData: null,
+  settingsTab: 'children',
+  levelUpData: null,
+  xpGainData: null,
+  editingChildId: null,
+  editingRewardId: null,
+};
+
+// ================================================================
+// STORAGE
+// ================================================================
+function loadSettings() {
+  try {
+    const raw = localStorage.getItem('quest_settings');
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+  return JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+}
+function saveSettings(s) {
+  try { localStorage.setItem('quest_settings', JSON.stringify(s)); } catch(e) {}
+}
+function loadTasks() {
+  try {
+    const raw = localStorage.getItem('quest_tasks');
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+  return JSON.parse(JSON.stringify(DEFAULT_TASKS));
+}
+function saveTasks(t) {
+  try { localStorage.setItem('quest_tasks', JSON.stringify(t)); } catch(e) {}
+}
+function loadRewards() {
+  try {
+    const raw = localStorage.getItem('quest_rewards');
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+  return JSON.parse(JSON.stringify(DEFAULT_REWARDS));
+}
+function saveRewards(r) {
+  try { localStorage.setItem('quest_rewards', JSON.stringify(r)); } catch(e) {}
+}
+function todayKey() {
+  const d = new Date();
+  return `quest_log_${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function loadTodayLog() {
+  try {
+    const raw = localStorage.getItem(todayKey());
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+  return {};
+}
+function saveTodayLog(log) {
+  try { localStorage.setItem(todayKey(), JSON.stringify(log)); } catch(e) {}
+}
+function loadRedeems() {
+  try {
+    const raw = localStorage.getItem('quest_redeems');
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+  return [];
+}
+function saveRedeems(r) {
+  try { localStorage.setItem('quest_redeems', JSON.stringify(r)); } catch(e) {}
+}
+function loadPendingPhotos() {
+  try {
+    const raw = localStorage.getItem('quest_photos');
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+  return [];
+}
+function savePendingPhotos(p) {
+  try { localStorage.setItem('quest_photos', JSON.stringify(p)); } catch(e) {}
+}
+function getChild(id) {
+  const s = loadSettings();
+  return s.children.find(c => c.id === id);
+}
+function saveChild(child) {
+  const s = loadSettings();
+  const idx = s.children.findIndex(c => c.id === child.id);
+  if (idx >= 0) s.children[idx] = child;
+  saveSettings(s);
 }
 
-function showToast(msg, duration = 2500) {
-  const existing = document.querySelector('.toast');
-  if (existing) existing.remove();
-  const el = document.createElement('div');
-  el.className = 'toast';
-  el.textContent = msg;
-  document.body.appendChild(el);
-  setTimeout(() => el.remove(), duration);
-}
-
-function formatCountdown(minutes) {
-  if (minutes <= 0) return '지금 출발!';
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  if (h > 0) return `${h}시간 ${m}분`;
-  return `${m}분`;
-}
-
-/* =====================================================
-   SCREEN NAVIGATION
-   ===================================================== */
-
+// ================================================================
+// SCREEN MANAGEMENT
+// ================================================================
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  const el = document.getElementById('screen-' + id);
-  if (el) el.classList.add('active');
-}
-
-/* =====================================================
-   CONFETTI & CELEBRATION FX
-   ===================================================== */
-
-function spawnConfetti() {
-  const container = document.createElement('div');
-  container.className = 'confetti-container';
-  document.body.appendChild(container);
-  const colors = ['#7c3aed','#f59e0b','#10b981','#ef4444','#3b82f6','#ec4899'];
-  for (let i = 0; i < 60; i++) {
-    const piece = document.createElement('div');
-    piece.className = 'confetti-piece';
-    piece.style.cssText = `
-      left: ${Math.random()*100}%;
-      background: ${colors[Math.floor(Math.random()*colors.length)]};
-      width: ${6 + Math.random()*8}px;
-      height: ${6 + Math.random()*8}px;
-      border-radius: ${Math.random() > 0.5 ? '50%' : '2px'};
-      animation-duration: ${1.5 + Math.random()*2}s;
-      animation-delay: ${Math.random()*0.5}s;
-    `;
-    container.appendChild(piece);
+  const el = document.getElementById(id);
+  if (el) {
+    el.classList.add('active');
+    el.scrollTop = 0;
   }
-  setTimeout(() => container.remove(), 4000);
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('active');
+}
+function openModal(id) {
+  document.getElementById(id).classList.add('active');
+}
+function showMsg(icon, text) {
+  document.getElementById('modal-msg-icon').textContent = icon;
+  document.getElementById('modal-msg-text').textContent = text;
+  openModal('modal-msg');
 }
 
-/* =====================================================
-   WELCOME SCREEN
-   ===================================================== */
-
+// ================================================================
+// WELCOME SCREEN
+// ================================================================
 function renderWelcome() {
-  const settings = getSettings();
-  const grid = document.getElementById('child-select-grid');
-  grid.innerHTML = '';
-  settings.children.forEach(child => {
-    const btn = document.createElement('div');
-    btn.className = 'child-select-btn';
-    btn.style.borderColor = child.color + '55';
+  showScreen('screen-welcome');
+  const s = loadSettings();
+  const tasks = loadTasks();
+  const log = loadTodayLog();
+  const container = document.getElementById('welcome-profiles');
+  container.innerHTML = '';
+  s.children.forEach(child => {
+    const emoji = getCharEmoji(child.characterType, child.level);
+    const stageName = getCharStageName(child.characterType, child.level);
+    const childTasks = tasks.filter(t => t.enabled);
+    const done = childTasks.filter(t => log[child.id] && log[child.id][t.id]).length;
+    const btn = document.createElement('button');
+    btn.className = 'profile-btn anim-fadeinup';
     btn.innerHTML = `
-      <span class="avatar">${child.avatar}</span>
-      <span class="cname">${child.name}</span>
+      <span class="profile-emoji">${emoji}</span>
+      <div class="profile-info">
+        <div class="profile-name">${esc(child.name)}</div>
+        <div class="profile-level">${stageName} · 오늘 ${done}/${childTasks.length} 완료</div>
+      </div>
+      <span class="badge badge-primary">LV.${child.level}</span>
     `;
-    btn.addEventListener('click', () => enterChildMode(child.id));
-    grid.appendChild(btn);
+    btn.onclick = () => { state.currentChildId = child.id; renderHome(); showScreen('screen-home'); };
+    container.appendChild(btn);
   });
 }
 
-/* =====================================================
-   CHILD MODE
-   ===================================================== */
-
-function enterChildMode(childId) {
-  currentChildId = childId;
-  const settings = getSettings();
-  const child = settings.children.find(c => c.id === childId);
-  if (!child) return;
-  document.getElementById('child-avatar-display').textContent = child.avatar;
-  document.getElementById('child-name-display').textContent = child.name;
-  showScreen('child-home');
-  renderChildHome();
-  startCountdown();
+// ================================================================
+// HOME SCREEN
+// ================================================================
+function getCurrentSlot() {
+  const h = new Date().getHours();
+  if (h < 12) return 'morning';
+  if (h < 18) return 'afterschool';
+  return 'evening';
 }
+const SLOT_LABELS = { morning:'🌅 아침', afterschool:'🏫 하교 후', evening:'🌙 저녁' };
+const SLOT_TAG_CLASS = { morning:'tag-morning', afterschool:'tag-afterschool', evening:'tag-evening' };
 
-function renderChildHome() {
-  if (!currentChildId) return;
+function renderHome() {
+  const child = getChild(state.currentChildId);
+  if (!child) { renderWelcome(); return; }
+  const s = loadSettings();
+  const tasks = loadTasks();
+  const log = loadTodayLog();
   const slot = getCurrentSlot();
-  document.getElementById('child-slot-label').textContent = SLOT_NAMES[slot];
-  document.getElementById('child-coin-count').textContent = calcTotalCoins(currentChildId);
-  renderQuestArea(slot);
-}
 
-function renderQuestArea(slot) {
-  const area = document.getElementById('quest-area');
-  area.innerHTML = '';
-  const tasks = getSlotTasks(slot);
-  const log = getChildLog(currentChildId);
+  // Header
+  document.getElementById('home-child-name').textContent = child.name;
+  document.getElementById('home-child-level').textContent = `LV.${child.level} · ${getCharStageName(child.characterType, child.level)}`;
+  document.getElementById('home-points-chip').textContent = `💎 ${child.points}`;
 
-  // progress dots
-  const dotsDiv = document.createElement('div');
-  dotsDiv.className = 'progress-dots';
-  const nextTask = getNextPendingTask(currentChildId, slot);
-  tasks.forEach(t => {
-    const dot = document.createElement('div');
-    const entry = log[t.id];
-    const isDone = entry && (entry.status === 'done' || entry.status === 'approved');
-    const isCurrent = nextTask && nextTask.id === t.id;
-    dot.className = 'dot' + (isDone ? ' done' : '') + (isCurrent ? ' current' : '');
-    dotsDiv.appendChild(dot);
-  });
-  area.appendChild(dotsDiv);
+  // Character
+  document.getElementById('home-char-emoji').textContent = getCharEmoji(child.characterType, child.level);
+  document.getElementById('home-char-stage').textContent = getCharStageName(child.characterType, child.level);
+  const nextEvolveLevels = getCharNextEvolveLevels(child.characterType, child.level);
+  document.getElementById('home-char-hint').textContent = nextEvolveLevels
+    ? `✨ 다음 단계까지 ${nextEvolveLevels}레벨`
+    : '🏆 최강 용사!';
 
-  // all done in slot
-  if (isSlotComplete(currentChildId, slot)) {
-    const bonus = SLOT_BONUS;
-    const totalCoins = calcTotalCoins(currentChildId);
-    const settings = getSettings();
-    const gameMinutes = Math.floor(totalCoins / settings.coinsPerMinute);
-    area.innerHTML += `
-      <div class="card slot-done-card anim-fadeInUp">
-        <div class="slot-done-icon">🎉</div>
-        <div class="slot-done-title">${SLOT_NAMES[slot]} 완료!</div>
-        <div class="slot-done-desc">모든 퀘스트를 완료했어요!<br>보너스 +${bonus} 🪙 코인 획득!</div>
-        <div class="game-time-banner">
-          <div class="game-time-big">🎮 ${gameMinutes}분</div>
-          <div class="game-time-label">오늘 획득한 게임 시간</div>
-        </div>
-      </div>`;
-    return;
-  }
+  // XP bar
+  const xpNeeded = s.xpPerLevel || 100;
+  const xpPct = Math.min(100, Math.round((child.xp / xpNeeded) * 100));
+  document.getElementById('xp-label').textContent = `LV.${child.level} → LV.${child.level+1}`;
+  document.getElementById('xp-numbers').textContent = `${child.xp}/${xpNeeded} XP`;
+  document.getElementById('xp-bar-fill').style.width = xpPct + '%';
 
-  // show next task
-  if (nextTask) {
-    const entry = log[nextTask.id];
-    const isPending = entry && entry.status === 'pending_approval';
+  // Taekwondo banner
+  checkTaekwondo(s);
 
-    if (isPending) {
-      // Pending approval state
-      area.innerHTML += `
-        <div class="card quest-card anim-fadeInUp">
-          <span class="quest-card-icon">${nextTask.icon}</span>
-          <div class="quest-card-title">${nextTask.name}</div>
-          <div class="quest-card-desc">${nextTask.desc}</div>
-          <div class="pending-badge">⏳ 엄마 승인 대기 중...</div>
-          <div style="margin-top:16px">
-            ${entry.photoData ? `<img src="${entry.photoData}" style="width:120px;height:120px;object-fit:cover;border-radius:12px;border:2px solid rgba(255,255,255,0.15)">` : ''}
+  // Slot badge
+  document.getElementById('home-slot-badge').className = `tag ${SLOT_TAG_CLASS[slot]}`;
+  document.getElementById('home-slot-badge').textContent = SLOT_LABELS[slot];
+
+  // Tasks for this slot
+  const slotTasks = tasks.filter(t => t.enabled && t.slot === slot);
+  const childLog = log[child.id] || {};
+  const doneTasks = slotTasks.filter(t => childLog[t.id]);
+  const pendingTasks = slotTasks.filter(t => !childLog[t.id]);
+
+  document.getElementById('home-progress-text').textContent = `${doneTasks.length}/${slotTasks.length} 완료`;
+
+  const container = document.getElementById('home-tasks');
+  const allDoneEl = document.getElementById('home-all-done');
+
+  if (pendingTasks.length === 0) {
+    container.innerHTML = '';
+    allDoneEl.style.display = 'block';
+    // Show completed tasks summary
+    if (slotTasks.length > 0) {
+      const summary = document.createElement('div');
+      summary.className = 'card card-sm';
+      summary.style.marginTop = '16px';
+      summary.innerHTML = `<div class="section-title" style="margin-bottom:10px;">완료한 퀘스트</div>` +
+        slotTasks.map(t => `
+          <div class="row" style="padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.06);">
+            <span style="font-size:1.4rem;">${t.icon}</span>
+            <span style="flex:1;">${esc(t.name)}</span>
+            <span class="badge badge-success">✓ +${t.xp}XP</span>
           </div>
-          <div style="margin-top:16px;color:var(--muted);font-size:0.85rem">💡 엄마가 승인하면 코인을 받아요!</div>
-        </div>`;
-    } else {
-      // Normal task
-      celebrateTaskId = nextTask.id;
-      const btnHtml = nextTask.needsPhoto
-        ? `<label class="btn btn-accent" style="display:inline-block;cursor:pointer;">📸 사진 찍기<input type="file" accept="image/*" id="camera-input" style="position:absolute;width:0;height:0;opacity:0;overflow:hidden;" onchange="handleCameraChange(event)"></label>`
-        : `<button class="btn btn-success" id="btn-complete-task">✅ 완료!</button>`;
-      area.innerHTML += `
-        <div class="card quest-card anim-fadeInUp">
-          <span class="quest-card-icon">${nextTask.icon}</span>
-          <div class="quest-card-title">${nextTask.name}</div>
-          <div class="quest-card-desc">${nextTask.desc}</div>
-          <div class="quest-coin-badge">🪙 +${nextTask.coins} 코인 획득 가능!</div>
-          <div class="quest-card-btns">${btnHtml}</div>
-        </div>`;
+        `).join('');
+      container.appendChild(summary);
+    }
+  } else {
+    allDoneEl.style.display = 'none';
+    container.innerHTML = '';
 
-      if (!nextTask.needsPhoto) {
-        document.getElementById('btn-complete-task').addEventListener('click', () => {
-          completeTask(nextTask, false);
-        });
-      }
+    // Progress dots
+    const dotsWrap = document.createElement('div');
+    dotsWrap.className = 'progress-dots';
+    slotTasks.forEach((t, i) => {
+      const dot = document.createElement('div');
+      const isDone = !!childLog[t.id];
+      const isNext = !isDone && slotTasks.slice(0, i).every(tt => childLog[tt.id]);
+      dot.className = 'progress-dot' + (isDone ? ' done' : '') + (isNext ? ' active' : '');
+      dotsWrap.appendChild(dot);
+    });
+    container.appendChild(dotsWrap);
+
+    // Show pending tasks
+    pendingTasks.forEach((task, idx) => {
+      const card = buildTaskCard(task, idx === 0);
+      container.appendChild(card);
+    });
+
+    // Show already-done tasks collapsed
+    if (doneTasks.length > 0) {
+      const doneWrap = document.createElement('div');
+      doneWrap.innerHTML = `<div class="section-title" style="margin:16px 0 8px;">완료 ✓</div>`;
+      doneTasks.forEach(t => {
+        const row = document.createElement('div');
+        row.className = 'card card-tight row-between';
+        row.style.marginBottom = '8px';
+        row.style.opacity = '0.6';
+        row.innerHTML = `
+          <div class="row" style="gap:10px;">
+            <span style="font-size:1.4rem;">${t.icon}</span>
+            <span class="body-md fw-bold">${esc(t.name)}</span>
+          </div>
+          <span class="badge badge-success">✓ +${t.xp}XP</span>
+        `;
+        doneWrap.appendChild(row);
+      });
+      container.appendChild(doneWrap);
     }
   }
-
-  // game time at bottom
-  const totalCoins = calcTotalCoins(currentChildId);
-  const settings = getSettings();
-  const gameMinutes = Math.floor(totalCoins / settings.coinsPerMinute);
-  const gameDiv = document.createElement('div');
-  gameDiv.style.cssText = 'text-align:center;color:var(--muted);font-size:0.9rem;padding:16px 0;';
-  gameDiv.textContent = `🎮 오늘 획득한 게임 시간: ${gameMinutes}분`;
-  area.appendChild(gameDiv);
 }
 
-function completeTask(task, photoData) {
-  const status = task.needsPhoto ? 'pending_approval' : 'done';
-  setTaskStatus(currentChildId, task.id, status, photoData || null);
+function buildTaskCard(task, isFirst) {
+  const card = document.createElement('div');
+  card.className = 'card anim-fadeinup';
+  card.style.marginBottom = '12px';
+  if (!isFirst) card.style.opacity = '0.55';
 
-  if (task.needsPhoto && photoData) {
-    // Show photo pending screen
-    document.getElementById('pending-photo-preview').src = photoData;
-    showScreen('photo-pending');
-    return;
-  }
-
-  // Show celebrate screen
-  showCelebrate(task);
-}
-
-function showCelebrate(task) {
-  spawnConfetti();
-  document.getElementById('cel-icon').textContent = task.icon;
-  document.getElementById('cel-coins').textContent = `+${task.coins} 🪙`;
-  document.getElementById('cel-msg').textContent = CELEBRATE_MSGS[Math.floor(Math.random() * CELEBRATE_MSGS.length)];
-  const total = calcTotalCoins(currentChildId);
-  document.getElementById('cel-total').textContent = `오늘 총 코인: ${total}개 🪙`;
-  showScreen('celebrate');
-  if (celebrateTimer) clearTimeout(celebrateTimer);
-  celebrateTimer = setTimeout(() => advanceFromCelebrate(), 2500);
-}
-
-function advanceFromCelebrate() {
-  if (celebrateTimer) clearTimeout(celebrateTimer);
-  showScreen('child-home');
-  renderChildHome();
-}
-
-/* ===== COUNTDOWN ===== */
-function startCountdown() {
-  if (countdownTimer) clearInterval(countdownTimer);
-  updateCountdown();
-  countdownTimer = setInterval(updateCountdown, 30000); // update every 30s
-}
-
-function updateCountdown() {
-  const settings = getSettings();
-  const [th, tm] = settings.taekwondoTime.split(':').map(Number);
-  const now = new Date();
-  const targetMinutes = th * 60 + tm;
-  const nowMinutes = now.getHours() * 60 + now.getMinutes();
-  const diff = targetMinutes - nowMinutes;
-  const section = document.getElementById('countdown-section');
-
-  if (diff > 0 && diff < 180) { // show if within 3 hours
-    section.style.display = 'block';
-    document.getElementById('countdown-text').textContent = formatCountdown(diff);
-    const progress = Math.max(0, Math.min(100, (1 - diff / 180) * 100));
-    document.getElementById('countdown-bar').style.width = progress + '%';
+  let actionBtn = '';
+  if (task.needsPhoto) {
+    actionBtn = `<label class="btn btn-accent btn-full" style="position:relative;overflow:hidden;cursor:pointer;">
+      📸 사진 찍기
+      <input type="file" accept="image/*" capture="environment"
+        style="position:absolute;width:0;height:0;opacity:0;left:0;top:0;"
+        onchange="handlePhotoChange(event,'${task.id}')">
+    </label>`;
   } else {
-    section.style.display = 'none';
+    actionBtn = `<button class="btn btn-success btn-full" onclick="completeTask('${task.id}',${task.xp})">✅ 완료!</button>`;
+  }
+
+  card.innerHTML = `
+    <span class="task-icon-big">${task.icon}</span>
+    <div class="fw-bold text-center" style="font-size:1.3rem; margin-bottom:6px;">${esc(task.name)}</div>
+    <div class="body-sm text-muted text-center" style="margin-bottom:16px;">${esc(task.tip||'')}</div>
+    <div class="badge badge-accent" style="margin:0 auto 16px; display:table;">+${task.xp} XP</div>
+    ${actionBtn}
+  `;
+  return card;
+}
+
+function checkTaekwondo(s) {
+  const banner = document.getElementById('taekwondo-banner');
+  const countdown = document.getElementById('taekwondo-countdown');
+  if (!s.taekwondoTime) { banner.style.display = 'none'; return; }
+  const now = new Date();
+  const [th, tm] = s.taekwondoTime.split(':').map(Number);
+  const dep = new Date(now.getFullYear(), now.getMonth(), now.getDate(), th, tm);
+  const diffMs = dep - now;
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin >= 0 && diffMin <= 120) {
+    banner.style.display = 'flex';
+    if (diffMin === 0) countdown.textContent = '지금 출발하세요! 🏃';
+    else countdown.textContent = `${diffMin}분 후 출발 (${s.taekwondoTime})`;
+  } else {
+    banner.style.display = 'none';
   }
 }
 
-/* ===== CAMERA HANDLER ===== */
-function handleCameraChange(e) {
-  const file = e.target.files[0];
+function navTo(tab) {
+  document.querySelectorAll('#screen-home .nav-btn').forEach((b,i) => b.classList.toggle('active', (tab==='quests'&&i===0)||(tab==='shop'&&i===1)));
+  if (tab === 'shop') { renderShop(); showScreen('screen-shop'); }
+  else { renderHome(); showScreen('screen-home'); }
+}
+
+function charTap() {
+  const el = document.getElementById('home-char-emoji');
+  el.style.animation = 'none';
+  setTimeout(() => { el.style.animation = 'bounce 0.8s ease'; setTimeout(() => { el.style.animation = 'pulse 2.5s ease-in-out infinite'; }, 800); }, 10);
+}
+
+// ================================================================
+// TASK COMPLETION
+// ================================================================
+function completeTask(taskId, xp) {
+  const child = getChild(state.currentChildId);
+  if (!child) return;
+  const log = loadTodayLog();
+  if (!log[child.id]) log[child.id] = {};
+  if (log[child.id][taskId]) return; // already done
+  log[child.id][taskId] = { completedAt: Date.now(), xp };
+  saveTodayLog(log);
+  showXpGain(xp, taskId);
+}
+
+function handlePhotoChange(event, taskId) {
+  const file = event.target.files && event.target.files[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = function(ev) {
-    compressImage(ev.target.result, 400, (compressed) => {
-      const tasks = getActiveTasks();
-      const task = tasks.find(t => t.id === celebrateTaskId);
-      if (task) completeTask(task, compressed);
-    });
+  reader.onload = function(e) {
+    const img = new Image();
+    img.onload = function() {
+      const canvas = document.createElement('canvas');
+      const maxDim = 400;
+      let w = img.width, h = img.height;
+      if (w > h) { if (w > maxDim) { h = h * maxDim/w; w = maxDim; } }
+      else        { if (h > maxDim) { w = w * maxDim/h; h = maxDim; } }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+      const tasks = loadTasks();
+      const task = tasks.find(t => t.id === taskId);
+      if (!task) return;
+      state.pendingPhotoTask = task;
+      state.pendingPhotoData = dataUrl;
+
+      // Save pending photo
+      const photos = loadPendingPhotos();
+      photos.push({
+        id: 'ph_' + Date.now(),
+        childId: state.currentChildId,
+        taskId: task.id,
+        taskName: task.name,
+        taskIcon: task.icon,
+        taskXp: task.xp,
+        photo: dataUrl,
+        submittedAt: Date.now()
+      });
+      savePendingPhotos(photos);
+
+      // Show pending screen
+      const imgEl = document.getElementById('photopending-img-wrap');
+      imgEl.innerHTML = `<img class="photo-thumb" src="${dataUrl}" alt="제출 사진">`;
+      showScreen('screen-photopending');
+    };
+    img.src = e.target.result;
   };
   reader.readAsDataURL(file);
 }
 
-/* =====================================================
-   PARENT MODE
-   ===================================================== */
-
-let pinBuffer = '';
-
-function openPinScreen() {
-  pinBuffer = '';
-  document.getElementById('pin-error').textContent = '';
-  renderPinDots();
-  showScreen('pin');
+// ================================================================
+// XP GAIN ANIMATION
+// ================================================================
+function showXpGain(xp, taskId) {
+  const child = getChild(state.currentChildId);
+  if (!child) return;
+  document.getElementById('xpgain-char').textContent = getCharEmoji(child.characterType, child.level);
+  document.getElementById('xpgain-text').textContent = '+' + xp + ' XP!';
+  showScreen('screen-xpgain');
+  setTimeout(() => {
+    applyXp(xp);
+  }, 1500);
 }
 
-function renderPinDots() {
-  const dots = document.querySelectorAll('#pin-dots .pin-dot');
-  dots.forEach((d, i) => {
-    d.classList.toggle('filled', i < pinBuffer.length);
-  });
-}
-
-document.getElementById('keypad').addEventListener('click', (e) => {
-  const key = e.target.closest('[data-key]');
-  if (!key) return;
-  const val = key.dataset.key;
-  if (val === 'del') {
-    pinBuffer = pinBuffer.slice(0, -1);
-    renderPinDots();
-    document.getElementById('pin-error').textContent = '';
-  } else if (pinBuffer.length < 4) {
-    pinBuffer += val;
-    renderPinDots();
-    if (pinBuffer.length === 4) {
-      const settings = getSettings();
-      if (pinBuffer === settings.parentPin) {
-        setTimeout(() => {
-          showScreen('parent-dashboard');
-          renderDashboard();
-        }, 200);
-      } else {
-        document.getElementById('pin-error').textContent = '비밀번호가 틀렸어요. 다시 입력해 주세요.';
-        pinBuffer = '';
-        renderPinDots();
-      }
+function applyXp(xp) {
+  const s = loadSettings();
+  const child = getChild(state.currentChildId);
+  if (!child) return;
+  const xpPerLevel = s.xpPerLevel || 100;
+  const oldLevel = child.level;
+  child.xp += xp;
+  let leveled = false;
+  while (child.xp >= xpPerLevel) {
+    child.xp -= xpPerLevel;
+    child.level += 1;
+    leveled = true;
+    // Award points on level up
+    let pts = s.pointsPerLevel || 20;
+    let milestoneMsg = null;
+    if (child.level % (s.milestoneInterval || 5) === 0) {
+      pts += (s.milestoneBonus || 50);
+      milestoneMsg = `+${s.milestoneBonus || 50} 💎 보너스!`;
     }
+    child.points += pts;
+    state.levelUpData = {
+      oldLevel,
+      newLevel: child.level,
+      charType: child.characterType,
+      pointsGained: pts,
+      milestoneMsg,
+      oldEmoji: getCharEmoji(child.characterType, oldLevel),
+      newEmoji: getCharEmoji(child.characterType, child.level),
+      newStageName: getCharStageName(child.characterType, child.level),
+      evolved: getCharEmoji(child.characterType, oldLevel) !== getCharEmoji(child.characterType, child.level),
+    };
   }
-});
-
-/* =====================================================
-   PARENT DASHBOARD
-   ===================================================== */
-
-function renderDashboard() {
-  const settings = getSettings();
-  const tasks = getActiveTasks();
-  const content = document.getElementById('dashboard-content');
-  content.innerHTML = '';
-
-  // Per-child progress
-  settings.children.forEach(child => {
-    const log = getChildLog(child.id);
-    const totalCoins = calcTotalCoins(child.id);
-    const gameMinutes = Math.floor(totalCoins / settings.coinsPerMinute);
-    const doneTasks = tasks.filter(t => {
-      const e = log[t.id];
-      return e && (e.status === 'done' || e.status === 'approved');
-    });
-    const pct = tasks.length > 0 ? Math.round(doneTasks.length / tasks.length * 100) : 0;
-
-    const card = document.createElement('div');
-    card.className = 'card child-progress-card';
-    let taskListHtml = tasks.map(t => {
-      const e = log[t.id];
-      let icon = '⬜';
-      let cls = '';
-      if (e) {
-        if (e.status === 'done' || e.status === 'approved') { icon = '✅'; cls = 'done'; }
-        else if (e.status === 'pending_approval') icon = '⏳';
-        else if (e.status === 'rejected') icon = '❌';
-      }
-      return `<div class="task-mini-item ${cls}"><span class="status-icon">${icon}</span><span>${t.icon} ${t.name}</span></div>`;
-    }).join('');
-
-    card.innerHTML = `
-      <div class="child-progress-header">
-        <div class="child-progress-avatar">${child.avatar}</div>
-        <div class="child-progress-name">${child.name}</div>
-        <div class="child-coins-badge">🪙 ${totalCoins}</div>
-      </div>
-      <div class="progress-bar-track" style="margin-bottom:10px">
-        <div class="progress-bar-fill" style="width:${pct}%"></div>
-      </div>
-      <div style="font-size:0.8rem;color:var(--muted);margin-bottom:10px">${doneTasks.length} / ${tasks.length} 완료 · ${pct}%</div>
-      <div class="task-mini-list">${taskListHtml}</div>
-      <div class="game-time-badge">🎮 게임 시간: ${gameMinutes}분</div>`;
-    content.appendChild(card);
-  });
-
-  // Pending approvals
-  const pendingItems = [];
-  settings.children.forEach(child => {
-    const log = getChildLog(child.id);
-    tasks.forEach(t => {
-      const e = log[t.id];
-      if (e && e.status === 'pending_approval' && e.photoData) {
-        pendingItems.push({ child, task: t, entry: e });
-      }
-    });
-  });
-
-  if (pendingItems.length > 0) {
-    const approvalCard = document.createElement('div');
-    approvalCard.className = 'card approval-card';
-    let itemsHtml = pendingItems.map((p, i) => `
-      <div class="approval-item" id="approval-item-${i}">
-        <img class="approval-photo-thumb" src="${p.entry.photoData}" alt="사진">
-        <div class="approval-info">
-          <div class="approval-child">${p.child.avatar} ${p.child.name}</div>
-          <div class="approval-task">${p.task.icon} ${p.task.name}</div>
-        </div>
-        <div class="approval-btns">
-          <button class="btn btn-success" onclick="approvePhoto('${p.child.id}','${p.task.id}',${p.task.coins})">✅ 승인</button>
-          <button class="btn btn-danger"  onclick="rejectPhoto('${p.child.id}','${p.task.id}')">❌</button>
-        </div>
-      </div>`).join('');
-    approvalCard.innerHTML = `
-      <div class="approval-badge">📸 사진 승인 대기 ${pendingItems.length}건</div>
-      ${itemsHtml}`;
-    content.appendChild(approvalCard);
+  saveChild(child);
+  if (leveled) {
+    showLevelUp();
   } else {
-    const emptyApproval = document.createElement('div');
-    emptyApproval.className = 'card';
-    emptyApproval.style.padding = '16px';
-    emptyApproval.innerHTML = `<div class="empty-state"><span>📸</span><span>승인 대기 중인 사진이 없어요</span></div>`;
-    content.appendChild(emptyApproval);
+    renderHome();
+    showScreen('screen-home');
   }
+}
 
-  // Weekly view
-  const weekCard = document.createElement('div');
-  weekCard.className = 'card weekly-card';
-  const weekDays = ['일','월','화','수','목','금','토'];
-  let weekCells = '';
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(); d.setDate(d.getDate() - i);
-    const key = `questApp_log_${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-    let count = 0;
-    try {
-      const dayLog = JSON.parse(localStorage.getItem(key) || '{}');
-      settings.children.forEach(child => {
-        const cl = dayLog[child.id] || {};
-        Object.values(cl).forEach(e => {
-          if (e.status === 'done' || e.status === 'approved') count++;
-        });
-      });
-    } catch(e) {}
-    const isToday = i === 0;
-    weekCells += `<div class="week-cell ${count > 0 ? 'has-data' : ''} ${isToday ? 'today' : ''}">
-      <div class="day-label">${weekDays[d.getDay()]}</div>
-      <div>${count > 0 ? count : '-'}</div>
-    </div>`;
+// ================================================================
+// LEVEL UP SCREEN
+// ================================================================
+function showLevelUp() {
+  const d = state.levelUpData;
+  if (!d) return;
+  document.getElementById('levelup-nums').textContent = `LV.${d.oldLevel} → LV.${d.newLevel}`;
+  document.getElementById('levelup-char-emoji').textContent = d.newEmoji;
+  const evMsg = document.getElementById('levelup-evolution-msg');
+  if (d.evolved) {
+    evMsg.style.display = 'block';
+    evMsg.textContent = `🎉 ${d.newStageName}으로 진화했어요!`;
+  } else {
+    evMsg.style.display = 'none';
   }
-  weekCard.innerHTML = `
-    <div class="section-title">📊 이번 주 퀘스트 현황</div>
-    <div style="font-size:0.75rem;color:var(--muted);margin-bottom:8px">숫자 = 완료한 퀘스트 수</div>
-    <div class="week-grid">${weekCells}</div>`;
-  content.appendChild(weekCard);
+  document.getElementById('levelup-points-msg').textContent = `+${d.pointsGained} 💎 포인트 획득!`;
+  const msEl = document.getElementById('levelup-milestone-msg');
+  if (d.milestoneMsg) {
+    msEl.style.display = 'inline-flex';
+    msEl.textContent = d.milestoneMsg;
+  } else {
+    msEl.style.display = 'none';
+  }
+  spawnConfetti();
+  showScreen('screen-levelup');
 }
 
-function approvePhoto(childId, taskId, coins) {
-  setTaskStatus(childId, taskId, 'approved', null);
-  showToast(`✅ 승인 완료! 🪙 ${coins}코인 지급!`);
-  renderDashboard();
+function afterLevelUp() {
+  state.levelUpData = null;
+  renderHome();
+  showScreen('screen-home');
 }
 
-function rejectPhoto(childId, taskId) {
-  setTaskStatus(childId, taskId, 'rejected', null);
-  showToast('❌ 다시 해보라고 했어요');
-  renderDashboard();
+function spawnConfetti() {
+  const container = document.getElementById('levelup-confetti');
+  container.innerHTML = '';
+  const colors = ['#7c3aed','#f59e0b','#38bdf8','#10b981','#ec4899','#c084fc','#fbbf24'];
+  for (let i = 0; i < 60; i++) {
+    const piece = document.createElement('div');
+    piece.className = 'confetti-piece';
+    piece.style.left = Math.random() * 100 + 'vw';
+    piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+    piece.style.animationDuration = (1.5 + Math.random() * 2) + 's';
+    piece.style.animationDelay = (Math.random() * 0.8) + 's';
+    piece.style.width = (6 + Math.random() * 10) + 'px';
+    piece.style.height = (6 + Math.random() * 10) + 'px';
+    piece.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+    container.appendChild(piece);
+  }
 }
 
-/* =====================================================
-   PARENT SETTINGS
-   ===================================================== */
-
-function renderSettings() {
-  const settings = getSettings();
-  const tasks = getTasks();
-  const content = document.getElementById('settings-content');
-  content.innerHTML = '';
-
-  // --- Children section ---
-  const childSection = document.createElement('div');
-  childSection.className = 'card settings-section';
-  let childHtml = '<div class="settings-section-title">👶 자녀 설정</div>';
-  settings.children.forEach((child, idx) => {
-    const avatarOpts = AVATAR_OPTIONS.map(a =>
-      `<div class="avatar-option ${a === child.avatar ? 'selected' : ''}"
-        onclick="changeAvatar(${idx},'${a}',this)">${a}</div>`
-    ).join('');
-    childHtml += `
-      <div class="child-edit-row" style="flex-direction:column;align-items:flex-start;gap:8px;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.06);margin-bottom:16px">
-        <div style="display:flex;align-items:center;gap:12px;width:100%">
-          <span style="font-size:2rem">${child.avatar}</span>
-          <input class="text-input" id="child-name-${idx}" value="${child.name}"
-            style="flex:1" placeholder="이름"
-            onchange="changeChildName(${idx},this.value)">
-        </div>
-        <div class="avatar-picker">${avatarOpts}</div>
-      </div>`;
-  });
-  childSection.innerHTML = childHtml;
-  content.appendChild(childSection);
-
-  // --- Schedule section ---
-  const schedSection = document.createElement('div');
-  schedSection.className = 'card settings-section';
-  schedSection.innerHTML = `
-    <div class="settings-section-title">⏰ 스케줄 설정</div>
-    <div class="setting-row">
-      <div class="setting-label">태권도 출발 시간</div>
-      <input type="time" class="text-input" id="taekwondo-time"
-        value="${settings.taekwondoTime}"
-        style="width:130px;margin-top:0"
-        onchange="saveTaekwondoTime(this.value)">
-    </div>
-    <div class="setting-row">
-      <div class="setting-label">코인 → 게임 시간</div>
-      <div class="setting-value">🪙 1코인 = 1분</div>
+// ================================================================
+// SHOP SCREEN
+// ================================================================
+function renderShop() {
+  const child = getChild(state.currentChildId);
+  if (!child) { renderWelcome(); return; }
+  const rewards = loadRewards();
+  document.getElementById('shop-points-badge').textContent = `💎 ${child.points}`;
+  const container = document.getElementById('shop-rewards');
+  if (rewards.length === 0) {
+    container.innerHTML = `<div class="card text-center" style="padding:40px 20px;">
+      <div style="font-size:2.5rem; margin-bottom:12px;">🏪</div>
+      <div class="title-md">보상이 없어요</div>
+      <div class="body-sm text-muted" style="margin-top:6px;">엄마/아빠가 보상을 설정해요!</div>
     </div>`;
-  content.appendChild(schedSection);
-
-  // --- Tasks section ---
-  const taskSection = document.createElement('div');
-  taskSection.className = 'card settings-section';
-  let taskHtml = '<div class="settings-section-title">📋 퀘스트 관리</div>';
-  const slotOrder = ['morning','after','evening'];
-  slotOrder.forEach(slot => {
-    taskHtml += `<div style="font-size:0.8rem;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin:12px 0 8px">${SLOT_NAMES[slot]}</div>`;
-    tasks.filter(t => t.slot === slot).forEach(t => {
-      const isOn = t.enabled !== false;
-      taskHtml += `
-        <div class="task-edit-item">
-          <span class="task-edit-icon">${t.icon}</span>
-          <div class="task-edit-info">
-            <div class="task-edit-name">${t.name}</div>
-            <div class="task-edit-meta">${t.needsPhoto ? '📸 사진 필요' : '✅ 완료만'} ·
-              <input type="number" class="task-coin-input" value="${t.coins}" min="1" max="99"
-                onchange="changeTaskCoins('${t.id}',this.value)">🪙
-            </div>
-          </div>
-          <div class="toggle-switch ${isOn ? 'on' : ''}" onclick="toggleTask('${t.id}',this)">
-            <div class="toggle-knob"></div>
-          </div>
-        </div>`;
-    });
-  });
-  taskSection.innerHTML = taskHtml;
-  content.appendChild(taskSection);
-
-  // --- PIN section ---
-  const pinSection = document.createElement('div');
-  pinSection.className = 'card settings-section';
-  pinSection.innerHTML = `
-    <div class="settings-section-title">🔐 비밀번호 변경</div>
-    <div style="display:flex;gap:8px;align-items:flex-end">
-      <div style="flex:1">
-        <div style="font-size:0.8rem;color:var(--muted);margin-bottom:6px">새 비밀번호 (4자리)</div>
-        <input type="number" class="text-input" id="new-pin" placeholder="0000"
-          maxlength="4" style="margin-top:0" oninput="if(this.value.length>4)this.value=this.value.slice(0,4)">
-      </div>
-      <button class="btn btn-primary btn-sm" style="width:auto;min-width:80px" onclick="changePin()">변경</button>
-    </div>`;
-  content.appendChild(pinSection);
-
-  // --- Danger zone ---
-  const dangerSection = document.createElement('div');
-  dangerSection.className = 'card danger-zone';
-  dangerSection.innerHTML = `
-    <div class="settings-section-title">⚠️ 위험 구역</div>
-    <button class="btn btn-danger" onclick="resetTodayData()">오늘 데이터 초기화</button>
-    <div style="font-size:0.8rem;color:var(--muted);margin-top:8px;text-align:center">오늘의 퀘스트 기록이 모두 삭제됩니다</div>`;
-  content.appendChild(dangerSection);
-}
-
-function changeAvatar(childIdx, avatar, el) {
-  const settings = getSettings();
-  settings.children[childIdx].avatar = avatar;
-  saveSettings(settings);
-  // Update visual selection
-  el.closest('.avatar-picker').querySelectorAll('.avatar-option').forEach(o => o.classList.remove('selected'));
-  el.classList.add('selected');
-  el.closest('.child-edit-row').querySelector('span').textContent = avatar;
-  showToast('아바타가 변경됐어요!');
-}
-
-function changeChildName(childIdx, name) {
-  if (!name.trim()) return;
-  const settings = getSettings();
-  settings.children[childIdx].name = name.trim();
-  saveSettings(settings);
-}
-
-function saveTaekwondoTime(time) {
-  const settings = getSettings();
-  settings.taekwondoTime = time;
-  saveSettings(settings);
-  showToast('태권도 시간이 저장됐어요!');
-}
-
-function toggleTask(taskId, toggleEl) {
-  const tasks = getTasks();
-  const task = tasks.find(t => t.id === taskId);
-  if (!task) return;
-  task.enabled = task.enabled === false ? true : false;
-  saveTasks(tasks);
-  toggleEl.classList.toggle('on', task.enabled !== false);
-}
-
-function changeTaskCoins(taskId, val) {
-  const coins = Math.max(1, Math.min(99, parseInt(val) || 1));
-  const tasks = getTasks();
-  const task = tasks.find(t => t.id === taskId);
-  if (!task) return;
-  task.coins = coins;
-  saveTasks(tasks);
-}
-
-function changePin() {
-  const newPin = document.getElementById('new-pin').value;
-  if (!/^\d{4}$/.test(newPin)) {
-    showToast('4자리 숫자를 입력해 주세요!');
     return;
   }
-  const settings = getSettings();
-  settings.parentPin = newPin;
-  saveSettings(settings);
-  document.getElementById('new-pin').value = '';
-  showToast('✅ 비밀번호가 변경됐어요!');
+  const grid = document.createElement('div');
+  grid.className = 'reward-grid';
+  rewards.forEach(r => {
+    const canAfford = child.points >= r.cost;
+    const card = document.createElement('div');
+    card.className = 'reward-card';
+    card.innerHTML = `
+      <div class="reward-icon">${r.icon}</div>
+      <div class="reward-name">${esc(r.name)}</div>
+      <div class="reward-cost">💎 ${r.cost}</div>
+      <button class="${canAfford ? 'btn btn-success btn-sm btn-full' : 'btn btn-disabled btn-sm btn-full'}"
+        onclick="${canAfford ? `confirmRedeem('${r.id}')` : ''}">
+        ${canAfford ? '교환하기' : '포인트 부족'}
+      </button>
+    `;
+    grid.appendChild(card);
+  });
+  container.innerHTML = '';
+  container.appendChild(grid);
 }
 
-function resetTodayData() {
-  if (confirm('오늘의 퀘스트 기록을 모두 삭제할까요? 이 작업은 되돌릴 수 없어요.')) {
-    localStorage.removeItem(getTodayKey());
-    showToast('오늘 데이터가 초기화됐어요');
-    renderSettings();
+function confirmRedeem(rewardId) {
+  const rewards = loadRewards();
+  const r = rewards.find(x => x.id === rewardId);
+  if (!r) return;
+  document.getElementById('modal-redeem-icon').textContent = r.icon;
+  document.getElementById('modal-redeem-name').textContent = r.name;
+  document.getElementById('modal-redeem-cost').textContent = `💎 ${r.cost} 포인트`;
+  document.getElementById('modal-redeem-confirm').onclick = () => { closeModal('modal-redeem'); executeRedeem(rewardId); };
+  openModal('modal-redeem');
+}
+
+function executeRedeem(rewardId) {
+  const child = getChild(state.currentChildId);
+  if (!child) return;
+  const rewards = loadRewards();
+  const r = rewards.find(x => x.id === rewardId);
+  if (!r) return;
+  if (child.points < r.cost) { showMsg('😅', '포인트가 부족해요!'); return; }
+  child.points -= r.cost;
+  saveChild(child);
+  // Log redemption
+  const redeems = loadRedeems();
+  redeems.push({
+    id: 'rd_' + Date.now(),
+    childId: child.id,
+    childName: child.name,
+    rewardId: r.id,
+    rewardName: r.name,
+    rewardIcon: r.icon,
+    cost: r.cost,
+    redeemedAt: Date.now(),
+    acknowledged: false
+  });
+  saveRedeems(redeems);
+  // Show success screen
+  document.getElementById('redeem-icon').textContent = r.icon;
+  document.getElementById('redeem-name').textContent = r.name;
+  document.getElementById('redeem-cost').textContent = `-${r.cost} 💎`;
+  document.getElementById('redeem-remaining').textContent = `남은 포인트: 💎 ${child.points}`;
+  showScreen('screen-redeem');
+}
+
+// ================================================================
+// PARENT PIN
+// ================================================================
+let pinBuffer = '';
+
+function showParentPin(callback) {
+  pinBuffer = '';
+  state.pinCallback = callback || null;
+  updatePinDots();
+  document.getElementById('pin-error').textContent = '';
+  showScreen('screen-pin');
+}
+
+function pinInput(d) {
+  if (pinBuffer.length >= 4) return;
+  pinBuffer += d;
+  updatePinDots();
+  if (pinBuffer.length === 4) {
+    setTimeout(checkPin, 200);
+  }
+}
+function pinBack() {
+  pinBuffer = pinBuffer.slice(0, -1);
+  updatePinDots();
+}
+function pinCancel() {
+  pinBuffer = '';
+  renderWelcome();
+  showScreen('screen-welcome');
+}
+function updatePinDots() {
+  for (let i = 0; i < 4; i++) {
+    document.getElementById('pd'+i).classList.toggle('filled', i < pinBuffer.length);
+  }
+}
+function checkPin() {
+  const s = loadSettings();
+  if (pinBuffer === (s.parentPin || '0000')) {
+    pinBuffer = '';
+    if (state.pinCallback) {
+      state.pinCallback();
+      state.pinCallback = null;
+    } else {
+      renderDashboard();
+      showScreen('screen-dashboard');
+    }
+  } else {
+    document.getElementById('pin-error').textContent = '❌ 비밀번호가 틀렸어요';
+    pinBuffer = '';
+    updatePinDots();
   }
 }
 
-/* =====================================================
-   EVENT LISTENERS
-   ===================================================== */
+// ================================================================
+// PARENT DASHBOARD
+// ================================================================
+function renderDashboard() {
+  const s = loadSettings();
+  const tasks = loadTasks();
+  const log = loadTodayLog();
+  const photos = loadPendingPhotos();
+  const redeems = loadRedeems();
 
-// Welcome
-document.getElementById('btn-go-parent-mode').addEventListener('click', openPinScreen);
+  // Children cards
+  const childrenEl = document.getElementById('dashboard-children');
+  childrenEl.innerHTML = '<div class="section-title">오늘의 진행 상황</div>';
+  s.children.forEach(child => {
+    const allTasks = tasks.filter(t => t.enabled);
+    const childLog = log[child.id] || {};
+    const done = allTasks.filter(t => childLog[t.id]).length;
+    const pct = allTasks.length > 0 ? Math.round((done/allTasks.length)*100) : 0;
+    const todayXp = allTasks.filter(t => childLog[t.id]).reduce((sum, t) => sum + (childLog[t.id].xp||0), 0);
+    const card = document.createElement('div');
+    card.className = 'card card-sm';
+    card.style.marginBottom = '10px';
+    card.innerHTML = `
+      <div class="row-between" style="margin-bottom:10px;">
+        <div class="row">
+          <span style="font-size:2rem;">${getCharEmoji(child.characterType, child.level)}</span>
+          <div>
+            <div class="fw-bold">${esc(child.name)}</div>
+            <div class="body-xs text-muted">LV.${child.level} · 💎 ${child.points}</div>
+          </div>
+        </div>
+        <div class="badge badge-accent">오늘 +${todayXp}XP</div>
+      </div>
+      <div class="row-between" style="margin-bottom:6px;">
+        <span class="body-sm text-muted">진행률 ${done}/${allTasks.length}</span>
+        <span class="body-sm fw-bold">${pct}%</span>
+      </div>
+      <div class="xp-bar-wrap">
+        <div class="xp-bar-fill" style="width:${pct}%; background:linear-gradient(90deg, #10b981, #34d399);"></div>
+      </div>
+    `;
+    childrenEl.appendChild(card);
+  });
 
-// Child home - back to welcome when tapping avatar area (double-tap or long press not needed)
-// We'll add a small "홈" text link at bottom of quest area
-function addHomeLink() {
-  // Added via renderChildHome footer
+  // Pending photos
+  const photosEl = document.getElementById('dashboard-photos');
+  const pendingPhotos = photos.filter(p => !p.approved && !p.rejected);
+  if (pendingPhotos.length > 0) {
+    photosEl.innerHTML = `<div class="section-title">📸 사진 승인 대기 (${pendingPhotos.length})</div>`;
+    pendingPhotos.forEach(photo => {
+      const card = document.createElement('div');
+      card.className = 'card card-sm';
+      card.style.marginBottom = '10px';
+      const child = s.children.find(c => c.id === photo.childId);
+      card.innerHTML = `
+        <div class="row-between" style="margin-bottom:10px;">
+          <div class="row">
+            <span style="font-size:1.5rem;">${photo.taskIcon}</span>
+            <div>
+              <div class="fw-bold">${esc(photo.taskName)}</div>
+              <div class="body-xs text-muted">${child ? esc(child.name) : ''} · +${photo.taskXp}XP</div>
+            </div>
+          </div>
+        </div>
+        <img class="photo-thumb" src="${photo.photo}" alt="사진" style="margin-bottom:10px;">
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-success btn-sm" style="flex:1;" onclick="approvePhoto('${photo.id}')">✅ 승인</button>
+          <button class="btn btn-danger btn-sm" style="flex:1;" onclick="rejectPhoto('${photo.id}')">❌ 다시</button>
+        </div>
+      `;
+      photosEl.appendChild(card);
+    });
+  } else {
+    photosEl.innerHTML = '';
+  }
+
+  // Redemption requests
+  const redeemsEl = document.getElementById('dashboard-redeems');
+  const pendingRedeems = redeems.filter(r => !r.acknowledged);
+  if (pendingRedeems.length > 0) {
+    redeemsEl.innerHTML = `<div class="section-title">🎁 보상 교환 요청 (${pendingRedeems.length})</div>`;
+    pendingRedeems.forEach(rd => {
+      const card = document.createElement('div');
+      card.className = 'card card-sm';
+      card.style.marginBottom = '10px';
+      card.innerHTML = `
+        <div class="row-between">
+          <div class="row">
+            <span style="font-size:1.8rem;">${rd.rewardIcon}</span>
+            <div>
+              <div class="fw-bold">${esc(rd.rewardName)}</div>
+              <div class="body-xs text-muted">${esc(rd.childName)} · 💎 ${rd.cost}</div>
+            </div>
+          </div>
+          <button class="btn btn-sm btn-ghost" onclick="ackRedeem('${rd.id}')">확인 ✓</button>
+        </div>
+      `;
+      redeemsEl.appendChild(card);
+    });
+  } else {
+    redeemsEl.innerHTML = '';
+  }
 }
 
-// Celebrate next quest
-document.getElementById('btn-next-quest').addEventListener('click', () => {
-  if (celebrateTimer) clearTimeout(celebrateTimer);
-  advanceFromCelebrate();
-});
-
-// Photo pending back
-document.getElementById('btn-pending-back').addEventListener('click', () => {
-  showScreen('child-home');
-  renderChildHome();
-});
-
-// PIN back
-document.getElementById('btn-pin-back').addEventListener('click', () => {
-  showScreen('welcome');
-  renderWelcome();
-});
-
-// Dashboard back
-document.getElementById('btn-dashboard-back').addEventListener('click', () => {
-  showScreen('welcome');
-  renderWelcome();
-});
-
-// Go to settings
-document.getElementById('btn-go-settings').addEventListener('click', () => {
-  renderSettings();
-  showScreen('parent-settings');
-});
-
-// Settings back
-document.getElementById('btn-settings-back').addEventListener('click', () => {
+function approvePhoto(photoId) {
+  const photos = loadPendingPhotos();
+  const photo = photos.find(p => p.id === photoId);
+  if (!photo) return;
+  photo.approved = true;
+  savePendingPhotos(photos);
+  // Give XP
+  const child = getChild(photo.childId);
+  if (child) {
+    const prevChildId = state.currentChildId;
+    state.currentChildId = photo.childId;
+    const log = loadTodayLog();
+    if (!log[child.id]) log[child.id] = {};
+    log[child.id][photo.taskId] = { completedAt: Date.now(), xp: photo.taskXp, photoApproved: true };
+    saveTodayLog(log);
+    // Apply XP
+    const s = loadSettings();
+    const xpPerLevel = s.xpPerLevel || 100;
+    const oldLevel = child.level;
+    child.xp += photo.taskXp;
+    while (child.xp >= xpPerLevel) {
+      child.xp -= xpPerLevel;
+      child.level += 1;
+      let pts = s.pointsPerLevel || 20;
+      if (child.level % (s.milestoneInterval || 5) === 0) pts += (s.milestoneBonus || 50);
+      child.points += pts;
+    }
+    saveChild(child);
+    state.currentChildId = prevChildId;
+  }
+  showMsg('✅', '승인 완료! 아이에게 XP가 지급됐어요.');
   renderDashboard();
-  showScreen('parent-dashboard');
-});
+}
 
-/* =====================================================
-   INIT
-   ===================================================== */
+function rejectPhoto(photoId) {
+  const photos = loadPendingPhotos();
+  const idx = photos.findIndex(p => p.id === photoId);
+  if (idx >= 0) { photos[idx].rejected = true; savePendingPhotos(photos); }
+  showMsg('❌', '사진이 거절됐어요. 다시 찍어보라고 알려주세요.');
+  renderDashboard();
+}
 
-// Ensure default tasks are saved if not present
-(function init() {
-  if (!localStorage.getItem('questApp_tasks')) {
-    saveTasks(DEFAULT_TASKS);
-  }
-  if (!localStorage.getItem('questApp_settings')) {
+function ackRedeem(redeemId) {
+  const redeems = loadRedeems();
+  const rd = redeems.find(r => r.id === redeemId);
+  if (rd) { rd.acknowledged = true; saveRedeems(redeems); }
+  renderDashboard();
+}
+
+// ================================================================
+// PARENT SETTINGS
+// ================================================================
+function showParentSettings() {
+  state.settingsTab = 'children';
+  renderSettingsTab('children');
+  document.querySelectorAll('#settings-tabs .tab-btn').forEach((b,i) => b.classList.toggle('active', i===0));
+  showScreen('screen-settings');
+}
+
+function settingsTab(tab) {
+  state.settingsTab = tab;
+  document.querySelectorAll('#settings-tabs .tab-btn').forEach(b => b.classList.toggle('active', b.textContent.trim().startsWith(tabLabel(tab))));
+  renderSettingsTab(tab);
+}
+function tabLabel(tab) {
+  const m = {children:'아이',quests:'퀘스트',rewards:'보상',points:'포인트',other:'기타'};
+  return m[tab] || tab;
+}
+
+function renderSettingsTab(tab) {
+  const content = document.getElementById('settings-content');
+  if (tab === 'children') renderSettingsChildren(content);
+  else if (tab === 'quests') renderSettingsQuests(content);
+  else if (tab === 'rewards') renderSettingsRewards(content);
+  else if (tab === 'points') renderSettingsPoints(content);
+  else if (tab === 'other') renderSettingsOther(content);
+}
+
+function renderSettingsChildren(el) {
+  const s = loadSettings();
+  el.innerHTML = '';
+  s.children.forEach(child => {
+    const card = document.createElement('div');
+    card.className = 'card card-sm';
+    card.style.marginBottom = '12px';
+    card.innerHTML = `
+      <div class="row-between" style="margin-bottom:12px;">
+        <div class="row">
+          <span style="font-size:2rem;">${getCharEmoji(child.characterType, child.level)}</span>
+          <div>
+            <div class="fw-bold">${esc(child.name)}</div>
+            <div class="body-xs text-muted">LV.${child.level} · ${getCharStageName(child.characterType, child.level)}</div>
+          </div>
+        </div>
+        <button class="btn btn-sm btn-ghost" onclick="editChild('${child.id}')">✏️ 수정</button>
+      </div>
+    `;
+    el.appendChild(card);
+  });
+  const addBtn = document.createElement('button');
+  addBtn.className = 'btn btn-ghost btn-full';
+  addBtn.textContent = '+ 아이 추가';
+  addBtn.onclick = () => addChild();
+  el.appendChild(addBtn);
+}
+
+function editChild(childId) {
+  const s = loadSettings();
+  const child = s.children.find(c => c.id === childId);
+  if (!child) return;
+  const content = document.getElementById('settings-content');
+  content.innerHTML = `
+    <div class="card card-sm">
+      <div class="row" style="margin-bottom:16px;">
+        <button class="back-btn" onclick="renderSettingsTab('children')" style="font-size:1.1rem;">◀</button>
+        <span class="title-md">아이 정보 수정</span>
+      </div>
+      <div class="form-group">
+        <label>이름</label>
+        <input type="text" id="edit-child-name" value="${esc(child.name)}" placeholder="이름 입력">
+      </div>
+      <div class="form-group">
+        <label>캐릭터 선택</label>
+        <div class="emoji-picker" id="edit-char-picker">
+          ${CHAR_TYPES.map(ct => `
+            <div class="emoji-opt ${child.characterType===ct?'selected':''}" onclick="selectCharType('${childId}','${ct}')" title="${CHARACTERS[ct].name}">
+              ${getCharEmoji(ct, child.level)}
+            </div>
+          `).join('')}
+        </div>
+        <div class="body-xs text-muted" style="margin-top:6px;">선택된 캐릭터: <span id="edit-char-name">${CHARACTERS[child.characterType].name}</span></div>
+      </div>
+      <div class="form-group">
+        <label>현재 레벨: <span id="edit-level-val">${child.level}</span></label>
+        <input type="range" min="1" max="30" value="${child.level}" id="edit-level-range" oninput="document.getElementById('edit-level-val').textContent=this.value">
+      </div>
+      <button class="btn btn-primary btn-full" onclick="saveChildEdit('${childId}')">저장</button>
+      <div class="spacer-sm"></div>
+      <button class="btn btn-danger btn-full" style="opacity:0.7;" onclick="deleteChild('${childId}')">아이 삭제</button>
+    </div>
+  `;
+  state.editingChildId = childId;
+  state.editingCharType = child.characterType;
+}
+
+function selectCharType(childId, ct) {
+  state.editingCharType = ct;
+  document.querySelectorAll('#edit-char-picker .emoji-opt').forEach((el, i) => {
+    el.classList.toggle('selected', CHAR_TYPES[i] === ct);
+  });
+  const lvl = parseInt(document.getElementById('edit-level-range').value)||1;
+  document.querySelectorAll('#edit-char-picker .emoji-opt').forEach((el, i) => {
+    el.textContent = getCharEmoji(CHAR_TYPES[i], lvl);
+  });
+  if (document.getElementById('edit-char-name')) document.getElementById('edit-char-name').textContent = CHARACTERS[ct].name;
+}
+
+function saveChildEdit(childId) {
+  const s = loadSettings();
+  const child = s.children.find(c => c.id === childId);
+  if (!child) return;
+  const name = document.getElementById('edit-child-name').value.trim();
+  if (!name) { showMsg('⚠️','이름을 입력해주세요'); return; }
+  const newLevel = parseInt(document.getElementById('edit-level-range').value)||1;
+  child.name = name;
+  child.characterType = state.editingCharType || child.characterType;
+  child.level = newLevel;
+  saveSettings(s);
+  showMsg('✅', '저장됐어요!');
+  setTimeout(() => renderSettingsTab('children'), 300);
+}
+
+function deleteChild(childId) {
+  const s = loadSettings();
+  if (s.children.length <= 1) { showMsg('⚠️','최소 한 명의 아이가 필요해요'); return; }
+  s.children = s.children.filter(c => c.id !== childId);
+  saveSettings(s);
+  renderSettingsTab('children');
+}
+
+function addChild() {
+  const s = loadSettings();
+  const newId = 'c_' + Date.now();
+  s.children.push({ id: newId, name: '새 아이', characterType: 'dragon', level: 1, xp: 0, points: 0, color: '#7c3aed' });
+  saveSettings(s);
+  editChild(newId);
+}
+
+function renderSettingsQuests(el) {
+  const tasks = loadTasks();
+  el.innerHTML = '';
+  const slots = ['morning','afterschool','evening'];
+  const slotNames = { morning:'🌅 아침', afterschool:'🏫 하교 후', evening:'🌙 저녁' };
+  slots.forEach(slot => {
+    const header = document.createElement('div');
+    header.className = 'section-title';
+    header.style.marginTop = '8px';
+    header.textContent = slotNames[slot];
+    el.appendChild(header);
+    tasks.filter(t => t.slot === slot).forEach(task => {
+      const row = document.createElement('div');
+      row.className = 'card card-tight';
+      row.style.marginBottom = '8px';
+      row.innerHTML = `
+        <div class="row-between" style="margin-bottom:6px;">
+          <div class="row" style="gap:8px;">
+            <span style="font-size:1.4rem;">${task.icon}</span>
+            <span class="fw-bold body-md">${esc(task.name)}</span>
+          </div>
+          <div class="toggle ${task.enabled?'on':''}" onclick="toggleTask('${task.id}')"></div>
+        </div>
+        <div class="row-between">
+          <span class="body-xs text-muted">${task.needsPhoto?'📸 사진 필요':'✅ 사진 불필요'}</span>
+          <div class="row" style="gap:6px;">
+            <span class="badge badge-accent">${task.xp}XP</span>
+            <button class="btn btn-sm btn-ghost" style="padding:4px 10px;font-size:0.75rem;" onclick="editTask('${task.id}')">수정</button>
+          </div>
+        </div>
+      `;
+      el.appendChild(row);
+    });
+  });
+  const addBtn = document.createElement('button');
+  addBtn.className = 'btn btn-ghost btn-full';
+  addBtn.style.marginTop = '8px';
+  addBtn.textContent = '+ 퀘스트 추가';
+  addBtn.onclick = addTask;
+  el.appendChild(addBtn);
+}
+
+function toggleTask(taskId) {
+  const tasks = loadTasks();
+  const t = tasks.find(x => x.id === taskId);
+  if (t) t.enabled = !t.enabled;
+  saveTasks(tasks);
+  renderSettingsTab('quests');
+}
+
+function editTask(taskId) {
+  const tasks = loadTasks();
+  const task = tasks.find(t => t.id === taskId) || { id: 'new_'+Date.now(), name:'', icon:'⭐', xp:20, slot:'morning', needsPhoto:false, enabled:true, tip:'' };
+  const content = document.getElementById('settings-content');
+  content.innerHTML = `
+    <div class="card card-sm">
+      <div class="row" style="margin-bottom:16px;">
+        <button class="back-btn" onclick="renderSettingsTab('quests')" style="font-size:1.1rem;">◀</button>
+        <span class="title-md">퀘스트 수정</span>
+      </div>
+      <div class="form-group"><label>이름</label><input type="text" id="et-name" value="${esc(task.name)}" placeholder="퀘스트 이름"></div>
+      <div class="form-group"><label>아이콘 (이모지)</label><input type="text" id="et-icon" value="${task.icon}" maxlength="4" style="font-size:1.5rem;"></div>
+      <div class="form-group"><label>XP</label><input type="number" id="et-xp" value="${task.xp}" min="5" max="200"></div>
+      <div class="form-group"><label>시간대</label>
+        <select id="et-slot">
+          <option value="morning" ${task.slot==='morning'?'selected':''}>아침</option>
+          <option value="afterschool" ${task.slot==='afterschool'?'selected':''}>하교 후</option>
+          <option value="evening" ${task.slot==='evening'?'selected':''}>저녁</option>
+        </select>
+      </div>
+      <div class="form-group"><label>팁 메시지</label><input type="text" id="et-tip" value="${esc(task.tip||'')}" placeholder="격려 메시지"></div>
+      <div class="toggle-row">
+        <span>사진 필요</span>
+        <div class="toggle ${task.needsPhoto?'on':''}" id="et-photo-toggle" onclick="this.classList.toggle('on')"></div>
+      </div>
+      <div class="spacer-sm"></div>
+      <button class="btn btn-primary btn-full" onclick="saveTaskEdit('${task.id}')">저장</button>
+      ${taskId !== task.id ? '' : `<div class="spacer-sm"></div><button class="btn btn-danger btn-full" style="opacity:0.7;" onclick="deleteTask('${task.id}')">삭제</button>`}
+    </div>
+  `;
+}
+
+function saveTaskEdit(taskId) {
+  const tasks = loadTasks();
+  let task = tasks.find(t => t.id === taskId);
+  const isNew = !task;
+  if (!task) { task = { id: taskId, enabled: true }; tasks.push(task); }
+  task.name = document.getElementById('et-name').value.trim() || task.name;
+  task.icon = document.getElementById('et-icon').value.trim() || task.icon;
+  task.xp = parseInt(document.getElementById('et-xp').value)||20;
+  task.slot = document.getElementById('et-slot').value;
+  task.tip = document.getElementById('et-tip').value.trim();
+  task.needsPhoto = document.getElementById('et-photo-toggle').classList.contains('on');
+  saveTasks(tasks);
+  showMsg('✅', '저장됐어요!');
+  setTimeout(() => renderSettingsTab('quests'), 300);
+}
+
+function deleteTask(taskId) {
+  const tasks = loadTasks();
+  saveTasks(tasks.filter(t => t.id !== taskId));
+  renderSettingsTab('quests');
+}
+
+function addTask() {
+  editTask('new_'+Date.now());
+}
+
+function renderSettingsRewards(el) {
+  const rewards = loadRewards();
+  el.innerHTML = '';
+  rewards.forEach(r => {
+    const row = document.createElement('div');
+    row.className = 'card card-tight';
+    row.style.marginBottom = '8px';
+    row.innerHTML = `
+      <div class="row-between">
+        <div class="row">
+          <span style="font-size:1.8rem;">${r.icon}</span>
+          <div>
+            <div class="fw-bold body-md">${esc(r.name)}</div>
+            <div class="body-xs text-diamond">💎 ${r.cost}</div>
+          </div>
+        </div>
+        <div class="row">
+          <button class="btn btn-sm btn-ghost" style="padding:4px 10px;font-size:0.75rem;" onclick="editReward('${r.id}')">수정</button>
+          <button class="btn btn-sm btn-danger" style="padding:4px 10px;font-size:0.75rem;" onclick="deleteReward('${r.id}')">삭제</button>
+        </div>
+      </div>
+    `;
+    el.appendChild(row);
+  });
+  const addBtn = document.createElement('button');
+  addBtn.className = 'btn btn-accent btn-full';
+  addBtn.style.marginTop = '8px';
+  addBtn.textContent = '+ 보상 추가';
+  addBtn.onclick = () => editReward('new_'+Date.now());
+  el.appendChild(addBtn);
+}
+
+function editReward(rewardId) {
+  const rewards = loadRewards();
+  const r = rewards.find(x => x.id === rewardId) || { id: rewardId, name:'', icon:'🎁', cost:100 };
+  const content = document.getElementById('settings-content');
+  content.innerHTML = `
+    <div class="card card-sm">
+      <div class="row" style="margin-bottom:16px;">
+        <button class="back-btn" onclick="renderSettingsTab('rewards')" style="font-size:1.1rem;">◀</button>
+        <span class="title-md">보상 수정</span>
+      </div>
+      <div class="form-group"><label>이름</label><input type="text" id="er-name" value="${esc(r.name)}" placeholder="보상 이름"></div>
+      <div class="form-group"><label>아이콘 (이모지)</label><input type="text" id="er-icon" value="${r.icon}" maxlength="4" style="font-size:1.5rem;"></div>
+      <div class="form-group"><label>포인트 비용 (💎)</label><input type="number" id="er-cost" value="${r.cost}" min="1"></div>
+      <button class="btn btn-primary btn-full" onclick="saveRewardEdit('${r.id}')">저장</button>
+    </div>
+  `;
+}
+
+function saveRewardEdit(rewardId) {
+  const rewards = loadRewards();
+  let r = rewards.find(x => x.id === rewardId);
+  if (!r) { r = { id: rewardId }; rewards.push(r); }
+  r.name = document.getElementById('er-name').value.trim() || r.name;
+  r.icon = document.getElementById('er-icon').value.trim() || r.icon;
+  r.cost = parseInt(document.getElementById('er-cost').value)||100;
+  saveRewards(rewards);
+  showMsg('✅', '저장됐어요!');
+  setTimeout(() => renderSettingsTab('rewards'), 300);
+}
+
+function deleteReward(rewardId) {
+  saveRewards(loadRewards().filter(r => r.id !== rewardId));
+  renderSettingsTab('rewards');
+}
+
+function renderSettingsPoints(el) {
+  const s = loadSettings();
+  el.innerHTML = '';
+  s.children.forEach(child => {
+    const card = document.createElement('div');
+    card.className = 'card card-sm';
+    card.style.marginBottom = '12px';
+    card.innerHTML = `
+      <div class="row" style="margin-bottom:12px;">
+        <span style="font-size:1.8rem;">${getCharEmoji(child.characterType, child.level)}</span>
+        <div class="fw-bold">${esc(child.name)}</div>
+        <div class="badge badge-diamond" style="margin-left:auto;">💎 ${child.points}</div>
+      </div>
+      <div class="row" style="gap:8px;">
+        <input type="number" id="pts-${child.id}" placeholder="포인트 수" min="1" style="flex:1;">
+        <button class="btn btn-success btn-sm" onclick="adjustPoints('${child.id}',1)">+추가</button>
+        <button class="btn btn-danger btn-sm" onclick="adjustPoints('${child.id}',-1)">-차감</button>
+      </div>
+    `;
+    el.appendChild(card);
+  });
+}
+
+function adjustPoints(childId, dir) {
+  const child = getChild(childId);
+  if (!child) return;
+  const val = parseInt(document.getElementById('pts-'+childId).value)||0;
+  if (val <= 0) { showMsg('⚠️', '포인트를 입력해주세요'); return; }
+  child.points = Math.max(0, child.points + dir * val);
+  saveChild(child);
+  showMsg(dir > 0 ? '💎' : '➖', `${esc(child.name)}의 포인트가 ${dir>0?'추가':'차감'}됐어요!\n현재: 💎 ${child.points}`);
+  setTimeout(() => renderSettingsTab('points'), 300);
+}
+
+function renderSettingsOther(el) {
+  const s = loadSettings();
+  el.innerHTML = `
+    <div class="card card-sm" style="margin-bottom:12px;">
+      <div class="section-title">태권도 출발 시간</div>
+      <div class="form-group">
+        <label>출발 시간 (2시간 전부터 알림)</label>
+        <input type="text" id="set-taekwondo" value="${s.taekwondoTime||''}" placeholder="예: 14:25">
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="saveTaekwondo()">저장</button>
+    </div>
+    <div class="card card-sm" style="margin-bottom:12px;">
+      <div class="section-title">비밀번호 변경</div>
+      <div class="form-group">
+        <label>새 비밀번호 (4자리)</label>
+        <input type="password" id="set-pin" maxlength="4" placeholder="0000" inputmode="numeric">
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="savePin()">변경</button>
+    </div>
+    <div class="card card-sm" style="margin-bottom:12px;">
+      <div class="section-title">XP 설정</div>
+      <div class="form-group">
+        <label>레벨당 필요 XP: <span id="xp-level-val">${s.xpPerLevel||100}</span></label>
+        <input type="range" min="50" max="500" step="10" value="${s.xpPerLevel||100}" oninput="document.getElementById('xp-level-val').textContent=this.value" id="set-xp-level">
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="saveXpSettings()">저장</button>
+    </div>
+    <div class="card card-sm" style="margin-bottom:12px;">
+      <div class="section-title">⚠️ 데이터 초기화</div>
+      <div class="body-sm text-muted" style="margin-bottom:12px;">오늘의 퀘스트 기록을 초기화합니다</div>
+      <button class="btn btn-danger btn-sm" onclick="resetToday()">오늘 기록 초기화</button>
+    </div>
+  `;
+}
+
+function saveTaekwondo() {
+  const s = loadSettings();
+  s.taekwondoTime = document.getElementById('set-taekwondo').value.trim();
+  saveSettings(s);
+  showMsg('✅', '저장됐어요!');
+}
+
+function savePin() {
+  const pin = document.getElementById('set-pin').value.trim();
+  if (pin.length !== 4 || !/^\d{4}$/.test(pin)) { showMsg('⚠️', '4자리 숫자를 입력해주세요'); return; }
+  const s = loadSettings();
+  s.parentPin = pin;
+  saveSettings(s);
+  showMsg('✅', '비밀번호가 변경됐어요!');
+}
+
+function saveXpSettings() {
+  const s = loadSettings();
+  s.xpPerLevel = parseInt(document.getElementById('set-xp-level').value)||100;
+  saveSettings(s);
+  showMsg('✅', '저장됐어요!');
+}
+
+function resetToday() {
+  try { localStorage.removeItem(todayKey()); } catch(e) {}
+  showMsg('✅', '오늘 기록이 초기화됐어요!');
+}
+
+// ================================================================
+// UTILITY
+// ================================================================
+function esc(str) {
+  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ================================================================
+// INIT
+// ================================================================
+function init() {
+  // Ensure default data exists
+  const s = loadSettings();
+  if (!s.children || s.children.length === 0) {
     saveSettings(DEFAULT_SETTINGS);
   }
+  if (!localStorage.getItem('quest_tasks')) {
+    saveTasks(DEFAULT_TASKS);
+  }
+  if (!localStorage.getItem('quest_rewards')) {
+    saveRewards(DEFAULT_REWARDS);
+  }
   renderWelcome();
+  // Update taekwondo every minute
+  setInterval(() => {
+    if (document.getElementById('screen-home').classList.contains('active')) {
+      const s2 = loadSettings();
+      checkTaekwondo(s2);
+    }
+  }, 60000);
+}
 
-  // Add a small home link at the top of child home for going back to welcome
-  const childHeader = document.querySelector('#screen-child-home .child-header');
-  const homeBtn = document.createElement('button');
-  homeBtn.className = 'icon-btn';
-  homeBtn.textContent = '🏠';
-  homeBtn.title = '홈';
-  homeBtn.style.marginLeft = '4px';
-  homeBtn.addEventListener('click', () => {
-    if (countdownTimer) clearInterval(countdownTimer);
-    currentChildId = null;
-    showScreen('welcome');
-    renderWelcome();
-  });
-  childHeader.appendChild(homeBtn);
-})();
+document.addEventListener('DOMContentLoaded', init);
 </script>
 </body>
 </html>
