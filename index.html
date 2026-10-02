@@ -1093,7 +1093,7 @@ const STAGE_ADJECTIVES = ['귀여운','씩씩한','의젓한','최고의'];
 
 const DEFAULT_CHILDREN = [
   { id:'c1', name:'세하',   characterType:'dog',     level:1, xp:0, points:0 },
-  { id:'c2', name:'치호',   characterType:'chick',   level:1, xp:0, points:0 },
+  { id:'c2', name:'치호',   characterType:'cat',     level:1, xp:0, points:0 },
   { id:'c3', name:'치유',   characterType:'rabbit',  level:1, xp:0, points:0 },
 ];
 
@@ -1644,6 +1644,11 @@ function init() {
   if (settings.dataVersion === 7) {
     tasks = tasks.filter(t => t.name.replace(/\s/g, '') !== '간식먹기');
     settings.dataVersion = 8;
+  }
+  if (settings.dataVersion === 8) {
+    const chiho = settings.children.find(c => c.id === 'c2');
+    if (chiho) chiho.characterType = 'cat';
+    settings.dataVersion = 9;
   }
 
   saveSettings();
