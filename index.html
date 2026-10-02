@@ -297,6 +297,17 @@ input, select, textarea { font-family: inherit; outline: none; }
 .check-item:active { transform:scale(0.98); }
 .check-box { width:36px; height:36px; border-radius:11px; border:3px solid #c7d2fe; flex-shrink:0; display:flex; align-items:center; justify-content:center; color:white; font-size:1.2rem; font-weight:900; }
 .check-emoji { font-size:2rem; line-height:1; }
+.check-pic { width:64px; height:64px; border-radius:14px; object-fit:cover; flex-shrink:0; background:#fff; }
+.check-item.done .check-pic { opacity:0.55; }
+.speak-btn { font-size:1.5rem; padding:6px 10px; border-radius:12px; background:var(--primary-bg); flex-shrink:0; }
+@media (min-width: 900px) { .check-pic { width:92px; height:92px; } }
+@media (max-width: 600px) {
+  .check-item { gap:10px; padding:12px 12px; }
+  .check-pic { width:54px; height:54px; }
+  .check-name { font-size:1.1rem; word-break:keep-all; }
+  .speak-btn { font-size:1.25rem; padding:4px 7px; }
+  .check-item:has(.speak-btn) .xp-badge { display:none; }
+}
 .check-name { flex:1; font-size:1.2rem; font-weight:800; color:var(--text); }
 .check-item.done { background:var(--success-bg); border-color:transparent; }
 .check-item.done .check-box { background:var(--success); border-color:var(--success); animation:checkPop 0.3s ease; }
@@ -1584,6 +1595,7 @@ function toggleDuty(childId, dutyId) {
     renderHomeScreen();
     return;
   }
+  if (child.speak) speak(`${duty.name}, 잘했어요!`);
   completeTask(childId, 'duty_' + dutyId, duty.xp);
 }
 
@@ -1722,6 +1734,10 @@ function init() {
   if (settings.dataVersion === 12) {
     settings.children.forEach(c => { c.petStart = c.petStart || 1; c.collection = c.collection || []; c.needsEgg = false; c.met = {}; });
     settings.dataVersion = 13;
+  }
+  if (settings.dataVersion === 13) {
+    settings.children.forEach(c => { c.speak = c.id === 'c3'; });
+    settings.dataVersion = 14;
   }
 
   saveSettings();
@@ -2092,11 +2108,43 @@ function renderHomeScreen() {
     const done = !!(e && e.done);
     return `<button class="check-item duty${done ? ' done' : ''}" onclick="toggleDuty('${child.id}','${d.id}')">
       <div class="check-box">${done ? '✓' : ''}</div>
-      <span class="check-emoji">${d.emoji}</span>
+      ${dutyIcon(d)}
       <span class="check-name">${d.name}<div style="font-size:0.85rem;font-weight:600;color:var(--text-secondary);text-decoration:none;">${d.tips.join(' · ')}</div></span>
+      ${speakerBtn(child, d.name)}
       <span class="xp-badge">+${d.xp} XP</span>
     </button>`;
   }).join('');
+}
+
+const TASK_ICON_IDS = ['m1','m2','m3','m4','m5','m6','m7','m8','m9','a1','a2','a3','a4','a6','a7','a8','a9','a10','e1','e3','e4','e5','e6','e7'];
+const TASK_ICON_ALIAS = { e2:'m7', e8:'m3' };
+
+function taskIcon(t) {
+  const id = TASK_ICON_ALIAS[t.id] || t.id;
+  return TASK_ICON_IDS.includes(id) ? `<img class="check-pic" src="img/task-${id}.jpg" alt="">` : `<span class="check-emoji">${t.emoji}</span>`;
+}
+
+function dutyIcon(d) {
+  return ['d1','d2','d3','d4','d5'].includes(d.id) ? `<img class="check-pic" src="img/duty-${d.id}.jpg" alt="">` : `<span class="check-emoji">${d.emoji}</span>`;
+}
+
+function speak(text) {
+  try {
+    if (!window.speechSynthesis) return;
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'ko-KR';
+    u.rate = 0.9;
+    u.pitch = 1.15;
+    const v = speechSynthesis.getVoices().find(v => v.lang && v.lang.startsWith('ko'));
+    if (v) u.voice = v;
+    speechSynthesis.speak(u);
+  } catch (e) {}
+}
+
+function speakerBtn(child, text) {
+  if (!child.speak) return '';
+  return `<span class="speak-btn" onclick="event.stopPropagation();speak('${text.replace(/'/g, '')}')">🔊</span>`;
 }
 
 function setViewSlot(slot) {
@@ -2119,8 +2167,9 @@ function renderTasks(child, log, slot, slotTasks, doneCount, totalCount) {
     const done = !!(e && e.done);
     return `<button class="check-item${done?' done':''}" onclick="toggleCheck('${child.id}','${t.id}')">
       <div class="check-box">${done?'✓':''}</div>
-      <span class="check-emoji">${t.emoji}</span>
+      ${taskIcon(t)}
       <span class="check-name">${t.name}</span>
+      ${speakerBtn(child, t.name)}
       <span class="xp-badge">+${t.xp} XP</span>
     </button>`;
   }).join('');
@@ -2140,6 +2189,7 @@ function toggleCheck(childId, taskId) {
     renderHomeScreen();
     return;
   }
+  if (child.speak) speak(`${task.name}, 잘했어요!`);
   if (task.type === 'social') { openSocial(childId, task); return; }
   completeTask(childId, taskId, task.xp);
 }
@@ -2701,6 +2751,10 @@ function renderChildrenSettings() {
         <select class="input-field" id="cchar-${i}" onchange="updateChild(${i},'characterType',this.value)">
           ${Object.entries(ANIMALS).map(([k,v]) => `<option value="${k}" ${child.characterType===k?'selected':''}>${v.name}</option>`).join('')}
         </select>
+      </div>
+      <div class="toggle-wrap" style="margin-top:10px;">
+        <span class="text-sm font-bold">🔊 할 일 소리로 읽어주기</span>
+        <div class="toggle${child.speak ? ' on' : ''}" onclick="updateChild(${i},'speak',${!child.speak})"></div>
       </div>
     </div>`).join('');
 }
