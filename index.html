@@ -1151,6 +1151,7 @@ const DEFAULT_TASKS = [
   { id:'m4',  name:'혼자 옷 입기',      emoji:'👕', xp:15, slot:'morning',     for:['c2','c3'] },
   { id:'m5',  name:'양말 신기',         emoji:'🧦', xp:10, slot:'morning',     for:['c3'] },
   { id:'m6',  name:'밥 먹기',           emoji:'🍚', xp:20, slot:'morning' },
+  { id:'m10', name:'약 먹기',           emoji:'💊', xp:15, slot:'morning',     for:['c2'] },
   { id:'m7',  name:'먹은 그릇 치우기',  emoji:'🥣', xp:15, slot:'morning' },
   { id:'m8',  name:'물병 챙기기',       emoji:'💧', xp:10, slot:'morning',     for:['c1'] },
   { id:'m9',  name:'가방 챙기기',       emoji:'🎒', xp:20, slot:'morning' },
@@ -1745,6 +1746,14 @@ function init() {
       if (r.name === '용돈 500원') { r.name = '용돈 1000원'; r.for = ['c1', 'c2']; }
     });
     settings.dataVersion = 15;
+  }
+  if (settings.dataVersion === 15) {
+    if (!tasks.some(t => t.id === 'm10')) {
+      const d = JSON.parse(JSON.stringify(DEFAULT_TASKS.find(t => t.id === 'm10')));
+      const at = tasks.findIndex(t => t.id === 'm7');
+      tasks.splice(at >= 0 ? at : tasks.length, 0, d);
+    }
+    settings.dataVersion = 16;
   }
 
   saveSettings();
