@@ -1088,7 +1088,6 @@ const DEFAULT_TASKS = [
   { id:'a2',  name:'신발 정리',         emoji:'👟', xp:10, slot:'afterschool', for:['c3'] },
   { id:'a3',  name:'가방 제자리에 두기', emoji:'🎒', xp:10, slot:'afterschool' },
   { id:'a4',  name:'알림장 보여주기',   emoji:'📒', xp:15, slot:'afterschool', for:['c1','c2'] },
-  { id:'a5',  name:'간식 먹기',         emoji:'🍎', xp:10, slot:'afterschool' },
   { id:'a6',  name:'온리원 공부',       emoji:'💻', xp:50, slot:'afterschool', for:['c1'] },
   { id:'a7',  name:'구몬 공부',         emoji:'📝', xp:50, slot:'afterschool', for:['c2'] },
   { id:'a8',  name:'책 읽기',           emoji:'📖', xp:30, slot:'afterschool' },
@@ -1618,6 +1617,10 @@ function init() {
     DEFAULT_REWARDS.filter(d => d.cost === 1 && !rewards.some(r => r.name === d.name))
       .reverse().forEach(d => rewards.unshift(JSON.parse(JSON.stringify(d))));
     settings.dataVersion = 7;
+  }
+  if (settings.dataVersion === 7) {
+    tasks = tasks.filter(t => t.name.replace(/\s/g, '') !== '간식먹기');
+    settings.dataVersion = 8;
   }
 
   saveSettings();
