@@ -325,6 +325,43 @@ input, select, textarea { font-family: inherit; outline: none; }
 .check-item.duty.done { background:var(--success-bg); border-color:transparent; }
 .social-grid, .social-left, .social-right { display:flex; flex-direction:column; gap:12px; }
 
+/* ===== WEEK CALENDAR ===== */
+.week-card { padding:16px; }
+.week-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:6px; }
+.week-title { font-size:1.1rem; font-weight:900; }
+.week-legend { font-size:0.75rem; color:var(--text-secondary); font-weight:600; display:flex; align-items:center; gap:4px; }
+.week-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:6px; }
+.wk-day { background:var(--primary-bg); border-radius:14px; padding:8px 2px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:4px; }
+.wk-day.today { background:var(--primary); color:white; box-shadow:0 4px 12px rgba(55,48,163,0.3); }
+.wk-day.future { background:#f8fafc; color:var(--text-muted); }
+.wk-name { font-size:0.95rem; font-weight:900; }
+.wk-date { font-size:0.75rem; font-weight:600; opacity:0.8; }
+.wk-kids { display:flex; flex-direction:column; gap:3px; margin-top:2px; min-height:58px; }
+.wk-kid { font-size:0.7rem; font-weight:800; border-radius:99px; padding:1px 6px; background:rgba(255,255,255,0.7); color:var(--text-muted); }
+.wk-day.today .wk-kid { background:rgba(255,255,255,0.25); color:white; }
+.wk-kid.part { background:#fde68a; color:#92400e; }
+.wk-kid.full { background:var(--success); color:white; }
+.wk-dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-left:6px; }
+.wk-dot.full { background:var(--success); }
+.wk-dot.part { background:#fde68a; }
+.today-banner { font-size:1.3rem; font-weight:900; color:var(--text); margin-top:6px; }
+
+/* ===== DUTY PICK ===== */
+.dutypick-title { font-size:1.6rem; font-weight:900; }
+.dutypick-list { display:grid; grid-template-columns:1fr; gap:10px; }
+.duty-pick { text-align:left; background:var(--card); border:3px solid var(--border); border-radius:20px; padding:16px 18px; width:100%; }
+.duty-pick.selected { border-color:#f59e0b; background:#fffbeb; box-shadow:0 4px 14px rgba(245,158,11,0.25); }
+.duty-pick.blocked { opacity:0.45; }
+.duty-pick-head { display:flex; align-items:center; gap:10px; }
+.duty-pick-emoji { font-size:2.2rem; }
+.duty-pick-name { font-size:1.3rem; font-weight:900; color:var(--text); }
+.duty-pick-tips { margin:8px 0 0 4px; padding-left:18px; color:var(--text-secondary); font-size:0.95rem; font-weight:600; line-height:1.6; }
+.duty-pick-note { margin-top:6px; font-size:0.85rem; font-weight:800; color:var(--danger); }
+.duty-cta { width:100%; background:linear-gradient(135deg,#fde68a,#fbbf24); color:#78350f; border-radius:18px; padding:18px; font-size:1.2rem; font-weight:900; box-shadow:0 4px 14px rgba(245,158,11,0.3); }
+#dutypick-confirm:disabled { opacity:0.5; }
+.duty-cell.empty { background:#f8fafc; }
+.duty-cell.empty .duty-cell-kid { color:var(--text-muted); font-size:0.95rem; }
+
 /* ===== SCENE ILLUSTRATION ===== */
 .scene { position:relative; width:100%; aspect-ratio:2/1; border-radius:16px; overflow:hidden; }
 .scene svg { position:absolute; inset:0; width:100%; height:100%; }
@@ -348,7 +385,10 @@ input, select, textarea { font-family: inherit; outline: none; }
   .profile-pet { font-size:5rem; }
   .profile-name { font-size:3rem; }
   .duty-badges { justify-content:center; }
-  .duty-board-grid { grid-template-columns:repeat(4,1fr); }
+  .duty-board-grid { grid-template-columns:repeat(5,1fr); }
+  .dutypick-list { grid-template-columns:repeat(3,1fr); }
+  .wk-name { font-size:1.15rem; }
+  .wk-kid { font-size:0.85rem; }
   .welcome-title { font-size:2.6rem; }
   .home-grid { display:grid; grid-template-columns:400px 1fr; gap:24px; align-items:start; }
   .home-left { position:sticky; top:0; }
@@ -692,6 +732,14 @@ input, select, textarea { font-family: inherit; outline: none; }
       <div class="welcome-date" id="welcome-date"></div>
     </div>
 
+    <div class="card week-card">
+      <div class="week-head">
+        <span class="week-title" id="week-title"></span>
+        <span class="week-legend"><span class="wk-dot full"></span>다 했어요 <span class="wk-dot part"></span>조금 했어요</span>
+      </div>
+      <div class="week-grid" id="week-grid"></div>
+    </div>
+
     <div class="profile-list" id="profile-list"></div>
 
     <div class="card duty-board">
@@ -771,6 +819,18 @@ input, select, textarea { font-family: inherit; outline: none; }
 <!-- ============================================================
      SCREEN 2b: REWARD SHOP (child)
      ============================================================ -->
+<div id="screen-dutypick" class="screen">
+  <div class="screen-inner">
+    <div class="flex-between">
+      <button class="btn-ghost btn-sm" onclick="showScreen('screen-home')">← 나가기</button>
+    </div>
+    <div class="dutypick-title" id="dutypick-title"></div>
+    <div class="text-sm color-muted" style="margin-top:-6px;">반장은 일주일 동안 매일 해요. 지난주에 한 반장은 고를 수 없어요.</div>
+    <div class="dutypick-list" id="dutypick-list"></div>
+    <button class="btn-primary" id="dutypick-confirm" onclick="confirmDutyPick()">하고 싶은 반장을 골라요</button>
+  </div>
+</div>
+
 <div id="screen-social" class="screen">
   <div class="screen-inner" id="social-inner"></div>
 </div>
@@ -873,6 +933,7 @@ input, select, textarea { font-family: inherit; outline: none; }
 
     <!-- Child overview -->
     <div class="card" id="parent-child-overview"></div>
+    <button class="btn-ghost" onclick="resetDutyPicks()">👑 이번 주 반장 다시 고르게 하기</button>
 
     <!-- Photo approvals -->
     <div id="photo-approval-section">
@@ -992,20 +1053,33 @@ const DEFAULT_CHILDREN = [
 ];
 
 const DEFAULT_TASKS = [
-  { id:'t1',  name:'세수하기',    emoji:'🚿', xp:30, slot:'morning',    photo:false, enabled:true },
-  { id:'t2',  name:'양치하기',    emoji:'🦷', xp:30, slot:'morning',    photo:false, enabled:true },
-  { id:'t3',  name:'밥먹기',      emoji:'🍚', xp:20, slot:'morning',    photo:false, enabled:true },
-  { id:'t4',  name:'가방챙기기',  emoji:'🎒', xp:20, slot:'morning',    photo:false, enabled:true },
-  { id:'t5',  name:'손씻기',      emoji:'🙌', xp:15, slot:'afterschool',photo:false, enabled:true },
-  { id:'t6',  name:'간식먹기',    emoji:'🍎', xp:15, slot:'afterschool',photo:false, enabled:true },
-  { id:'t7',  name:'온리원 공부', emoji:'💻', xp:50, slot:'afterschool',photo:false, enabled:true, for:['c1'] },
-  { id:'t8',  name:'구몬 공부',   emoji:'📝', xp:50, slot:'afterschool',photo:false, enabled:true, for:['c2'] },
-  { id:'t9',  name:'책 읽기',     emoji:'📖', xp:30, slot:'afterschool',photo:false, enabled:true },
-  { id:'t14', name:'마음 공부',   emoji:'💬', xp:40, slot:'afterschool',photo:false, enabled:true, type:'social' },
-  { id:'t11', name:'저녁먹기',    emoji:'🍽️', xp:15, slot:'evening',    photo:false, enabled:true },
-  { id:'t12', name:'샤워',        emoji:'🚿', xp:30, slot:'evening',    photo:false, enabled:true },
-  { id:'t13', name:'양치',        emoji:'🦷', xp:30, slot:'evening',    photo:false, enabled:true },
-];
+  { id:'m1',  name:'이불 정리',         emoji:'🛏️', xp:15, slot:'morning',     for:['c1','c2'] },
+  { id:'m2',  name:'세수하기',          emoji:'🧼', xp:20, slot:'morning' },
+  { id:'m3',  name:'양치하기',          emoji:'🦷', xp:20, slot:'morning' },
+  { id:'m4',  name:'혼자 옷 입기',      emoji:'👕', xp:15, slot:'morning',     for:['c2','c3'] },
+  { id:'m5',  name:'양말 신기',         emoji:'🧦', xp:10, slot:'morning',     for:['c3'] },
+  { id:'m6',  name:'밥 먹기',           emoji:'🍚', xp:20, slot:'morning' },
+  { id:'m7',  name:'먹은 그릇 치우기',  emoji:'🥣', xp:15, slot:'morning' },
+  { id:'m8',  name:'물병 챙기기',       emoji:'💧', xp:10, slot:'morning',     for:['c1'] },
+  { id:'m9',  name:'가방 챙기기',       emoji:'🎒', xp:20, slot:'morning' },
+  { id:'a1',  name:'손 씻기',           emoji:'🙌', xp:15, slot:'afterschool' },
+  { id:'a2',  name:'신발 정리',         emoji:'👟', xp:10, slot:'afterschool', for:['c3'] },
+  { id:'a3',  name:'가방 제자리에 두기', emoji:'🎒', xp:10, slot:'afterschool' },
+  { id:'a4',  name:'알림장 보여주기',   emoji:'📒', xp:15, slot:'afterschool', for:['c1','c2'] },
+  { id:'a5',  name:'간식 먹기',         emoji:'🍎', xp:10, slot:'afterschool' },
+  { id:'a6',  name:'온리원 공부',       emoji:'💻', xp:50, slot:'afterschool', for:['c1'] },
+  { id:'a7',  name:'구몬 공부',         emoji:'📝', xp:50, slot:'afterschool', for:['c2'] },
+  { id:'a8',  name:'책 읽기',           emoji:'📖', xp:30, slot:'afterschool' },
+  { id:'a9',  name:'마음 공부',         emoji:'💬', xp:40, slot:'afterschool', for:['c1','c2'], type:'social' },
+  { id:'e1',  name:'저녁 먹기',         emoji:'🍽️', xp:15, slot:'evening' },
+  { id:'e2',  name:'먹은 그릇 치우기',  emoji:'🥣', xp:15, slot:'evening' },
+  { id:'e3',  name:'샤워하기',          emoji:'🚿', xp:20, slot:'evening' },
+  { id:'e4',  name:'빨래 바구니에 옷 넣기', emoji:'🧺', xp:10, slot:'evening' },
+  { id:'e5',  name:'잠옷 갈아입기',     emoji:'👚', xp:10, slot:'evening',     for:['c2','c3'] },
+  { id:'e6',  name:'내일 입을 옷 꺼내두기', emoji:'👔', xp:15, slot:'evening', for:['c1'] },
+  { id:'e7',  name:'장난감 정리',       emoji:'🧸', xp:15, slot:'evening' },
+  { id:'e8',  name:'양치하기',          emoji:'🦷', xp:20, slot:'evening' },
+].map(t => ({ photo:false, enabled:true, ...t }));
 
 // =====================================================================
 // 마음 공부 (SOCIAL LESSONS)
@@ -1206,25 +1280,82 @@ function closeSocial() {
 }
 
 const DEFAULT_DUTIES = [
-  { id:'d1', name:'식사 반장',     emoji:'🍽️', desc:'수저 놓기, 식사 준비 돕기', xp:30 },
-  { id:'d2', name:'분리수거 반장', emoji:'♻️', desc:'쓰레기 분리수거 하기',     xp:30 },
-  { id:'d3', name:'화장실 반장',   emoji:'🚽', desc:'세면대 닦고 화장실 정리', xp:30 },
-  { id:'d4', name:'시루 반장',     emoji:'🐶', desc:'시루 배변패드 갈아주기',   xp:30 },
+  { id:'d1', name:'식사 준비 반장', emoji:'🍽️', xp:30, tips:['식탁에 수저랑 젓가락 놓기','컵에 물 따라 놓기','반찬 그릇 나르기 돕기'] },
+  { id:'d2', name:'분리수거 반장',  emoji:'♻️', xp:30, tips:['종이·플라스틱·캔 나눠 담기','재활용 바구니가 차면 엄마에게 알리기','끝나면 손 씻기'] },
+  { id:'d3', name:'빨래 반장',      emoji:'👕', xp:30, tips:['마른 빨래 같이 개기','양말 짝 맞추기','가족 옷 각자 방에 갖다 놓기'] },
+  { id:'d4', name:'시루 반장',      emoji:'🐶', xp:30, tips:['시루 배변패드 갈아주기','시루 물그릇 채워주기','시루랑 놀아주기'] },
+  { id:'d5', name:'청소 반장',      emoji:'🧹', xp:30, tips:['거실 바닥 물건 제자리에 두기','청소기나 밀대로 바닥 청소','식탁 닦기'] },
 ];
 
-function weekIndex() {
-  const d = new Date();
+function weekIndex(d = new Date()) {
   const days = Math.floor((d.getTime() - d.getTimezoneOffset() * 60000) / 86400000);
   return Math.floor((days + 3) / 7);
 }
 
-function dutyOwner(i) {
-  const kids = settings.children;
-  return kids[(i + weekIndex()) % kids.length];
+function weekPicks(w = weekIndex()) {
+  settings.dutyPicks = settings.dutyPicks || {};
+  return settings.dutyPicks['w' + w] || {};
 }
 
 function dutiesFor(childId) {
-  return settings.duties.filter((d, i) => dutyOwner(i).id === childId);
+  const id = weekPicks()[childId];
+  return settings.duties.filter(d => d.id === id);
+}
+
+function dutyTakenBy(dutyId) {
+  const picks = weekPicks();
+  return settings.children.find(c => picks[c.id] === dutyId);
+}
+
+let pickingDutyId = null;
+
+function openDutyPick() {
+  pickingDutyId = null;
+  renderDutyPick();
+  showScreen('screen-dutypick');
+}
+
+function renderDutyPick() {
+  const child = getChild();
+  const lastWeek = weekPicks(weekIndex() - 1)[child.id];
+  document.getElementById('dutypick-title').textContent = `${child.name}, 이번 주에 무슨 반장 할래?`;
+  document.getElementById('dutypick-list').innerHTML = settings.duties.map(d => {
+    const taken = dutyTakenBy(d.id);
+    const wasMine = lastWeek === d.id;
+    const blocked = (taken && taken.id !== child.id) || wasMine;
+    const note = taken && taken.id !== child.id ? `${taken.name}가 골랐어요` : wasMine ? '지난주에 했어요' : '';
+    return `<button class="duty-pick${pickingDutyId === d.id ? ' selected' : ''}${blocked ? ' blocked' : ''}" ${blocked ? 'disabled' : `onclick="selectDuty('${d.id}')"`}>
+      <div class="duty-pick-head"><span class="duty-pick-emoji">${d.emoji}</span><span class="duty-pick-name">${d.name}</span></div>
+      <ul class="duty-pick-tips">${d.tips.map(t => `<li>${t}</li>`).join('')}</ul>
+      ${note ? `<div class="duty-pick-note">${note}</div>` : ''}
+    </button>`;
+  }).join('');
+  const btn = document.getElementById('dutypick-confirm');
+  const sel = settings.duties.find(d => d.id === pickingDutyId);
+  btn.disabled = !sel;
+  btn.textContent = sel ? `👑 이번 주 ${sel.name} 할래요!` : '하고 싶은 반장을 골라요';
+}
+
+function selectDuty(id) {
+  pickingDutyId = id;
+  renderDutyPick();
+}
+
+function confirmDutyPick() {
+  if (!pickingDutyId) return;
+  const w = 'w' + weekIndex();
+  settings.dutyPicks = settings.dutyPicks || {};
+  settings.dutyPicks[w] = { ...weekPicks(), [currentChildId]: pickingDutyId };
+  saveSettings();
+  renderHomeScreen();
+  showScreen('screen-home');
+}
+
+function resetDutyPicks() {
+  if (!confirm('이번 주 반장을 모두 지우고 다시 고르게 할까요?')) return;
+  delete settings.dutyPicks['w' + weekIndex()];
+  saveSettings();
+  alert('이번 주 반장이 초기화됐어요.');
 }
 
 function toggleDuty(childId, dutyId) {
@@ -1321,10 +1452,12 @@ function init() {
     rewards = raw ? JSON.parse(raw) : JSON.parse(JSON.stringify(DEFAULT_REWARDS));
   } catch(e) { rewards = JSON.parse(JSON.stringify(DEFAULT_REWARDS)); }
 
-  if (settings.dataVersion !== 3) {
+  if (settings.dataVersion !== 4) {
     tasks = JSON.parse(JSON.stringify(DEFAULT_TASKS));
+    settings.duties = JSON.parse(JSON.stringify(DEFAULT_DUTIES));
+    settings.dutyPicks = {};
     delete settings.taekwondoTime;
-    settings.dataVersion = 3;
+    settings.dataVersion = 4;
   }
 
   saveSettings();
@@ -1376,8 +1509,9 @@ function xpNeeded(level) { return 100; }
 function renderWelcome() {
   const log = loadLog();
   const now = new Date();
-  document.getElementById('welcome-date').textContent =
-    `${now.getMonth() + 1}월 ${now.getDate()}일 ${'일월화수목금토'[now.getDay()]}요일`;
+  document.getElementById('welcome-date').innerHTML =
+    `<div class="today-banner">오늘은 ${now.getMonth() + 1}월 ${now.getDate()}일 ${'일월화수목금토'[now.getDay()]}요일이에요</div>`;
+  renderWeek();
   document.getElementById('profile-list').innerHTML = settings.children.map(child => {
     const allEnabled = tasksForChild(child.id);
     const done = allEnabled.filter(t => {
@@ -1385,7 +1519,8 @@ function renderWelcome() {
       return entry && entry.done && (!t.photo || entry.approved);
     }).length;
     const total = allEnabled.length;
-    const badges = dutiesFor(child.id).map(d => `<span class="duty-badge">👑 ${d.emoji} ${d.name}</span>`).join('');
+    const myDuty = dutiesFor(child.id)[0];
+    const badges = myDuty ? `<span class="duty-badge">👑 ${myDuty.emoji} ${myDuty.name}</span>` : `<span class="duty-badge" style="background:#f1f5f9;color:var(--text-muted);">👑 반장 고르기 전</span>`;
     return `<button class="profile-card" onclick="enterChild('${child.id}')">
       <div class="profile-pet">${getPetEmoji(child)}</div>
       <div style="flex:1;width:100%;">
@@ -1396,11 +1531,49 @@ function renderWelcome() {
       </div>
     </button>`;
   }).join('');
-  document.getElementById('duty-board').innerHTML = settings.duties.map((d, i) => `
-    <div class="duty-cell">
+  document.getElementById('duty-board').innerHTML = settings.duties.map(d => {
+    const kid = dutyTakenBy(d.id);
+    return `<div class="duty-cell${kid ? '' : ' empty'}">
       <span class="duty-cell-emoji">${d.emoji}</span>
-      <div><div class="duty-cell-name">${d.name}</div><div class="duty-cell-kid">${dutyOwner(i).name}</div></div>
-    </div>`).join('');
+      <div><div class="duty-cell-name">${d.name}</div><div class="duty-cell-kid">${kid ? kid.name : '아직 없어요'}</div></div>
+    </div>`;
+  }).join('');
+}
+
+function dateKey(d) {
+  return `routinepet_log_${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function renderWeek() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - (today.getDay() + 6) % 7);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  document.getElementById('week-title').textContent =
+    `📅 이번 주 (${monday.getMonth() + 1}/${monday.getDate()} ~ ${sunday.getMonth() + 1}/${sunday.getDate()})`;
+  document.getElementById('week-grid').innerHTML = [...'월화수목금토일'].map((name, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    const isToday = d.getTime() === today.getTime();
+    const isFuture = d > today;
+    let kids = '';
+    if (!isFuture) {
+      let log = {};
+      try { log = JSON.parse(localStorage.getItem(dateKey(d)) || '{}'); } catch(e) {}
+      kids = settings.children.map(c => {
+        const list = tasksForChild(c.id);
+        const done = list.filter(t => log[`${c.id}_${t.id}`] && log[`${c.id}_${t.id}`].done).length;
+        const cls = list.length && done === list.length ? 'full' : done > 0 ? 'part' : '';
+        return `<span class="wk-kid ${cls}">${c.name}</span>`;
+      }).join('');
+    }
+    return `<div class="wk-day${isToday ? ' today' : ''}${isFuture ? ' future' : ''}">
+      <span class="wk-name">${name}</span><span class="wk-date">${d.getMonth() + 1}/${d.getDate()}</span>
+      <div class="wk-kids">${kids}</div>
+    </div>`;
+  }).join('');
 }
 
 // =====================================================================
@@ -1525,14 +1698,19 @@ function renderHomeScreen() {
   renderTasks(child, log, slot, slotTasks, doneCount, totalCount);
 
   const myDuties = dutiesFor(child.id);
-  document.getElementById('duty-section').classList.toggle('hidden', myDuties.length === 0);
+  document.getElementById('duty-section').classList.remove('hidden');
+  if (myDuties.length === 0) {
+    document.getElementById('duty-list').innerHTML =
+      `<button class="duty-cta" onclick="openDutyPick()">👑 이번 주 반장을 골라요!</button>`;
+    return;
+  }
   document.getElementById('duty-list').innerHTML = myDuties.map(d => {
     const e = log[`${child.id}_duty_${d.id}`];
     const done = !!(e && e.done);
     return `<button class="check-item duty${done ? ' done' : ''}" onclick="toggleDuty('${child.id}','${d.id}')">
       <div class="check-box">${done ? '✓' : ''}</div>
       <span class="check-emoji">${d.emoji}</span>
-      <span class="check-name">${d.name}<div style="font-size:0.85rem;font-weight:600;color:var(--text-secondary);text-decoration:none;">${d.desc}</div></span>
+      <span class="check-name">${d.name}<div style="font-size:0.85rem;font-weight:600;color:var(--text-secondary);text-decoration:none;">${d.tips.join(' · ')}</div></span>
       <span class="xp-badge">+${d.xp} XP</span>
     </button>`;
   }).join('');
