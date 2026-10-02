@@ -659,54 +659,54 @@ label { display: block; font-size: 0.875rem; color: var(--muted); margin-bottom:
 // DATA DEFINITIONS
 // ================================================================
 const CHARACTERS = {
-  dragon: {
-    name: '드래곤',
-    stages: [
-      { minLv:1,  maxLv:3,  emoji:'🥚',   label:'알 속의' },
-      { minLv:4,  maxLv:6,  emoji:'🐣',   label:'갓 태어난' },
-      { minLv:7,  maxLv:9,  emoji:'🐲',   label:'아기' },
-      { minLv:10, maxLv:14, emoji:'🐲✨',  label:'무럭무럭 자라는' },
-      { minLv:15, maxLv:999, emoji:'🐉',  label:'전설의' },
-    ]
-  },
   chick: {
     name: '병아리',
     stages: [
-      { minLv:1,  maxLv:3,  emoji:'🥚',   label:'알 속의' },
-      { minLv:4,  maxLv:6,  emoji:'🐣',   label:'갓 태어난' },
-      { minLv:7,  maxLv:9,  emoji:'🐥',   label:'아기' },
-      { minLv:10, maxLv:14, emoji:'🐤',   label:'씩씩한' },
-      { minLv:15, maxLv:999, emoji:'🐓',  label:'멋진' },
+      { minLv:1,  maxLv:2,  emoji:'🥚',   label:'알 속에 있어요' },
+      { minLv:3,  maxLv:4,  emoji:'🐣',   label:'막 태어났어요!' },
+      { minLv:5,  maxLv:9,  emoji:'🐥',   label:'아기 병아리예요' },
+      { minLv:10, maxLv:14, emoji:'🐤',   label:'무럭무럭 자랐어요' },
+      { minLv:15, maxLv:999, emoji:'🐔',  label:'다 자란 닭이 됐어요!' },
     ]
   },
   cat: {
     name: '고양이',
     stages: [
-      { minLv:1,  maxLv:3,  emoji:'🐱',   label:'아기' },
-      { minLv:4,  maxLv:6,  emoji:'😺',   label:'귀여운' },
-      { minLv:7,  maxLv:9,  emoji:'😸',   label:'활발한' },
-      { minLv:10, maxLv:14, emoji:'🐈',   label:'의젓한' },
-      { minLv:15, maxLv:999, emoji:'😻',  label:'사랑스러운' },
+      { minLv:1,  maxLv:2,  emoji:'🥚',   label:'알 속에 있어요' },
+      { minLv:3,  maxLv:4,  emoji:'🐣',   label:'막 태어났어요!' },
+      { minLv:5,  maxLv:9,  emoji:'🐱',   label:'아기 고양이예요' },
+      { minLv:10, maxLv:14, emoji:'🐈',   label:'의젓하게 자랐어요' },
+      { minLv:15, maxLv:999, emoji:'😻',  label:'사랑스러운 고양이예요!' },
     ]
   },
   rabbit: {
     name: '토끼',
     stages: [
-      { minLv:1,  maxLv:3,  emoji:'🐰',   label:'아기' },
-      { minLv:4,  maxLv:6,  emoji:'🐇',   label:'귀여운' },
-      { minLv:7,  maxLv:9,  emoji:'🐇✨',  label:'활발한' },
-      { minLv:10, maxLv:14, emoji:'🐰💛',  label:'의젓한' },
-      { minLv:15, maxLv:999, emoji:'👑🐰', label:'왕토끼' },
+      { minLv:1,  maxLv:2,  emoji:'🥚',   label:'알 속에 있어요' },
+      { minLv:3,  maxLv:4,  emoji:'🐣',   label:'막 태어났어요!' },
+      { minLv:5,  maxLv:9,  emoji:'🐰',   label:'아기 토끼예요' },
+      { minLv:10, maxLv:14, emoji:'🐇',   label:'씩씩하게 자랐어요' },
+      { minLv:15, maxLv:999, emoji:'👑🐰', label:'왕 토끼가 됐어요!' },
     ]
   },
   dog: {
     name: '강아지',
     stages: [
-      { minLv:1,  maxLv:3,  emoji:'🐶',   label:'아기' },
-      { minLv:4,  maxLv:6,  emoji:'🐕',   label:'귀여운' },
-      { minLv:7,  maxLv:9,  emoji:'🐕✨',  label:'활발한' },
-      { minLv:10, maxLv:14, emoji:'🦮',   label:'믿음직한' },
-      { minLv:15, maxLv:999, emoji:'🐕‍🦺', label:'최고의' },
+      { minLv:1,  maxLv:2,  emoji:'🥚',   label:'알 속에 있어요' },
+      { minLv:3,  maxLv:4,  emoji:'🐣',   label:'막 태어났어요!' },
+      { minLv:5,  maxLv:9,  emoji:'🐶',   label:'아기 강아지예요' },
+      { minLv:10, maxLv:14, emoji:'🐕',   label:'믿음직하게 자랐어요' },
+      { minLv:15, maxLv:999, emoji:'🦮',  label:'최고의 강아지예요!' },
+    ]
+  },
+  hamster: {
+    name: '햄스터',
+    stages: [
+      { minLv:1,  maxLv:2,  emoji:'🥚',   label:'알 속에 있어요' },
+      { minLv:3,  maxLv:4,  emoji:'🐣',   label:'막 태어났어요!' },
+      { minLv:5,  maxLv:9,  emoji:'🐹',   label:'아기 햄스터예요' },
+      { minLv:10, maxLv:14, emoji:'🐭',   label:'통통하게 자랐어요' },
+      { minLv:15, maxLv:999, emoji:'👑🐹', label:'황금 햄스터예요!' },
     ]
   }
 };
@@ -764,7 +764,7 @@ const DEFAULT_SETTINGS = {
   milestoneBonus: 50,
   milestoneInterval: 5,
   children: [
-    { id:'c1', name:'아들', characterType:'dog', level:1, xp:0, points:0, color:'#7c3aed' },
+    { id:'c1', name:'아들', characterType:'chick', level:1, xp:0, points:0, color:'#7c3aed' },
     { id:'c2', name:'딸', characterType:'rabbit', level:1, xp:0, points:0, color:'#ec4899' },
   ]
 };
