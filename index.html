@@ -366,6 +366,7 @@ input, select, textarea { font-family: inherit; outline: none; }
 .duty-cell.empty { background:#f8fafc; }
 .duty-cell.empty .duty-cell-kid { color:var(--text-muted); font-size:0.95rem; }
 
+.pet-img { height:1.1em; width:auto; vertical-align:middle; display:inline-block; }
 /* ===== SCENE ILLUSTRATION ===== */
 .scene-img { width:100%; border-radius:16px; display:block; }
 .scene { position:relative; width:100%; aspect-ratio:2/1; border-radius:16px; overflow:hidden; }
@@ -1650,38 +1651,18 @@ function getPetStageIndex(level) {
   return 4;
 }
 
-const EGG_COLORS = {
-  c1: ['#e3f3ff', '#8fcaf5'],
-  c2: ['#fff8d6', '#f6cf55'],
-  c3: ['#ffe6f0', '#f59cbf'],
+const PET_IMAGES = {
+  c1: ['img/pet-c1-0.png'],
+  c2: ['img/pet-c2-0.png'],
+  c3: ['img/pet-c3-0.png'],
 };
-let eggSeq = 0;
-
-function eggSVG(childId) {
-  const [light, main] = EGG_COLORS[childId] || ['#efeaff', '#b9a6f5'];
-  const id = 'egg' + (++eggSeq);
-  return `<svg viewBox="0 0 100 124" width="0.85em" height="1.05em" style="vertical-align:-0.1em;overflow:visible">
-    <defs>
-      <radialGradient id="${id}g" cx="35%" cy="28%" r="80%"><stop offset="0" stop-color="${light}"/><stop offset="1" stop-color="${main}"/></radialGradient>
-      <clipPath id="${id}c"><path d="M50 4C78 4 96 50 96 76C96 102 76 118 50 118C24 118 4 102 4 76C4 50 22 4 50 4Z"/></clipPath>
-    </defs>
-    <ellipse cx="50" cy="120" rx="32" ry="5" fill="rgba(0,0,0,0.08)"/>
-    <path d="M50 4C78 4 96 50 96 76C96 102 76 118 50 118C24 118 4 102 4 76C4 50 22 4 50 4Z" fill="url(#${id}g)"/>
-    <g clip-path="url(#${id}c)">
-      <path d="M-2 72L11 61L24 72L37 61L50 72L63 61L76 72L89 61L102 72" stroke="#fff" stroke-width="7" fill="none" stroke-linejoin="round" opacity="0.9"/>
-      <circle cx="30" cy="44" r="5" fill="#fff" opacity="0.75"/>
-      <circle cx="64" cy="34" r="4" fill="#fff" opacity="0.75"/>
-      <circle cx="70" cy="96" r="6" fill="#fff" opacity="0.75"/>
-      <circle cx="34" cy="98" r="4" fill="#fff" opacity="0.75"/>
-    </g>
-    <ellipse cx="33" cy="30" rx="8" ry="15" fill="#fff" opacity="0.55" transform="rotate(-25 33 30)"/>
-  </svg>`;
-}
 
 function petHTML(child, level) {
+  const stage = getPetStageIndex(level);
+  const img = (PET_IMAGES[child.id] || [])[stage];
+  if (img) return `<img class="pet-img" src="${img}" alt="">`;
   const char = CHARACTER_TYPES[child.characterType] || CHARACTER_TYPES.chick;
-  const e = char.stages[getPetStageIndex(level)];
-  return e === '🥚' ? eggSVG(child.id) : e;
+  return char.stages[stage];
 }
 
 function getPetEmoji(child) {
