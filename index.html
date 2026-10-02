@@ -1549,7 +1549,10 @@ const DEFAULT_REWARDS = [
   { id:'r3', name:'용돈 500원',           emoji:'💰', cost:5 },
   { id:'r4', name:'원하는 음식 저녁',     emoji:'🍕', cost:7 },
   { id:'r5', name:'영화 보기',            emoji:'🎬', cost:10 },
-  { id:'r6', name:'특별 선물 (엄마선택)', emoji:'🎁', cost:20 },
+  { id:'r9',  name:'가족 외식 메뉴 내가 정하기', emoji:'🍦', cost:15 },
+  { id:'r10', name:'갖고 싶은 장난감이나 책 (1만 원 이하)', emoji:'🧸', cost:20 },
+  { id:'r11', name:'주말 나들이 장소 내가 고르기', emoji:'🚗', cost:20 },
+  { id:'r12', name:'엄마나 아빠랑 단둘이 데이트', emoji:'💕', cost:20 },
 ];
 
 // =====================================================================
@@ -1649,6 +1652,14 @@ function init() {
     const chiho = settings.children.find(c => c.id === 'c2');
     if (chiho) chiho.characterType = 'cat';
     settings.dataVersion = 9;
+  }
+  if (settings.dataVersion === 9) {
+    rewards = rewards.filter(r => !r.name.startsWith('특별 선물'));
+    ['r9', 'r10', 'r11', 'r12'].forEach(id => {
+      const d = DEFAULT_REWARDS.find(x => x.id === id);
+      if (!rewards.some(r => r.name === d.name)) rewards.push(JSON.parse(JSON.stringify(d)));
+    });
+    settings.dataVersion = 10;
   }
 
   saveSettings();
