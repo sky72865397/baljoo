@@ -1061,7 +1061,6 @@ input, select, textarea { font-family: inherit; outline: none; }
       <div id="add-task-form" class="card hidden" style="margin-top:8px;">
         <div style="font-weight:700;margin-bottom:10px;">새 할 일 추가</div>
         <div class="form-group"><label class="form-label">이름</label><input class="input-field" id="newtask-name" placeholder="예: 손씻기"></div>
-        <div class="form-group" style="margin-top:8px;"><label class="form-label">이모지</label><input class="input-field" id="newtask-emoji" placeholder="🧼" maxlength="2"></div>
         <div class="form-group" style="margin-top:8px;"><label class="form-label">XP</label><input class="input-field" id="newtask-xp" type="number" value="20" min="5" max="100"></div>
         <div class="form-group" style="margin-top:8px;"><label class="form-label">시간대</label>
           <select class="input-field" id="newtask-slot">
@@ -2144,7 +2143,30 @@ function renderHomeScreen() {
 const TASK_ICON_IDS = ['m10','m1','m2','m3','m4','m5','m6','m7','m8','m9','a1','a2','a3','a4','a6','a7','a8','a9','a10','e1','e3','e4','e5','e6','e7'];
 const TASK_ICON_ALIAS = { e2:'m7', e8:'m3' };
 
+const AUTO_ICONS = [
+  [/시루|강아지|배변/, 'img/duty-d4.jpg', '🐶'],
+  [/양치|이 닦/, 'img/task-m3.jpg', '🦷'], [/세수/, 'img/task-m2.jpg', '🧼'], [/손/, 'img/task-a1.jpg', '🙌'],
+  [/약/, 'img/task-m10.jpg', '💊'], [/샤워|목욕|머리 감/, 'img/task-e3.jpg', '🚿'], [/잠옷/, 'img/task-e5.jpg', '👚'],
+  [/양말/, 'img/task-m5.jpg', '🧦'], [/신발/, 'img/task-a2.jpg', '👟'], [/옷/, 'img/task-m4.jpg', '👕'],
+  [/이불|침대/, 'img/task-m1.jpg', '🛏️'], [/그릇|설거지|식기/, 'img/task-m7.jpg', '🥣'], [/밥|식사|먹기|아침|저녁/, 'img/task-m6.jpg', '🍚'],
+  [/물병/, 'img/task-m8.jpg', '💧'], [/가방/, 'img/task-m9.jpg', '🎒'], [/알림장/, 'img/task-a4.jpg', '📒'],
+  [/책|독서|읽/, 'img/task-a8.jpg', '📖'], [/공부|숙제|학습|문제|받아쓰기|수학/, 'img/task-a7.jpg', '📝'],
+  [/자전거|킥보드/, 'img/task-a10.jpg', '🚲'], [/빨래 ?개|개기/, 'img/duty-d3.jpg', '👕'], [/빨래/, 'img/task-e4.jpg', '🧺'],
+  [/분리수거|쓰레기|재활용/, 'img/duty-d2.jpg', '♻️'],
+  [/청소|닦|걸레|밀대/, 'img/duty-d5.jpg', '🧹'], [/수저|상 차|식탁/, 'img/duty-d1.jpg', '🍽️'],
+  [/정리|치우|장난감/, 'img/task-e7.jpg', '🧸'], [/친구|인사|마음/, 'img/task-a9.jpg', '💬'],
+  [/줄넘기/, null, '🪢'], [/운동|달리기|체조/, null, '🏃'], [/피아노/, null, '🎹'], [/그림|색칠/, null, '🎨'],
+  [/물 ?마시/, null, '🥤'], [/산책/, null, '🚶'], [/식물|화분/, null, '🪴'], [/일기|글쓰기/, null, '✏️'],
+];
+
+function autoIcon(name) {
+  const hit = AUTO_ICONS.find(([re]) => re.test(name));
+  if (!hit) return { emoji: '⭐', pic: undefined };
+  return { emoji: hit[2], pic: hit[1] || undefined };
+}
+
 function taskIcon(t) {
+  if (t.pic) return `<img class="check-pic" src="${t.pic}" alt="">`;
   const id = TASK_ICON_ALIAS[t.id] || t.id;
   return TASK_ICON_IDS.includes(id) ? `<img class="check-pic" src="img/task-${id}.jpg" alt="">` : `<span class="check-emoji">${t.emoji}</span>`;
 }
@@ -2837,8 +2859,8 @@ function saveTaskEdit(idx) {
   if (!name) { alert('이름을 입력해 주세요'); return; }
   const forIds = readChildPicker('et-kid');
   if (forIds && !forIds.length) { alert('적어도 한 명은 골라 주세요'); return; }
+  if (name !== t.name && !t.id.match(/^[mae]\d+$/)) Object.assign(t, autoIcon(name));
   t.name = name;
-  t.emoji = document.getElementById('et-emoji').value.trim() || t.emoji;
   t.xp = parseInt(document.getElementById('et-xp').value) || t.xp;
   t.slot = document.getElementById('et-slot').value;
   if (forIds) t.for = forIds; else delete t.for;
@@ -2852,10 +2874,7 @@ function renderTasksSettings() {
   el.innerHTML = tasks.map((t, i) => i === editingTaskIdx ? `
     <div class="card" style="display:flex;flex-direction:column;gap:8px;border-color:var(--primary);">
       <div class="form-group"><label class="form-label">이름</label><input class="input-field" id="et-name" value="${escText(t.name)}"></div>
-      <div style="display:flex;gap:8px;">
-        <div class="form-group" style="flex:1;"><label class="form-label">이모지</label><input class="input-field" id="et-emoji" value="${t.emoji}" maxlength="2"></div>
-        <div class="form-group" style="flex:1;"><label class="form-label">XP</label><input class="input-field" id="et-xp" type="number" value="${t.xp}" min="5" max="100"></div>
-      </div>
+      <div class="form-group"><label class="form-label">XP</label><input class="input-field" id="et-xp" type="number" value="${t.xp}" min="5" max="100"></div>
       <div class="form-group"><label class="form-label">시간대</label>
         <select class="input-field" id="et-slot">
           ${['morning','afterschool','evening'].map(sl => `<option value="${sl}" ${t.slot === sl ? 'selected' : ''}>${getSlotLabel(sl)}</option>`).join('')}
@@ -2900,13 +2919,12 @@ function hideAddTaskForm() { document.getElementById('add-task-form').classList.
 
 function addNewTask() {
   const name = document.getElementById('newtask-name').value.trim();
-  const emoji = document.getElementById('newtask-emoji').value.trim() || '⭐';
   const xp = parseInt(document.getElementById('newtask-xp').value) || 20;
   const slot = document.getElementById('newtask-slot').value;
   if (!name) { alert('이름을 입력해 주세요'); return; }
   const forIds = readChildPicker('nt-kid');
   if (forIds && !forIds.length) { alert('적어도 한 명은 골라 주세요'); return; }
-  const t = { id: 't_' + Date.now(), name, emoji, xp, slot, photo: false, enabled: true };
+  const t = { id: 't_' + Date.now(), name, xp, slot, photo: false, enabled: true, ...autoIcon(name) };
   if (forIds) t.for = forIds;
   tasks.push(t);
   saveTasks();
