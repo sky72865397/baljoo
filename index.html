@@ -2563,7 +2563,7 @@ function renderShopScreen() {
   document.getElementById('shop-points-display').textContent = `💎 보석 ${child.points}개`;
 
   const grid = document.getElementById('shop-grid');
-  grid.innerHTML = rewards.filter(r => !r.for || r.for.includes(child.id)).map(r => {
+  grid.innerHTML = rewards.filter(r => !r.for || r.for.includes(child.id)).sort((a, b) => a.cost - b.cost).map(r => {
     const canAfford = child.points >= r.cost;
     return `<div class="reward-card">
       <div class="reward-emoji">${r.emoji}</div>
