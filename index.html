@@ -356,7 +356,7 @@ input, select, textarea { font-family: inherit; outline: none; }
 .week-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:6px; }
 .wk-day { background:var(--primary-bg); border-radius:14px; padding:8px 2px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:4px; }
 .wk-day.today { background:var(--primary); color:white; box-shadow:0 4px 12px rgba(55,48,163,0.3); }
-.wk-day.future { background:#f8fafc; color:var(--text-muted); }
+.wk-day.future { background:var(--primary-bg); opacity:0.6; }
 .wk-name { font-size:0.95rem; font-weight:900; }
 .wk-date { font-size:0.75rem; font-weight:600; opacity:0.8; }
 .wk-kids { display:flex; flex-direction:column; gap:3px; margin-top:2px; min-height:58px; }
@@ -370,6 +370,7 @@ input, select, textarea { font-family: inherit; outline: none; }
 .today-banner { font-size:1.3rem; font-weight:900; color:var(--text); margin-top:6px; }
 
 /* ===== DUTY PICK ===== */
+.badge-ico { width:1.05em; height:1.2em; vertical-align:-0.22em; display:inline-block; }
 .dutypick-title { font-size:1.6rem; font-weight:900; }
 .dutypick-list { display:grid; grid-template-columns:1fr; gap:10px; }
 .duty-pick { text-align:left; background:var(--card); border:3px solid var(--border); border-radius:20px; padding:16px 18px; width:100%; }
@@ -781,7 +782,7 @@ input, select, textarea { font-family: inherit; outline: none; }
     <div class="profile-list" id="profile-list"></div>
 
     <div class="card duty-board">
-      <div class="duty-board-title">👑 이번 주 반장</div>
+      <div class="duty-board-title"><svg class="badge-ico" viewBox="0 0 24 28" aria-hidden="true"><path d="M6.5 1h4.5l2 9H8.5z" fill="#60a5fa"/><path d="M17.5 1H13l-2 9h4.5z" fill="#f472b6"/><circle cx="12" cy="17.5" r="9" fill="#fbbf24" stroke="#f59e0b" stroke-width="1.6"/><circle cx="12" cy="17.5" r="6.4" fill="none" stroke="#fde68a" stroke-width="1"/><path d="M12 12.6l1.6 3.3 3.6.5-2.6 2.5.6 3.6L12 20.8l-3.2 1.7.6-3.6-2.6-2.5 3.6-.5z" fill="#fff"/></svg> 이번 주 반장</div>
       <div class="duty-board-grid" id="duty-board"></div>
     </div>
 
@@ -830,7 +831,7 @@ input, select, textarea { font-family: inherit; outline: none; }
     </div>
 
     <div id="duty-section" class="hidden" style="display:flex;flex-direction:column;gap:10px;">
-      <div class="section-label" style="padding-left:4px;margin-top:8px;">👑 이번 주 반장 임무</div>
+      <div class="section-label" style="padding-left:4px;margin-top:8px;"><svg class="badge-ico" viewBox="0 0 24 28" aria-hidden="true"><path d="M6.5 1h4.5l2 9H8.5z" fill="#60a5fa"/><path d="M17.5 1H13l-2 9h4.5z" fill="#f472b6"/><circle cx="12" cy="17.5" r="9" fill="#fbbf24" stroke="#f59e0b" stroke-width="1.6"/><circle cx="12" cy="17.5" r="6.4" fill="none" stroke="#fde68a" stroke-width="1"/><path d="M12 12.6l1.6 3.3 3.6.5-2.6 2.5.6 3.6L12 20.8l-3.2 1.7.6-3.6-2.6-2.5 3.6-.5z" fill="#fff"/></svg> 이번 주 반장 임무</div>
       <div style="display:flex;flex-direction:column;gap:10px;" id="duty-list"></div>
     </div>
     </div>
@@ -971,7 +972,7 @@ input, select, textarea { font-family: inherit; outline: none; }
 
     <!-- Child overview -->
     <div class="card" id="parent-child-overview"></div>
-    <button class="btn-ghost" onclick="resetDutyPicks()">👑 이번 주 반장 다시 고르게 하기</button>
+    <button class="btn-ghost" onclick="resetDutyPicks()"><svg class="badge-ico" viewBox="0 0 24 28" aria-hidden="true"><path d="M6.5 1h4.5l2 9H8.5z" fill="#60a5fa"/><path d="M17.5 1H13l-2 9h4.5z" fill="#f472b6"/><circle cx="12" cy="17.5" r="9" fill="#fbbf24" stroke="#f59e0b" stroke-width="1.6"/><circle cx="12" cy="17.5" r="6.4" fill="none" stroke="#fde68a" stroke-width="1"/><path d="M12 12.6l1.6 3.3 3.6.5-2.6 2.5.6 3.6L12 20.8l-3.2 1.7.6-3.6-2.6-2.5 3.6-.5z" fill="#fff"/></svg> 이번 주 반장 다시 고르게 하기</button>
 
     <!-- Photo approvals -->
     <div id="photo-approval-section">
@@ -1463,6 +1464,8 @@ function closeSocial() {
   showScreen('screen-home');
 }
 
+const BADGE_SVG = '<svg class="badge-ico" viewBox="0 0 24 28" aria-hidden="true"><path d="M6.5 1h4.5l2 9H8.5z" fill="#60a5fa"/><path d="M17.5 1H13l-2 9h4.5z" fill="#f472b6"/><circle cx="12" cy="17.5" r="9" fill="#fbbf24" stroke="#f59e0b" stroke-width="1.6"/><circle cx="12" cy="17.5" r="6.4" fill="none" stroke="#fde68a" stroke-width="1"/><path d="M12 12.6l1.6 3.3 3.6.5-2.6 2.5.6 3.6L12 20.8l-3.2 1.7.6-3.6-2.6-2.5 3.6-.5z" fill="#fff"/></svg>';
+
 const DEFAULT_DUTIES = [
   { id:'d1', name:'식사 준비 반장', emoji:'🍽️', xp:30, tips:['식탁에 수저랑 젓가락 놓기','컵에 물 따라 놓기','반찬 그릇 나르기 돕기'] },
   { id:'d2', name:'분리수거 반장',  emoji:'♻️', xp:30, tips:['종이·플라스틱·캔 나눠 담기','재활용 바구니가 차면 엄마에게 알리기','끝나면 손 씻기'] },
@@ -1517,7 +1520,7 @@ function renderDutyPick() {
   const btn = document.getElementById('dutypick-confirm');
   const sel = settings.duties.find(d => d.id === pickingDutyId);
   btn.disabled = !sel;
-  btn.textContent = sel ? `👑 이번 주 ${sel.name} 할래요!` : '하고 싶은 반장을 골라요';
+  btn.innerHTML = sel ? `${BADGE_SVG} 이번 주 ${sel.name} 할래요!` : '하고 싶은 반장을 골라요';
 }
 
 function selectDuty(id) {
@@ -1765,7 +1768,7 @@ function renderWelcome() {
     }).length;
     const total = allEnabled.length;
     const myDuty = dutiesFor(child.id)[0];
-    const badges = myDuty ? `<span class="duty-badge">👑 ${myDuty.emoji} ${myDuty.name}</span>` : `<span class="duty-badge" style="background:#f1f5f9;color:var(--text-muted);">👑 반장 고르기 전</span>`;
+    const badges = myDuty ? `<span class="duty-badge">${BADGE_SVG} ${myDuty.name}</span>` : `<span class="duty-badge" style="background:#f1f5f9;color:var(--text-muted);">${BADGE_SVG} 반장 고르기 전</span>`;
     return `<button class="profile-card" onclick="enterChild('${child.id}')">
       <div class="profile-pet">${getPetEmoji(child)}</div>
       <div style="flex:1;width:100%;">
@@ -1872,7 +1875,7 @@ function renderWeek() {
     d.setDate(monday.getDate() + i);
     const isToday = d.getTime() === today.getTime();
     const isFuture = d > today;
-    let kids = '';
+    let kids = settings.children.map(c => `<span class="wk-kid">${c.name}</span>`).join('');
     if (!isFuture) {
       let log = {};
       try { log = JSON.parse(localStorage.getItem(dateKey(d)) || '{}'); } catch(e) {}
@@ -2018,7 +2021,7 @@ function renderHomeScreen() {
   document.getElementById('duty-section').classList.remove('hidden');
   if (myDuties.length === 0) {
     document.getElementById('duty-list').innerHTML =
-      `<button class="duty-cta" onclick="openDutyPick()">👑 이번 주 반장을 골라요!</button>`;
+      `<button class="duty-cta" onclick="openDutyPick()">${BADGE_SVG} 이번 주 반장을 골라요!</button>`;
     return;
   }
   document.getElementById('duty-list').innerHTML = myDuties.map(d => {
