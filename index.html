@@ -391,7 +391,7 @@ input, select, textarea { font-family: inherit; outline: none; }
 .dex-sub { font-size:0.8rem; color:var(--text-muted); }
 .dex-no { font-size:0.75rem; color:var(--primary); background:var(--primary-bg); border-radius:99px; padding:2px 10px; }
 .nav-btn .nav-sub { font-size:0.62rem; opacity:0.8; }
-@media (min-width: 900px) { .dex-grid { grid-template-columns:repeat(4,1fr); } }
+@media (min-width: 900px) { .dex-grid { grid-template-columns:repeat(5,1fr); } }
 
 /* ===== DUTY PICK ===== */
 .badge-ico { width:1.05em; height:1.2em; vertical-align:-0.22em; display:inline-block; }
@@ -1747,7 +1747,23 @@ const ANIMALS = {
   dog:    { name:'강아지', imgs:['img/pet-c1-0.png', 'img/pet-c1-1.png', 'img/pet-c1-2.png', 'img/pet-c1-3.png', 'img/pet-c1-4.png'] },
   cat:    { name:'고양이', imgs:['img/pet-c2-0.png', 'img/pet-c2-1.png', 'img/pet-c2-2.png', 'img/pet-c2-3.png', 'img/pet-c2-4.png'] },
   rabbit: { name:'토끼',   imgs:['img/pet-c3-0.png', 'img/pet-c3-1.png', 'img/pet-c3-2.png', 'img/pet-c3-3.png', 'img/pet-c3-4.png'] },
+  dino:     { name:'공룡', imgs:[0,1,2,3,4].map(i => `img/pet-dino-${i}.png`) },
+  koala:    { name:'코알라', imgs:[0,1,2,3,4].map(i => `img/pet-koala-${i}.png`) },
+  tiger:    { name:'호랑이', imgs:[0,1,2,3,4].map(i => `img/pet-tiger-${i}.png`) },
+  squirrel: { name:'다람쥐', imgs:[0,1,2,3,4].map(i => `img/pet-squirrel-${i}.png`) },
+  sheep:    { name:'양', imgs:[0,1,2,3,4].map(i => `img/pet-sheep-${i}.png`) },
+  panda:    { name:'판다', imgs:[0,1,2,3,4].map(i => `img/pet-panda-${i}.png`) },
+  hamster:  { name:'햄스터', imgs:[0,1,2,3,4].map(i => `img/pet-hamster-${i}.png`) },
+  owl:      { name:'부엉이', imgs:[0,1,2,3,4].map(i => `img/pet-owl-${i}.png`) },
+  lion:     { name:'사자', imgs:[0,1,2,3,4].map(i => `img/pet-lion-${i}.png`) },
+  penguin:  { name:'펭귄', imgs:[0,1,2,3,4].map(i => `img/pet-penguin-${i}.png`) },
 };
+
+function withGa(word) {
+  const c = word.charCodeAt(word.length - 1);
+  const hasBatchim = c >= 0xAC00 && c <= 0xD7A3 && (c - 0xAC00) % 28 !== 0;
+  return word + (hasBatchim ? '이가' : '가');
+}
 const PET_MAX_LEVEL = 20;
 const STAGE_STARTS = [1, 4, 8, 13, 20];
 
@@ -2216,7 +2232,7 @@ function showLevelUpScreen(child, oldLevel, evolved, graduated) {
   document.getElementById('levelup-pet').innerHTML = newEmoji;
 
   if (graduated) {
-    document.getElementById('levelup-evolution').innerHTML = `🎉 ${animalName(child.characterType)}가 다 자랐어요!<br>📖 펫 도감에 등록됐어요. 이제 새 알을 골라요!`;
+    document.getElementById('levelup-evolution').innerHTML = `🎉 ${withGa(animalName(child.characterType))} 다 자랐어요!<br>📖 펫 도감에 등록됐어요. 이제 새 알을 골라요!`;
   } else if (evolved) {
     document.getElementById('levelup-evolution').innerHTML = `${oldEmoji} → ${newEmoji} 진화했어요! ✨`;
   } else {
