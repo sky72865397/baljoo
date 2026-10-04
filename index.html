@@ -355,6 +355,29 @@ input, select, textarea { font-family: inherit; outline: none; }
 .check-item.duty.done { background:var(--success-bg); border-color:transparent; }
 .social-grid, .social-left, .social-right { display:flex; flex-direction:column; gap:12px; }
 
+/* ===== WEEK NUMBERS ===== */
+.wk-kid { display:flex; align-items:center; justify-content:center; gap:4px; }
+.wk-n { font-weight:900; border-radius:99px; min-width:1.6em; text-align:center; padding:0 4px; }
+.lv0 .wk-n { color:#cbd5e1; }
+.lv1 .wk-n { background:#dcfce7; color:#15803d; }
+.lv2 .wk-n { background:#86efac; color:#14532d; }
+.lv3 .wk-n { background:#16a34a; color:#fff; }
+
+/* ===== WEEKLY REPORT ===== */
+.report-card { display:flex; flex-direction:column; gap:10px; }
+.report-head { display:flex; align-items:center; gap:10px; font-size:1.2rem; font-weight:900; }
+.report-grid { display:grid; grid-template-columns:4.5em repeat(7,1fr); gap:4px; align-items:center; text-align:center; font-size:0.8rem; }
+.report-grid .rh { color:var(--text-muted); font-weight:700; }
+.report-grid .rl { text-align:left; color:var(--text-secondary); font-weight:700; }
+.rdot { width:18px; height:18px; border-radius:50%; margin:0 auto; background:#e2e8f0; }
+.rdot.half { background:#86efac; }
+.rdot.full { background:#16a34a; }
+.rdot.future { background:transparent; border:2px dashed #e2e8f0; }
+.report-notes { list-style:none; display:flex; flex-direction:column; gap:6px; }
+.report-notes li { background:var(--primary-bg); border-radius:12px; padding:9px 12px; font-size:0.95rem; line-height:1.5; word-break:keep-all; }
+.report-notes li.good { background:#ecfdf5; }
+.report-notes li.warn { background:#fff7ed; }
+
 /* ===== DAILY QUOTE ===== */
 .quote-card { background:linear-gradient(135deg,#fff7ed,#fdf2f8); border:2px solid #fbcfe8; border-radius:22px; padding:16px 20px; text-align:center; }
 .quote-label { font-size:0.9rem; color:#db2777; margin-bottom:6px; }
@@ -819,7 +842,7 @@ input, select, textarea { font-family: inherit; outline: none; }
     <div class="card week-card">
       <div class="week-head">
         <span class="week-title" id="week-title"></span>
-        <span class="week-legend"><span class="wk-dot full"></span>다 했어요 <span class="wk-dot part"></span>조금 했어요</span>
+        <span class="week-legend">숫자 = 그날 해낸 할 일 · 많을수록 진한 초록</span>
       </div>
       <div class="week-grid" id="week-grid"></div>
     </div>
@@ -1014,6 +1037,10 @@ input, select, textarea { font-family: inherit; outline: none; }
 
     <!-- Child overview -->
     <div class="card" id="parent-child-overview"></div>
+
+    <div class="section-label" style="padding-left:4px;margin-top:6px;">📊 이번 주 리포트</div>
+    <div class="text-xs color-muted" style="padding-left:4px;margin-top:-6px;">점: 연한 초록 = 그 시간대 절반 이상 · 진한 초록 = 전부 했어요</div>
+    <div style="display:flex;flex-direction:column;gap:12px;" id="weekly-report"></div>
     <button class="btn-ghost" onclick="resetDutyPicks()"><svg class="badge-ico" viewBox="0 0 24 28" aria-hidden="true"><path d="M6.5 1h4.5l2 9H8.5z" fill="#60a5fa"/><path d="M17.5 1H13l-2 9h4.5z" fill="#f472b6"/><circle cx="12" cy="17.5" r="9" fill="#fbbf24" stroke="#f59e0b" stroke-width="1.6"/><circle cx="12" cy="17.5" r="6.4" fill="none" stroke="#fde68a" stroke-width="1"/><path d="M12 12.6l1.6 3.3 3.6.5-2.6 2.5.6 3.6L12 20.8l-3.2 1.7.6-3.6-2.6-2.5 3.6-.5z" fill="#fff"/></svg> 이번 주 반장 다시 고르게 하기</button>
 
     <!-- Photo approvals -->
@@ -1982,15 +2009,14 @@ function renderWeek() {
     d.setDate(monday.getDate() + i);
     const isToday = d.getTime() === today.getTime();
     const isFuture = d > today;
-    let kids = settings.children.map(c => `<span class="wk-kid">${c.name}</span>`).join('');
+    let kids = settings.children.map(c => `<span class="wk-kid"><span>${c.name}</span></span>`).join('');
     if (!isFuture) {
       let log = {};
       try { log = JSON.parse(localStorage.getItem(dateKey(d)) || '{}'); } catch(e) {}
       kids = settings.children.map(c => {
-        const list = tasksForChild(c.id);
-        const done = list.filter(t => log[`${c.id}_${t.id}`] && log[`${c.id}_${t.id}`].done).length;
-        const cls = list.length && done === list.length ? 'full' : done > 0 ? 'part' : '';
-        return `<span class="wk-kid ${cls}">${c.name}</span>`;
+        const n = Object.keys(log).filter(k => k.startsWith(c.id + '_') && log[k].done).length;
+        const lv = n === 0 ? 0 : n < 8 ? 1 : n < 15 ? 2 : 3;
+        return `<span class="wk-kid lv${lv}"><span>${c.name}</span><span class="wk-n">${n}</span></span>`;
       }).join('');
     }
     return `<div class="wk-day${isToday ? ' today' : ''}${isFuture ? ' future' : ''}">
@@ -2646,7 +2672,90 @@ function updatePinDisplay() {
 // =====================================================================
 // PARENT DASHBOARD
 // =====================================================================
+function weekDays(offsetWeeks = 0) {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const mon = new Date(today);
+  mon.setDate(today.getDate() - (today.getDay() + 6) % 7 + offsetWeeks * 7);
+  return [...Array(7)].map((_, i) => { const d = new Date(mon); d.setDate(mon.getDate() + i); return d; });
+}
+
+function readLog(d) {
+  try { return JSON.parse(localStorage.getItem(dateKey(d)) || '{}'); } catch (e) { return {}; }
+}
+
+function weeklyReport(child) {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const days = weekDays();
+  const past = days.filter(d => d <= today);
+  const list = tasksForChild(child.id);
+  const slots = ['morning', 'afterschool', 'evening'];
+  const slotName = { morning: '아침', afterschool: '하교 후', evening: '저녁' };
+  const logs = days.map(d => d <= today ? readLog(d) : null);
+  const isDone = (log, id) => log && log[`${child.id}_${id}`] && log[`${child.id}_${id}`].done;
+
+  const rows = slots.map(sl => {
+    const st = list.filter(t => t.slot === sl);
+    return `<span class="rl">${slotName[sl]}</span>` + logs.map(log => {
+      if (!log) return '<i class="rdot future"></i>';
+      const k = st.filter(t => isDone(log, t.id)).length;
+      return `<i class="rdot${st.length && k === st.length ? ' full' : st.length && k * 2 >= st.length ? ' half' : ''}"></i>`;
+    }).join('');
+  }).join('');
+  const grid = `<div class="report-grid"><span></span>${[...'월화수목금토일'].map(n => `<span class="rh">${n}</span>`).join('')}${rows}</div>`;
+
+  const notes = [];
+  if (!past.length) return grid;
+  const n = past.length;
+  const counts = logs.map(log => log ? Object.keys(log).filter(k => k.startsWith(child.id + '_') && log[k].done).length : 0);
+  const total = counts.reduce((a, b) => a + b, 0);
+  const lastTotal = weekDays(-1).map(readLog).reduce((a, log) => a + Object.keys(log).filter(k => k.startsWith(child.id + '_') && log[k].done).length, 0);
+  if (total === 0) {
+    notes.push(['warn', `이번 주에는 아직 체크한 할 일이 없어요. 오늘 쉬운 것 하나부터 같이 시작해 보세요.`]);
+    return grid + `<ul class="report-notes">${notes.map(([c, t]) => `<li class="${c}">${t}</li>`).join('')}</ul>`;
+  }
+  let summary = `이번 주 ${n}일 동안 할 일을 모두 <b>${total}개</b> 해냈어요 (하루 평균 ${Math.round(total / n)}개).`;
+  if (lastTotal) summary += total >= lastTotal ? ` 지난주(${lastTotal}개)보다 <b>늘었어요</b> 👏` : ` 지난주는 ${lastTotal}개였어요.`;
+  notes.push(['', summary]);
+
+  const rate = sl => {
+    const st = list.filter(t => t.slot === sl);
+    if (!st.length) return null;
+    const done = logs.reduce((a, log) => a + (log ? st.filter(t => isDone(log, t.id)).length : 0), 0);
+    return done / (st.length * n);
+  };
+  const rates = slots.map(sl => [sl, rate(sl)]).filter(([, r]) => r !== null).sort((a, b) => b[1] - a[1]);
+  const [bestSl, bestR] = rates[0];
+  const [weakSl, weakR] = rates[rates.length - 1];
+  if (bestR > 0) notes.push(['good', `<b>${slotName[bestSl]}</b> 루틴을 가장 잘 지키고 있어요 (${Math.round(bestR * 100)}%).`]);
+  if (rates.length > 1 && bestR - weakR >= 0.15) notes.push(['warn', `<b>${slotName[weakSl]}</b> 루틴을 자주 놓쳐요 (${Math.round(weakR * 100)}%). 이 시간에 한 번 더 챙겨 주시면 좋아요.`]);
+
+  const perTask = list.map(t => [t, logs.filter(log => isDone(log, t.id)).length]);
+  const missedAll = perTask.filter(([, k]) => k / n < 0.5).sort((a, b) => a[1] - b[1]);
+  const missed = missedAll.slice(0, 3);
+  if (missed.length) notes.push(['warn', `잘 안 되는 할 일: ${missed.map(([t, k]) => `<b>${t.name}</b>(${n}일 중 ${k}일)`).join(', ')}${missedAll.length > 3 ? ` 외 ${missedAll.length - 3}개` : ''}`]);
+  const strong = perTask.filter(([, k]) => k === n && n >= 2).map(([t]) => t.name);
+  if (strong.length) notes.push(['good', `매일 빠짐없이 한 일: ${strong.slice(0, 4).map(x => `<b>${x}</b>`).join(', ')}${strong.length > 4 ? ` 외 ${strong.length - 4}개` : ''}`]);
+
+  const duty = dutiesFor(child.id)[0];
+  if (duty) {
+    const k = logs.filter(log => isDone(log, 'duty_' + duty.id)).length;
+    notes.push([k * 2 >= n ? 'good' : 'warn', `${duty.name}: ${n}일 중 <b>${k}일</b> 했어요.`]);
+  }
+  const best = counts.indexOf(Math.max(...counts));
+  if (counts[best] > 0) notes.push(['', `가장 열심히 한 날은 <b>${'월화수목금토일'[best]}요일</b>이에요 (${counts[best]}개).`]);
+  return grid + `<ul class="report-notes">${notes.map(([c, t]) => `<li class="${c}">${t}</li>`).join('')}</ul>`;
+}
+
+function renderWeeklyReport() {
+  document.getElementById('weekly-report').innerHTML = settings.children.map(c => `
+    <div class="card report-card">
+      <div class="report-head">${avatarHTML(c)}${c.name}</div>
+      ${weeklyReport(c)}
+    </div>`).join('');
+}
+
 function renderParentDashboard() {
+  renderWeeklyReport();
   const log = loadLog();
   const overview = document.getElementById('parent-child-overview');
   overview.innerHTML = settings.children.map(child => {
