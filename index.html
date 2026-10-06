@@ -329,6 +329,16 @@ input, select, textarea { font-family: inherit; outline: none; }
 .social-choice.wrong { border-color:var(--danger); animation:shake 0.4s; }
 .social-explain { background:var(--success-bg); color:var(--success); border-radius:14px; padding:14px; font-weight:700; line-height:1.5; }
 .social-explain.try { background:#fef3c7; color:#b45309; }
+.pop-overlay { position:fixed; inset:0; background:rgba(30,27,75,0.45); z-index:600; display:flex; align-items:center; justify-content:center; padding:20px; animation:fadeIn .2s; }
+.pop-card { background:#fff; border-radius:32px; padding:28px 26px 24px; width:100%; max-width:520px; text-align:center; box-shadow:0 20px 50px rgba(0,0,0,0.25); animation:popIn .45s cubic-bezier(.2,1.4,.4,1); border:6px solid #86efac; }
+.pop-card.try { border-color:#fcd34d; }
+.pop-icon { font-size:5rem; line-height:1; animation:petBounce .8s ease-out; }
+.pop-title { font-size:2.4rem; font-weight:900; color:#16a34a; margin-top:8px; }
+.pop-card.try .pop-title { color:#d97706; font-size:1.9rem; }
+.pop-text { font-size:1.35rem; line-height:1.6; color:var(--text); margin-top:10px; word-break:keep-all; }
+.pop-btn { margin-top:22px; width:100%; padding:18px; border-radius:18px; font-size:1.3rem; font-weight:900; color:#fff; background:#16a34a; }
+.pop-card.try .pop-btn { background:#f59e0b; }
+@keyframes popIn { 0%{transform:scale(.6);opacity:0} 100%{transform:scale(1);opacity:1} }
 @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
 
 /* ===== WELCOME / HOME LAYOUT ===== */
@@ -1500,18 +1510,41 @@ function answerSocial(i, btn) {
   if (q.open || i === q.answer) {
     socialState.answered = true;
     btn.classList.add('right');
-    const msg = q.open ? '좋은 생각이에요! 엄마 아빠랑 이야기해 봐요 😊' : `딩동댕! ${q.explain}`;
     const last = socialState.qi === socialState.lesson.questions.length - 1;
-    fb.innerHTML = `<div class="social-explain">${msg}</div>
-      <button class="btn-primary" style="margin-top:12px;" onclick="${last ? 'finishSocial()' : 'nextSocial()'}">${last ? '마음 공부 끝! 🎉' : '다음 →'}</button>`;
+    fb.innerHTML = '';
+    showSocialPop({
+      kind: 'right',
+      icon: q.open ? '💡' : '🎉',
+      title: q.open ? '좋은 생각이에요!' : '딩동댕!',
+      text: q.open ? '엄마 아빠랑 이야기해 봐요 😊' : q.explain,
+      button: last ? '마음 공부 끝! 🎉' : '다음 문제 →',
+      action: last ? 'finishSocial()' : 'nextSocial()',
+    });
   } else {
     btn.classList.add('wrong');
-    fb.innerHTML = `<div class="social-explain try">다시 한번 생각해 볼까요? 💭</div>`;
     setTimeout(() => btn.classList.remove('wrong'), 500);
+    showSocialPop({ kind: 'try', icon: '🤔', title: '앗, 다시 생각해 볼까요?', text: '이야기를 한 번 더 읽어 봐요!', button: '다시 해볼게요', action: '' });
   }
 }
 
+function showSocialPop({ kind, icon, title, text, button, action }) {
+  const child = settings.children.find(c => c.id === socialState.childId);
+  if (child && child.speak) speak(`${title} ${text.replace(/<[^>]+>/g, '')}`);
+  const wrap = document.createElement('div');
+  wrap.className = 'pop-overlay';
+  wrap.innerHTML = `<div class="pop-card ${kind}">
+      <div class="pop-icon">${icon}</div>
+      <div class="pop-title">${title}</div>
+      <div class="pop-text">${text}</div>
+      <button class="pop-btn">${button}</button>
+    </div>`;
+  wrap.querySelector('.pop-btn').onclick = () => { wrap.remove(); if (action) new Function(action)(); };
+  document.body.appendChild(wrap);
+  if (kind === 'right') spawnConfetti();
+}
+
 function nextSocial() {
+  document.querySelectorAll('.confetti-piece').forEach(el => el.remove());
   socialState.qi += 1;
   socialState.answered = false;
   renderSocial();
