@@ -1191,6 +1191,7 @@ const DEFAULT_TASKS = [
   { id:'a2',  name:'신발 정리',         emoji:'👟', xp:10, slot:'afterschool', for:['c3'] },
   { id:'a3',  name:'가방 제자리에 두기', emoji:'🎒', xp:10, slot:'afterschool' },
   { id:'a4',  name:'알림장 보여주기',   emoji:'📒', xp:15, slot:'afterschool', for:['c1','c2'] },
+  { id:'a11', name:'학교 숙제',         emoji:'📝', xp:40, slot:'afterschool', for:['c2'] },
   { id:'a6',  name:'온리원 공부',       emoji:'💻', xp:50, slot:'afterschool', for:['c1'] },
   { id:'a7',  name:'구몬 공부',         emoji:'📝', xp:50, slot:'afterschool', for:['c2'] },
   { id:'a10', name:'자전거·킥보드 제자리에 정리하기', emoji:'🚲', xp:10, slot:'afterschool' },
@@ -1826,6 +1827,13 @@ function init() {
     if (i >= 0 && j >= 0 && i > j) tasks.splice(j, 0, tasks.splice(i, 1)[0]);
     settings.dataVersion = 21;
   }
+  if (settings.dataVersion === 21) {
+    if (!tasks.some(t => t.id === 'a11')) {
+      const at = tasks.findIndex(t => t.id === 'a6');
+      tasks.splice(at >= 0 ? at : tasks.length, 0, JSON.parse(JSON.stringify(DEFAULT_TASKS.find(t => t.id === 'a11'))));
+    }
+    settings.dataVersion = 22;
+  }
 
   saveSettings();
   saveTasks();
@@ -2203,7 +2211,7 @@ function renderHomeScreen() {
 }
 
 const TASK_ICON_IDS = ['m10','m1','m2','m3','m4','m5','m6','m7','m8','m9','a1','a2','a3','a4','a6','a7','a8','a9','a10','e1','e3','e4','e5','e6','e7'];
-const TASK_ICON_ALIAS = { e2:'m7', e8:'m3', e9:'m10' };
+const TASK_ICON_ALIAS = { e2:'m7', e8:'m3', e9:'m10', a11:'a7' };
 
 const AUTO_ICONS = [
   [/시루|강아지|배변/, 'img/duty-d4.jpg', '🐶'],
