@@ -292,6 +292,8 @@ input, select, textarea { font-family: inherit; outline: none; }
 /* ===== CHECKLIST ===== */
 .slot-tabs { display:flex; gap:6px; background:var(--primary-bg); padding:5px; border-radius:16px; }
 .slot-tab { flex:1; padding:12px 4px; border-radius:12px; font-weight:800; font-size:0.95rem; background:none; color:var(--text-secondary); }
+.slot-tab.locked { color:#cbd5e1; }
+.toast { position:fixed; left:50%; top:22%; transform:translateX(-50%); background:#1e1b4b; color:#fff; padding:14px 22px; border-radius:16px; font-size:1.1rem; z-index:700; box-shadow:0 8px 24px rgba(0,0,0,.25); animation:popIn .3s; white-space:nowrap; }
 .slot-tab.active { background:var(--card); color:var(--primary); box-shadow:var(--shadow); }
 .check-item { display:flex; align-items:center; gap:14px; width:100%; padding:16px 18px; background:var(--card); border:2px solid var(--border); border-radius:18px; text-align:left; transition:transform 0.1s; }
 .check-item:active { transform:scale(0.98); }
@@ -1224,6 +1226,19 @@ input, select, textarea { font-family: inherit; outline: none; }
           <div class="text-xs color-muted" style="margin-top:4px;">아침 루틴 화면에 남은 시간이 막대로 보여요. 비워두면 안 보여요.</div>
         </div>
         <div class="form-group">
+          <label class="form-label">🕔 하교 후 루틴 시작 시간</label>
+          <input class="input-field" id="slot-after-input" type="time">
+        </div>
+        <div class="form-group">
+          <label class="form-label">🌙 저녁 루틴 시작 시간</label>
+          <input class="input-field" id="slot-evening-input" type="time">
+        </div>
+        <div class="toggle-wrap">
+          <span class="text-sm font-bold">🔒 아직 안 된 시간대 잠그기</span>
+          <div class="toggle" id="lock-slots-toggle" onclick="this.classList.toggle('on')"></div>
+        </div>
+        <div class="text-xs color-muted" style="margin-top:-8px;">켜 두면 아침에는 하교 후·저녁 할 일을 미리 누를 수 없어요. 지난 시간대는 늦게라도 체크할 수 있어요.</div>
+        <div class="form-group">
           <label class="form-label">🔒 PIN 변경</label>
           <input class="input-field" id="new-pin-input" type="password" placeholder="새 4자리 PIN" maxlength="4">
         </div>
@@ -2098,6 +2113,11 @@ function init() {
     }
     settings.dataVersion = 27;
   }
+  if (settings.dataVersion === 27) {
+    settings.slotStart = settings.slotStart || { afterschool: '17:00', evening: '18:00' };
+    if (settings.lockSlots === undefined) settings.lockSlots = true;
+    settings.dataVersion = 28;
+  }
 
   saveSettings();
   saveTasks();
@@ -2354,13 +2374,31 @@ function getSlottedTasks() {
   });
 }
 
+const SLOTS = ['morning', 'afterschool', 'evening'];
+
+function toMin(t) { const [h, m] = (t || '0:0').split(':').map(Number); return h * 60 + m; }
+
 function getActiveSlot() {
-  const hour = new Date().getHours();
-  if (hour >= 6 && hour < 9) return 'morning';
-  if (hour >= 17 && hour < 20) return 'afterschool';
-  if (hour >= 20 && hour < 23) return 'evening';
-  if (hour >= 9 && hour < 17) return 'morning'; // school hours → show morning
-  return 'evening'; // late night default
+  const d = new Date();
+  const now = d.getHours() * 60 + d.getMinutes();
+  const st = settings.slotStart || {};
+  if (now < 4 * 60) return 'evening';
+  if (now < toMin(st.afterschool || '17:00')) return 'morning';
+  if (now < toMin(st.evening || '18:00')) return 'afterschool';
+  return 'evening';
+}
+
+function slotLocked(slot) {
+  if (settings.lockSlots === false) return false;
+  return SLOTS.indexOf(slot) > SLOTS.indexOf(getActiveSlot());
+}
+
+function toast(msg) {
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 1800);
 }
 
 function getSlotLabel(slot) {
@@ -2387,6 +2425,7 @@ function renderHomeScreen() {
   if (!child) return;
 
   const log = loadLog();
+  if (viewSlot && slotLocked(viewSlot)) viewSlot = getActiveSlot();
   const slot = viewSlot || getActiveSlot();
   const slotTasks = getTasksForSlot(slot);
 
@@ -2457,7 +2496,7 @@ function renderHomeScreen() {
   renderBusTimer();
 
   document.getElementById('slot-tabs').innerHTML = ['morning','afterschool','evening'].map(sl =>
-    `<button class="slot-tab${sl===slot?' active':''}" onclick="setViewSlot('${sl}')">${getSlotLabel(sl)}</button>`).join('');
+    `<button class="slot-tab${sl===slot?' active':''}${slotLocked(sl)?' locked':''}" onclick="setViewSlot('${sl}')">${slotLocked(sl) ? '🔒 ' + getSlotLabel(sl).replace(/^\S+\s/, '') : getSlotLabel(sl)}</button>`).join('');
 
   // Tasks
   renderTasks(child, log, slot, slotTasks, doneCount, totalCount);
@@ -2539,6 +2578,12 @@ function speakerBtn(child, text) {
 }
 
 function setViewSlot(slot) {
+  if (slotLocked(slot)) {
+    const st = settings.slotStart || {};
+    const at = slot === 'evening' ? (st.evening || '18:00') : (st.afterschool || '17:00');
+    toast(`🔒 아직 ${getSlotLabel(slot).replace(/^\S+\s/, '')} 시간이 아니에요! (${at}부터)`);
+    return;
+  }
   viewSlot = slot;
   renderHomeScreen();
 }
@@ -3566,10 +3611,19 @@ function adjustPoints(idx) {
 
 function renderMiscSettings() {
   document.getElementById('depart-time-input').value = settings.departTime || '';
+  const st = settings.slotStart || {};
+  document.getElementById('slot-after-input').value = st.afterschool || '17:00';
+  document.getElementById('slot-evening-input').value = st.evening || '18:00';
+  document.getElementById('lock-slots-toggle').classList.toggle('on', settings.lockSlots !== false);
 }
 
 function saveMiscSettings() {
   settings.departTime = document.getElementById('depart-time-input').value;
+  settings.slotStart = {
+    afterschool: document.getElementById('slot-after-input').value || '17:00',
+    evening: document.getElementById('slot-evening-input').value || '18:00',
+  };
+  settings.lockSlots = document.getElementById('lock-slots-toggle').classList.contains('on');
   const newPin = document.getElementById('new-pin-input').value.trim();
   if (newPin.length === 4 && /^\d{4}$/.test(newPin)) {
     settings.pin = newPin;
