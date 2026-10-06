@@ -455,6 +455,12 @@ input, select, textarea { font-family: inherit; outline: none; }
 .egg-choice.selected .pet-img { animation: eggWobble 1.2s ease-in-out infinite; transform-origin:50% 95%; }
 #eggpick-confirm:disabled { opacity:0.5; }
 
+/* ===== TASK PIC ===== */
+.task-pic-preview { width:64px; height:64px; border-radius:14px; background:var(--primary-bg); display:flex; align-items:center; justify-content:center; overflow:hidden; flex-shrink:0; font-size:0.8rem; color:var(--text-muted); }
+.task-pic-preview img { width:100%; height:100%; object-fit:cover; }
+.mini-pic { width:36px; height:36px; border-radius:8px; object-fit:cover; }
+.mini-emoji { font-size:1.4rem; }
+
 /* ===== KID PICKER ===== */
 .kid-picks { display:flex; gap:8px; flex-wrap:wrap; }
 .kid-pick { display:flex; align-items:center; gap:6px; background:var(--primary-bg); border-radius:12px; padding:8px 14px; font-size:1rem; }
@@ -1162,6 +1168,7 @@ input, select, textarea { font-family: inherit; outline: none; }
           </select>
         </div>
         <div class="form-group" style="margin-top:8px;"><label class="form-label">누가 하나요?</label><div id="newtask-kids"></div></div>
+        <div id="newtask-pic" style="margin-top:8px;"></div>
         <div style="display:flex;gap:8px;margin-top:12px;">
           <button class="btn-ghost" style="flex:1;" onclick="hideAddTaskForm()">취소</button>
           <button class="btn-primary" style="flex:1;" onclick="addNewTask()">추가</button>
@@ -1885,7 +1892,7 @@ function saveSettings() {
   try { localStorage.setItem('routinepet_settings', JSON.stringify(settings)); } catch(e) {}
 }
 function saveTasks() {
-  try { localStorage.setItem('routinepet_tasks', JSON.stringify(tasks)); } catch(e) {}
+  try { localStorage.setItem('routinepet_tasks', JSON.stringify(tasks)); } catch(e) { alert('저장 공간이 부족해요. 쓰지 않는 할 일 그림을 몇 개 빼 주세요.'); }
 }
 function saveRewards() {
   try { localStorage.setItem('routinepet_rewards', JSON.stringify(rewards)); } catch(e) {}
@@ -3328,7 +3335,49 @@ function readChildPicker(prefix) {
   return ids.length === settings.children.length ? undefined : ids;
 }
 
+let pendingTaskPic = null;
+
+function taskPicPicker(current) {
+  return `<div class="form-group"><label class="form-label">그림 (앨범에서 고르기 · 사진도 돼요)</label>
+    <div class="flex-row">
+      <div id="task-pic-preview" class="task-pic-preview">${current ? `<img src="${current}">` : '<span>자동</span>'}</div>
+      <label class="btn-ghost btn-sm" style="position:relative;overflow:hidden;flex:1;text-align:center;">🖼️ 그림 고르기
+        <input type="file" accept="image/*" style="position:absolute;width:0;height:0;opacity:0;" onchange="pickTaskPic(event)">
+      </label>
+      ${current ? `<button class="btn-ghost btn-sm" onclick="pendingTaskPic='';document.getElementById('task-pic-preview').innerHTML='<span>자동</span>'">빼기</button>` : ''}
+    </div></div>`;
+}
+
+function pickTaskPic(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const side = Math.min(img.width, img.height);
+      const c = document.createElement('canvas');
+      c.width = c.height = 240;
+      const g = c.getContext('2d');
+      g.fillStyle = '#fff'; g.fillRect(0, 0, 240, 240);
+      g.drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, 240, 240);
+      pendingTaskPic = c.toDataURL('image/jpeg', 0.8);
+      document.getElementById('task-pic-preview').innerHTML = `<img src="${pendingTaskPic}">`;
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function applyTaskPic(t) {
+  if (pendingTaskPic === null) return;
+  if (pendingTaskPic) { t.pic = pendingTaskPic; t.ownPic = true; }
+  else { delete t.ownPic; const a = autoIcon(t.name); t.pic = a.pic; t.emoji = t.emoji || a.emoji; if (!t.pic) delete t.pic; }
+  pendingTaskPic = null;
+}
+
 function editTask(idx) {
+  pendingTaskPic = null;
   editingTaskIdx = idx;
   renderTasksSettings();
 }
@@ -3339,8 +3388,9 @@ function saveTaskEdit(idx) {
   if (!name) { alert('이름을 입력해 주세요'); return; }
   const forIds = readChildPicker('et-kid');
   if (forIds && !forIds.length) { alert('적어도 한 명은 골라 주세요'); return; }
-  if (name !== t.name && !t.id.match(/^[mae]\d+$/)) Object.assign(t, autoIcon(name));
+  if (name !== t.name && !t.id.match(/^[mae]\d+$/) && !t.ownPic) Object.assign(t, autoIcon(name));
   t.name = name;
+  applyTaskPic(t);
   t.xp = parseInt(document.getElementById('et-xp').value) || t.xp;
   t.slot = document.getElementById('et-slot').value;
   if (forIds) t.for = forIds; else delete t.for;
@@ -3361,6 +3411,7 @@ function renderTasksSettings() {
         </select>
       </div>
       <div class="form-group"><label class="form-label">누가 하나요?</label>${childPickerHTML('et-kid', t.for)}</div>
+      ${taskPicPicker(t.ownPic ? t.pic : '')}
       <div style="display:flex;gap:8px;">
         <button class="btn-ghost" style="flex:1;" onclick="editingTaskIdx=-1;renderTasksSettings()">취소</button>
         <button class="btn-primary" style="flex:1;" onclick="saveTaskEdit(${i})">저장</button>
@@ -3368,7 +3419,7 @@ function renderTasksSettings() {
     </div>` : `
     <div class="card-sm flex-between">
       <div style="flex:1;">
-        <div style="font-weight:700;">${t.emoji} ${t.name}</div>
+        <div style="font-weight:700;display:flex;align-items:center;gap:8px;">${taskIcon(t).replace('class="check-pic"','class="mini-pic"').replace('class="check-emoji"','class="mini-emoji"')} ${t.name}</div>
         <div class="text-xs color-muted">+${t.xp} XP · ${getSlotLabel(t.slot)} ${t.photo?'· 📸':''}${t.for&&t.for.length?` · ${t.for.map(id=>{const c=settings.children.find(x=>x.id===id);return c?c.name:'?';}).join('/')}만`:''}</div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -3392,7 +3443,11 @@ function deleteTask(idx) {
 }
 
 function showAddTaskForm() {
+  pendingTaskPic = null;
+  editingTaskIdx = -1;
+  renderTasksSettings();
   document.getElementById('newtask-kids').innerHTML = childPickerHTML('nt-kid');
+  document.getElementById('newtask-pic').innerHTML = taskPicPicker('');
   document.getElementById('add-task-form').classList.remove('hidden');
 }
 function hideAddTaskForm() { document.getElementById('add-task-form').classList.add('hidden'); }
@@ -3406,6 +3461,7 @@ function addNewTask() {
   if (forIds && !forIds.length) { alert('적어도 한 명은 골라 주세요'); return; }
   const t = { id: 't_' + Date.now(), name, xp, slot, photo: false, enabled: true, ...autoIcon(name) };
   if (forIds) t.for = forIds;
+  applyTaskPic(t);
   tasks.push(t);
   saveTasks();
   hideAddTaskForm();
