@@ -329,6 +329,37 @@ input, select, textarea { font-family: inherit; outline: none; }
 .social-choice.wrong { border-color:var(--danger); animation:shake 0.4s; }
 .social-explain { background:var(--success-bg); color:var(--success); border-radius:14px; padding:14px; font-weight:700; line-height:1.5; }
 .social-explain.try { background:#fef3c7; color:#b45309; }
+.streak-chip { display:inline-block; background:#fff7ed; color:#c2410c; border-radius:99px; padding:4px 12px; font-size:0.9rem; font-weight:800; margin-bottom:10px; }
+.streak-chip.off { background:#f1f5f9; color:var(--text-muted); font-weight:700; }
+.speech-bubble.praise { background:#fef9c3; border-color:#fde047; font-size:1.05rem; font-weight:900; animation:popIn .4s cubic-bezier(.2,1.4,.4,1); }
+.focus-toggle { background:var(--primary-bg); color:var(--primary); border-radius:99px; padding:6px 12px; font-size:0.85rem; font-weight:800; }
+.focus-card { background:#fff; border:3px solid var(--border); border-radius:28px; padding:22px 20px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:10px; animation:slideUp .3s; }
+.focus-dots { display:flex; gap:6px; flex-wrap:wrap; justify-content:center; }
+.fdot { width:14px; height:14px; border-radius:50%; background:#e2e8f0; }
+.fdot.on { background:var(--success); }
+.fdot.now { background:#f59e0b; transform:scale(1.3); }
+.focus-label { font-size:0.95rem; color:var(--text-muted); font-weight:700; }
+.focus-pic { width:200px; height:200px; border-radius:24px; object-fit:cover; }
+.focus-emoji { font-size:8rem; line-height:1.1; }
+.focus-name { font-size:2rem; font-weight:900; color:var(--text); display:flex; align-items:center; gap:10px; }
+.focus-done { width:100%; max-width:420px; padding:20px; border-radius:20px; background:var(--success); color:#fff; font-size:1.5rem; font-weight:900; box-shadow:0 6px 16px rgba(5,150,105,0.3); }
+.focus-done:active { transform:scale(0.97); }
+.focus-next { font-size:1rem; color:var(--text-secondary); }
+.bus-timer { background:#eff6ff; border:2px solid #bfdbfe; border-radius:18px; padding:12px 16px; display:flex; flex-direction:column; gap:8px; }
+.bus-timer.hidden { display:none; }
+.bus-text { font-size:1.1rem; color:#1e3a8a; }
+.bus-track { height:14px; background:#dbeafe; border-radius:99px; overflow:hidden; }
+.bus-fill { height:100%; background:#3b82f6; border-radius:99px; transition:width .6s; }
+.bus-timer.hurry { background:#fff7ed; border-color:#fdba74; }
+.bus-timer.hurry .bus-text { color:#c2410c; }
+.bus-timer.hurry .bus-fill { background:#f97316; }
+.bus-timer.late { background:#fef2f2; border-color:#fca5a5; animation:pulse 1s infinite; }
+.bus-timer.late .bus-text { color:#b91c1c; }
+.praise-btn { background:#fef3c7; color:#92400e; border-radius:12px; padding:8px 12px; font-weight:800; font-size:0.9rem; flex-shrink:0; }
+.praise-chips { display:flex; flex-wrap:wrap; gap:8px; margin-top:6px; }
+.praise-chip { background:var(--primary-bg); color:var(--text); border-radius:99px; padding:8px 14px; font-size:0.95rem; border:2px solid transparent; }
+.praise-chip.on { border-color:var(--primary); background:#fff; color:var(--primary); font-weight:800; }
+.pop-overlay.hidden { display:none; }
 .pop-overlay { position:fixed; inset:0; background:rgba(30,27,75,0.45); z-index:600; display:flex; align-items:center; justify-content:center; padding:20px; animation:fadeIn .2s; }
 .pop-card { background:#fff; border-radius:32px; padding:28px 26px 24px; width:100%; max-width:520px; text-align:center; box-shadow:0 20px 50px rgba(0,0,0,0.25); animation:popIn .45s cubic-bezier(.2,1.4,.4,1); border:6px solid #86efac; }
 .pop-card.try { border-color:#fcd34d; }
@@ -881,6 +912,7 @@ input, select, textarea { font-family: inherit; outline: none; }
     <div class="card" style="text-align:center;position:relative;" id="pet-card">
       <div style="position:absolute;top:16px;right:16px;" id="home-diamond-chip"></div>
       <div class="home-name" id="pet-owner-label"></div>
+      <div id="streak-chip"></div>
       <div class="speech-bubble" id="speech-bubble" style="margin-bottom:14px;">...</div>
       <div class="pet-stage"><div id="pet-emoji-big" style="font-size:6rem;line-height:1;display:block;cursor:pointer;" onclick="triggerPetPat()"></div><div id="pet-fx"></div></div>
       <div style="margin-top:8px;font-size:0.85rem;font-weight:700;color:var(--text-secondary);" id="pet-stage-label"></div>
@@ -896,10 +928,14 @@ input, select, textarea { font-family: inherit; outline: none; }
     </div>
 
     <div class="home-right">
+    <div class="bus-timer hidden" id="bus-timer"></div>
     <div class="slot-tabs" id="slot-tabs"></div>
     <div class="flex-between" style="padding:0 4px;">
       <div class="section-label" id="checklist-label">오늘 할 일</div>
-      <div class="text-sm color-muted" id="progress-text"></div>
+      <div class="flex-row" style="gap:8px;">
+        <span class="text-sm color-muted" id="progress-text"></span>
+        <button class="focus-toggle" id="focus-toggle" onclick="toggleFocus()"></button>
+      </div>
     </div>
     <div style="display:flex;flex-direction:column;gap:10px;" id="checklist"></div>
 
@@ -924,6 +960,21 @@ input, select, textarea { font-family: inherit; outline: none; }
 <!-- ============================================================
      SCREEN 2b: REWARD SHOP (child)
      ============================================================ -->
+<div id="praise-overlay" class="pop-overlay hidden">
+  <div class="pop-card" style="text-align:left;">
+    <div class="pop-title" id="praise-title" style="font-size:1.7rem;text-align:center;"></div>
+    <div class="form-label" style="margin-top:14px;">어떤 행동을 칭찬할까요?</div>
+    <div class="praise-chips" id="praise-reasons"></div>
+    <input class="input-field" id="praise-custom" placeholder="직접 쓰기 (예: 시루 물을 스스로 챙겨줬어요)" style="margin-top:8px;">
+    <div class="form-label" style="margin-top:14px;">보석</div>
+    <div class="praise-chips" id="praise-gems"></div>
+    <div style="display:flex;gap:8px;margin-top:18px;">
+      <button class="btn-ghost" style="flex:1;" onclick="document.getElementById('praise-overlay').classList.add('hidden')">취소</button>
+      <button class="btn-primary" style="flex:2;" onclick="confirmPraise()">칭찬 보내기 👏</button>
+    </div>
+  </div>
+</div>
+
 <div id="screen-eggpick" class="screen">
   <div class="screen-inner" style="justify-content:center;">
     <div class="dutypick-title centered" id="eggpick-title"></div>
@@ -1152,6 +1203,11 @@ input, select, textarea { font-family: inherit; outline: none; }
     <!-- Tab: Misc -->
     <div id="stab-content-misc" class="hidden">
       <div class="card" style="display:flex;flex-direction:column;gap:14px;">
+        <div class="form-group">
+          <label class="form-label">🚌 아침 출발 시간 (스쿨버스 타는 시간)</label>
+          <input class="input-field" id="depart-time-input" type="time">
+          <div class="text-xs color-muted" style="margin-top:4px;">아침 루틴 화면에 남은 시간이 막대로 보여요. 비워두면 안 보여요.</div>
+        </div>
         <div class="form-group">
           <label class="form-label">🔒 PIN 변경</label>
           <input class="input-field" id="new-pin-input" type="password" placeholder="새 4자리 PIN" maxlength="4">
@@ -1527,9 +1583,12 @@ function answerSocial(i, btn) {
   }
 }
 
-function showSocialPop({ kind, icon, title, text, button, action }) {
-  const child = settings.children.find(c => c.id === socialState.childId);
-  if (child && child.speak) speak(`${title} ${text.replace(/<[^>]+>/g, '')}`);
+function showSocialPop(opts) {
+  showPop(opts, settings.children.find(c => c.id === socialState.childId));
+}
+
+function showPop({ kind, icon, title, text, button, action, onClose }, child) {
+  if (child && child.speak) speak(`${title} ${String(text).replace(/<[^>]+>/g, '')}`);
   const wrap = document.createElement('div');
   wrap.className = 'pop-overlay';
   wrap.innerHTML = `<div class="pop-card ${kind}">
@@ -1538,10 +1597,121 @@ function showSocialPop({ kind, icon, title, text, button, action }) {
       <div class="pop-text">${text}</div>
       <button class="pop-btn">${button}</button>
     </div>`;
-  wrap.querySelector('.pop-btn').onclick = () => { wrap.remove(); if (action) new Function(action)(); };
+  wrap.querySelector('.pop-btn').onclick = () => {
+    wrap.remove();
+    document.querySelectorAll('.confetti-piece').forEach(el => el.remove());
+    if (action) new Function(action)();
+    if (onClose) onClose();
+  };
   document.body.appendChild(wrap);
   if (kind === 'right') spawnConfetti();
 }
+
+// ---------- streaks ----------
+function dayRatio(child, d) {
+  const log = readLog(d);
+  const list = tasksForChild(child.id);
+  if (!list.length) return 0;
+  return list.filter(t => log[`${child.id}_${t.id}`] && log[`${child.id}_${t.id}`].done).length / list.length;
+}
+
+function streakInfo(child) {
+  const d = new Date(); d.setHours(0, 0, 0, 0);
+  const todayOk = dayRatio(child, d) >= 0.5;
+  if (!todayOk) d.setDate(d.getDate() - 1);
+  let n = 0;
+  while (n < 365 && dayRatio(child, d) >= 0.5) { n++; d.setDate(d.getDate() - 1); }
+  return { days: n, todayOk };
+}
+
+function checkStreakBonus(child, wasOk) {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  if (wasOk || dayRatio(child, today) < 0.5) return null;
+  const key = dateKey(today);
+  child.streakAwards = child.streakAwards || {};
+  if (child.streakAwards[key]) return null;
+  child.streakAwards[key] = true;
+  const { days } = streakInfo(child);
+  const bonus = days % 7 === 0 ? 3 : days % 3 === 0 ? 1 : 0;
+  child.points += bonus;
+  return { days, bonus };
+}
+
+// ---------- instant praise ----------
+const PRAISE_START = ['좋아, 시작했다! 💪', '첫 번째 성공! ✨', '시작이 반이야! 🌟'];
+const PRAISE_MID = ['우와, 벌써 {n}개! 🎉', '잘하고 있어! {n}개째! 👍', '멋지다! 계속 가 보자! 🚀', '최고야! {n}개 해냈어! ⭐'];
+function praiseFor(done, total) {
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+  if (done >= total) return '다 했다!! 정말 최고야! 🏆';
+  if (total - done === 1) return '하나만 더 하면 끝이야! 🔥';
+  if (done === 1) return pick(PRAISE_START);
+  if (done * 2 >= total && (done - 1) * 2 < total) return '벌써 절반이나 했어! 🙌';
+  return pick(PRAISE_MID).replace('{n}', done);
+}
+
+// ---------- parent praise ----------
+const PRAISE_REASONS = ['동생(형제)에게 양보했어요', '스스로 먼저 했어요', '다른 사람을 도와줬어요', '화날 때 차분하게 말했어요', '끝까지 포기하지 않았어요', '고맙다고 먼저 말했어요'];
+let praiseChildId = null, praiseGems = 1, praiseReason = '';
+
+function openPraise(childId) {
+  praiseChildId = childId; praiseGems = 1; praiseReason = PRAISE_REASONS[0];
+  renderPraise();
+  document.getElementById('praise-overlay').classList.remove('hidden');
+}
+
+function renderPraise() {
+  const c = settings.children.find(x => x.id === praiseChildId);
+  document.getElementById('praise-title').textContent = `👏 ${c.name} 칭찬하기`;
+  document.getElementById('praise-reasons').innerHTML = PRAISE_REASONS.map(r =>
+    `<button class="praise-chip${r === praiseReason ? ' on' : ''}" onclick="praiseReason=this.textContent;renderPraise()">${r}</button>`).join('');
+  document.getElementById('praise-gems').innerHTML = [1, 2, 3].map(g =>
+    `<button class="praise-chip${g === praiseGems ? ' on' : ''}" onclick="praiseGems=${g};renderPraise()">💎 ${g}개</button>`).join('');
+}
+
+function confirmPraise() {
+  const c = settings.children.find(x => x.id === praiseChildId);
+  const custom = document.getElementById('praise-custom').value.trim();
+  const reason = custom || praiseReason;
+  c.points += praiseGems;
+  c.praiseQueue = (c.praiseQueue || []).concat([{ reason, gems: praiseGems }]);
+  const d = new Date();
+  c.praiseLog = (c.praiseLog || []).concat([{ date: dateKey(d), reason, gems: praiseGems }]);
+  saveSettings();
+  document.getElementById('praise-custom').value = '';
+  document.getElementById('praise-overlay').classList.add('hidden');
+  renderParentDashboard();
+  alert(`${c.name}에게 보석 ${praiseGems}개를 줬어요. ${c.name} 화면을 열면 칭찬 메시지가 떠요!`);
+}
+
+function showPraiseQueue(child) {
+  const q = child.praiseQueue || [];
+  if (!q.length) return;
+  const item = q.shift();
+  saveSettings();
+  showPop({ kind: 'right', icon: '👏', title: '엄마 아빠의 칭찬!', text: `${escText(item.reason)}<br><b style="color:#0284c7">💎 보석 ${item.gems}개</b>를 받았어요!`, button: '고마워요! 😊', onClose: () => { renderHomeScreen(); showPraiseQueue(child); } }, child);
+}
+
+// ---------- bus timer ----------
+function renderBusTimer() {
+  const el = document.getElementById('bus-timer');
+  if (!el) return;
+  const slot = viewSlot || getActiveSlot();
+  const t = settings.departTime;
+  if (!t || slot !== 'morning') { el.classList.add('hidden'); return; }
+  const [h, m] = t.split(':').map(Number);
+  const now = new Date();
+  const dep = new Date(); dep.setHours(h, m, 0, 0);
+  const left = Math.round((dep - now) / 60000);
+  if (left > 90 || left < -20) { el.classList.add('hidden'); return; }
+  el.classList.remove('hidden');
+  const pct = Math.max(0, Math.min(100, left / 60 * 100));
+  el.className = 'bus-timer' + (left <= 0 ? ' late' : left <= 10 ? ' hurry' : '');
+  el.innerHTML = `<div class="bus-text">${left > 0 ? `🚌 스쿨버스까지 <b>${left}분</b> 남았어요` : '🚌 출발할 시간이에요! 신발 신고 나가요!'}</div>
+    <div class="bus-track"><div class="bus-fill" style="width:${pct}%"></div></div>`;
+}
+setInterval(() => {
+  if (document.getElementById('screen-home').classList.contains('active')) renderBusTimer();
+}, 30000);
 
 function nextSocial() {
   document.querySelectorAll('.confetti-piece').forEach(el => el.remove());
@@ -1870,6 +2040,10 @@ function init() {
     tasks = tasks.filter(t => t.id !== 'a4' && !t.name.includes('알림장'));
     settings.dataVersion = 23;
   }
+  if (settings.dataVersion === 23) {
+    if (settings.departTime === undefined) settings.departTime = '08:30';
+    settings.dataVersion = 24;
+  }
 
   saveSettings();
   saveTasks();
@@ -1981,7 +2155,7 @@ function renderWelcome() {
       <div class="profile-pet">${getPetEmoji(child)}</div>
       <div style="flex:1;width:100%;">
         <div class="profile-name">${avatarHTML(child)}${child.name}</div>
-        <div class="profile-meta">LV.${child.level} · 오늘 ${done}/${total} 완료</div>
+        <div class="profile-meta">LV.${child.level} · 오늘 ${done}/${total} 완료${streakInfo(child).days ? ` · 🔥${streakInfo(child).days}일` : ''}</div>
         <div style="margin-top:10px;"><div class="xp-track"><div class="xp-fill" style="width:${total ? (done / total) * 100 : 0}%"></div></div></div>
         ${badges ? `<div class="duty-badges">${badges}</div>` : ''}
       </div>
@@ -2109,6 +2283,7 @@ function enterChild(childId) {
   renderNavs();
   renderHomeScreen();
   showScreen('screen-home');
+  showPraiseQueue(getChild());
 }
 
 function getChild() {
@@ -2219,6 +2394,12 @@ function renderHomeScreen() {
   document.getElementById('egg-cta').classList.toggle('hidden', !child.needsEgg);
 
   document.getElementById('speech-bubble').textContent = speechText;
+  document.getElementById('speech-bubble').classList.remove('praise');
+  const sk = streakInfo(child);
+  document.getElementById('streak-chip').innerHTML = sk.days
+    ? `<span class="streak-chip">🔥 ${sk.days}일 연속${sk.todayOk ? '' : ` · 오늘 절반 하면 ${sk.days + 1}일째!`}</span>`
+    : `<span class="streak-chip off">🔥 오늘 할 일 절반 하면 연속 기록 시작!</span>`;
+  renderBusTimer();
 
   document.getElementById('slot-tabs').innerHTML = ['morning','afterschool','evening'].map(sl =>
     `<button class="slot-tab${sl===slot?' active':''}" onclick="setViewSlot('${sl}')">${getSlotLabel(sl)}</button>`).join('');
@@ -2316,6 +2497,26 @@ function renderTasks(child, log, slot, slotTasks, doneCount, totalCount) {
     list.innerHTML = `<div class="card centered" style="padding:32px 20px;color:var(--text-secondary);">이 시간엔 할 일이 없어요</div>`;
     return;
   }
+  document.getElementById('focus-toggle').textContent = child.focus ? '📋 전체 보기' : '👆 하나씩 보기';
+  if (child.focus) {
+    const isDone = t => log[`${child.id}_${t.id}`] && log[`${child.id}_${t.id}`].done;
+    const cur = slotTasks.find(t => !isDone(t));
+    if (!cur) { list.innerHTML = ''; return; }
+    const next = slotTasks.filter(t => !isDone(t))[1];
+    const dots = slotTasks.map(t => `<i class="fdot${isDone(t) ? ' on' : t === cur ? ' now' : ''}"></i>`).join('');
+    const pic = TASK_ICON_IDS.includes(TASK_ICON_ALIAS[cur.id] || cur.id) || cur.pic
+      ? taskIcon(cur).replace('class="check-pic"', 'class="focus-pic"')
+      : `<div class="focus-emoji">${cur.emoji}</div>`;
+    list.innerHTML = `<div class="focus-card">
+      <div class="focus-dots">${dots}</div>
+      <div class="focus-label">지금 할 일</div>
+      ${pic}
+      <div class="focus-name">${cur.name} ${speakerBtn(child, cur.name)}</div>
+      <button class="focus-done" onclick="toggleCheck('${child.id}','${cur.id}')">✓ 다 했어요!</button>
+      <div class="focus-next">${next ? `다음: ${next.name}` : '이게 마지막이에요! 💪'}</div>
+    </div>`;
+    return;
+  }
   list.innerHTML = slotTasks.map(t => {
     const e = log[`${child.id}_${t.id}`];
     const done = !!(e && e.done);
@@ -2327,6 +2528,13 @@ function renderTasks(child, log, slot, slotTasks, doneCount, totalCount) {
       <span class="xp-badge">+${t.xp} XP</span>
     </button>`;
   }).join('');
+}
+
+function toggleFocus() {
+  const c = getChild();
+  c.focus = !c.focus;
+  saveSettings();
+  renderHomeScreen();
 }
 
 function toggleCheck(childId, taskId) {
@@ -2351,7 +2559,15 @@ function toggleCheck(childId, taskId) {
 // =====================================================================
 // TASK COMPLETION
 // =====================================================================
+function showStreakPop(child, { days, bonus }) {
+  showPop({ kind: 'right', icon: '🔥', title: `${days}일 연속 성공!`,
+    text: bonus ? `꾸준히 해냈어요! 보너스 <b style="color:#0284c7">💎 보석 ${bonus}개</b>!` : `오늘도 절반 넘게 해냈어요! 내일도 이어가 봐요!`,
+    button: '야호! 🎉' }, child);
+}
+
 function completeTask(childId, taskId, xp) {
+  const ch = settings.children.find(c => c.id === childId);
+  if (ch) { const d = new Date(); d.setHours(0, 0, 0, 0); ch._wasOk = dayRatio(ch, d) >= 0.5; }
   const log = loadLog();
   log[`${childId}_${taskId}`] = { done: true, approved: true, ts: Date.now() };
   saveLog(log);
@@ -2361,6 +2577,8 @@ function completeTask(childId, taskId, xp) {
 function awardXP(childId, xp, taskId) {
   const child = settings.children.find(c => c.id === childId);
   if (!child) return;
+  const streakBonus = checkStreakBonus(child, child._wasOk);
+  delete child._wasOk;
 
   const oldLevel = child.level;
   child.xp += xp;
@@ -2398,10 +2616,22 @@ function awardXP(childId, xp, taskId) {
   saveSettings();
 
   if (leveled) {
+    if (streakBonus) child.pendingStreak = streakBonus;
     showLevelUpScreen(child, oldLevel, evolved, graduated);
     return;
   }
   renderHomeScreen();
+  if (streakBonus) showStreakPop(child, streakBonus);
+  const slot = viewSlot || getActiveSlot();
+  const st = getTasksForSlot(slot);
+  const lg = loadLog();
+  const dn = st.filter(t => lg[`${child.id}_${t.id}`] && lg[`${child.id}_${t.id}`].done).length;
+  if (st.some(t => t.id === taskId)) {
+    const msg = praiseFor(dn, st.length);
+    const bub = document.getElementById('speech-bubble');
+    bub.textContent = msg;
+    bub.classList.remove('praise'); void bub.offsetWidth; bub.classList.add('praise');
+  }
   const petEl = document.getElementById('pet-emoji-big');
   const moodClass = petEl.className;
   petEl.className = moodClass.replace(/pet-(float|droop|bigbounce)/, '') + ' pet-bounce';
@@ -2461,6 +2691,7 @@ function closeLevelUp() {
   if (child && child.needsEgg) { openEggPick(); return; }
   renderHomeScreen();
   showScreen('screen-home');
+  if (child && child.pendingStreak) { const b = child.pendingStreak; delete child.pendingStreak; saveSettings(); showStreakPop(child, b); }
 }
 
 let pickingEgg = null;
@@ -2783,6 +3014,9 @@ function weeklyReport(child) {
   const counts = logs.map(log => log ? Object.keys(log).filter(k => k.startsWith(child.id + '_') && log[k].done).length : 0);
   const total = counts.reduce((a, b) => a + b, 0);
   const lastTotal = weekDays(-1).map(readLog).reduce((a, log) => a + Object.keys(log).filter(k => k.startsWith(child.id + '_') && log[k].done).length, 0);
+  const weekKeys = days.map(dateKey);
+  const praised = (child.praiseLog || []).filter(p => weekKeys.includes(p.date));
+  if (praised.length) notes.push(['good', `👏 칭찬 ${praised.length}번: ${praised.slice(-3).map(p => escText(p.reason)).join(', ')}`]);
   if (total === 0) {
     notes.push(['warn', `이번 주에는 아직 체크한 할 일이 없어요. 오늘 쉬운 것 하나부터 같이 시작해 보세요.`]);
     return grid + `<ul class="report-notes">${notes.map(([c, t]) => `<li class="${c}">${t}</li>`).join('')}</ul>`;
@@ -2815,6 +3049,8 @@ function weeklyReport(child) {
     const k = logs.filter(log => isDone(log, 'duty_' + duty.id)).length;
     notes.push([k * 2 >= n ? 'good' : 'warn', `${duty.name}: ${n}일 중 <b>${k}일</b> 했어요.`]);
   }
+  const sk = streakInfo(child);
+  if (sk.days >= 2) notes.push(['good', `🔥 ${sk.days}일 연속으로 하루 할 일의 절반 넘게 해냈어요.`]);
   const best = counts.indexOf(Math.max(...counts));
   if (counts[best] > 0) notes.push(['', `가장 열심히 한 날은 <b>${'월화수목금토일'[best]}요일</b>이에요 (${counts[best]}개).`]);
   return grid + `<ul class="report-notes">${notes.map(([c, t]) => `<li class="${c}">${t}</li>`).join('')}</ul>`;
@@ -2848,6 +3084,7 @@ function renderParentDashboard() {
         <div style="margin-top:6px;"><div class="xp-track"><div class="xp-fill" style="width:${pct}%"></div></div></div>
         <div class="text-xs color-muted" style="margin-top:3px;">${done}/${total} 완료 (오늘 전체)</div>
       </div>
+      <button class="praise-btn" onclick="openPraise('${child.id}')">👏 칭찬</button>
     </div>`;
   }).join('');
 
@@ -3205,9 +3442,12 @@ function adjustPoints(idx) {
   renderPointsSettings();
 }
 
-function renderMiscSettings() {}
+function renderMiscSettings() {
+  document.getElementById('depart-time-input').value = settings.departTime || '';
+}
 
 function saveMiscSettings() {
+  settings.departTime = document.getElementById('depart-time-input').value;
   const newPin = document.getElementById('new-pin-input').value.trim();
   if (newPin.length === 4 && /^\d{4}$/.test(newPin)) {
     settings.pin = newPin;
