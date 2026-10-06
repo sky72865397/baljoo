@@ -1204,7 +1204,7 @@ input, select, textarea { font-family: inherit; outline: none; }
     <div id="stab-content-misc" class="hidden">
       <div class="card" style="display:flex;flex-direction:column;gap:14px;">
         <div class="form-group">
-          <label class="form-label">🚌 아침 출발 시간 (스쿨버스 타는 시간)</label>
+          <label class="form-label">🚌 아침에 집에서 나가는 시간</label>
           <input class="input-field" id="depart-time-input" type="time">
           <div class="text-xs color-muted" style="margin-top:4px;">아침 루틴 화면에 남은 시간이 막대로 보여요. 비워두면 안 보여요.</div>
         </div>
@@ -1706,7 +1706,7 @@ function renderBusTimer() {
   el.classList.remove('hidden');
   const pct = Math.max(0, Math.min(100, left / 60 * 100));
   el.className = 'bus-timer' + (left <= 0 ? ' late' : left <= 10 ? ' hurry' : '');
-  el.innerHTML = `<div class="bus-text">${left > 0 ? `🚌 스쿨버스까지 <b>${left}분</b> 남았어요` : '🚌 출발할 시간이에요! 신발 신고 나가요!'}</div>
+  el.innerHTML = `<div class="bus-text">${left > 0 ? `🚌 집에서 나갈 때까지 <b>${left}분</b> 남았어요` : '🚌 나갈 시간이에요! 신발 신고 출발!'}</div>
     <div class="bus-track"><div class="bus-fill" style="width:${pct}%"></div></div>`;
 }
 setInterval(() => {
@@ -2041,8 +2041,12 @@ function init() {
     settings.dataVersion = 23;
   }
   if (settings.dataVersion === 23) {
-    if (settings.departTime === undefined) settings.departTime = '08:30';
+    if (settings.departTime === undefined) settings.departTime = '07:55';
     settings.dataVersion = 24;
+  }
+  if (settings.dataVersion === 24) {
+    if (settings.departTime === '08:30') settings.departTime = '07:55';
+    settings.dataVersion = 25;
   }
 
   saveSettings();
