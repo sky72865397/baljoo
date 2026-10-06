@@ -1180,8 +1180,8 @@ const DEFAULT_TASKS = [
   { id:'m1',  name:'이불 정리',         emoji:'🛏️', xp:15, slot:'morning',     for:['c1','c2'] },
   { id:'m2',  name:'세수하기',          emoji:'🧼', xp:20, slot:'morning' },
   { id:'m3',  name:'양치하기',          emoji:'🦷', xp:20, slot:'morning' },
-  { id:'m4',  name:'혼자 옷 입기',      emoji:'👕', xp:15, slot:'morning',     for:['c2','c3'] },
-  { id:'m5',  name:'양말 신기',         emoji:'🧦', xp:10, slot:'morning',     for:['c3'] },
+  { id:'m4',  name:'옷 입기',           emoji:'👕', xp:15, slot:'morning' },
+  { id:'m5',  name:'양말 신기',         emoji:'🧦', xp:10, slot:'morning' },
   { id:'m6',  name:'밥 먹기',           emoji:'🍚', xp:20, slot:'morning' },
   { id:'m10', name:'약 먹기',           emoji:'💊', xp:15, slot:'morning',     for:['c2'] },
   { id:'m7',  name:'먹은 그릇 치우기',  emoji:'🥣', xp:15, slot:'morning' },
@@ -1203,6 +1203,7 @@ const DEFAULT_TASKS = [
   { id:'e5',  name:'잠옷 갈아입기',     emoji:'👚', xp:10, slot:'evening',     for:['c2','c3'] },
   { id:'e6',  name:'내일 입을 옷 꺼내두기', emoji:'👔', xp:15, slot:'evening', for:['c1'] },
   { id:'e7',  name:'장난감 정리',       emoji:'🧸', xp:15, slot:'evening' },
+  { id:'e9',  name:'약 먹기',           emoji:'💊', xp:15, slot:'evening',     for:['c2'] },
   { id:'e8',  name:'양치하기',          emoji:'🦷', xp:20, slot:'evening' },
 ].map(t => ({ photo:false, enabled:true, ...t }));
 
@@ -1804,6 +1805,21 @@ function init() {
     });
     settings.dataVersion = 19;
   }
+  if (settings.dataVersion === 19) {
+    ['m4', 'm5'].forEach(id => {
+      const t = tasks.find(x => x.id === id);
+      if (!t) { tasks.push(JSON.parse(JSON.stringify(DEFAULT_TASKS.find(x => x.id === id)))); return; }
+      if (t.for) ['c1', 'c2'].forEach(c => { if (!t.for.includes(c)) t.for.push(c); });
+      if (t.for && t.for.length === settings.children.length) delete t.for;
+    });
+    const m4 = tasks.find(x => x.id === 'm4');
+    if (m4 && m4.name === '혼자 옷 입기') m4.name = '옷 입기';
+    if (!tasks.some(t => t.id === 'e9')) {
+      const at = tasks.findIndex(t => t.id === 'e8');
+      tasks.splice(at >= 0 ? at : tasks.length, 0, JSON.parse(JSON.stringify(DEFAULT_TASKS.find(t => t.id === 'e9'))));
+    }
+    settings.dataVersion = 20;
+  }
 
   saveSettings();
   saveTasks();
@@ -2181,7 +2197,7 @@ function renderHomeScreen() {
 }
 
 const TASK_ICON_IDS = ['m10','m1','m2','m3','m4','m5','m6','m7','m8','m9','a1','a2','a3','a4','a6','a7','a8','a9','a10','e1','e3','e4','e5','e6','e7'];
-const TASK_ICON_ALIAS = { e2:'m7', e8:'m3' };
+const TASK_ICON_ALIAS = { e2:'m7', e8:'m3', e9:'m10' };
 
 const AUTO_ICONS = [
   [/시루|강아지|배변/, 'img/duty-d4.jpg', '🐶'],
