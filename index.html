@@ -1190,7 +1190,6 @@ const DEFAULT_TASKS = [
   { id:'a1',  name:'손 씻기',           emoji:'🙌', xp:15, slot:'afterschool' },
   { id:'a2',  name:'신발 정리',         emoji:'👟', xp:10, slot:'afterschool', for:['c3'] },
   { id:'a3',  name:'가방 제자리에 두기', emoji:'🎒', xp:10, slot:'afterschool' },
-  { id:'a4',  name:'알림장 보여주기',   emoji:'📒', xp:15, slot:'afterschool', for:['c1','c2'] },
   { id:'a11', name:'학교 숙제',         emoji:'📝', xp:40, slot:'afterschool', for:['c2'] },
   { id:'a6',  name:'온리원 공부',       emoji:'💻', xp:50, slot:'afterschool', for:['c1'] },
   { id:'a7',  name:'구몬 공부',         emoji:'📝', xp:50, slot:'afterschool', for:['c2'] },
@@ -1833,6 +1832,10 @@ function init() {
       tasks.splice(at >= 0 ? at : tasks.length, 0, JSON.parse(JSON.stringify(DEFAULT_TASKS.find(t => t.id === 'a11'))));
     }
     settings.dataVersion = 22;
+  }
+  if (settings.dataVersion === 22) {
+    tasks = tasks.filter(t => t.id !== 'a4' && !t.name.includes('알림장'));
+    settings.dataVersion = 23;
   }
 
   saveSettings();
