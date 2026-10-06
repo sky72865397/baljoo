@@ -2061,6 +2061,10 @@ function init() {
     if (settings.departTime === '08:30') settings.departTime = '07:55';
     settings.dataVersion = 25;
   }
+  if (settings.dataVersion === 25) {
+    tasks.forEach(t => { if (t.id.startsWith('t_') && !t.pic && (!t.emoji || t.emoji === '⭐')) Object.assign(t, autoIcon(t.name)); });
+    settings.dataVersion = 26;
+  }
 
   saveSettings();
   saveTasks();
@@ -2460,6 +2464,7 @@ const AUTO_ICONS = [
   [/분리수거|쓰레기|재활용/, 'img/duty-d2.jpg', '♻️'],
   [/청소|닦|걸레|밀대/, 'img/duty-d5.jpg', '🧹'], [/수저|상 차|식탁/, 'img/duty-d1.jpg', '🍽️'],
   [/정리|치우|장난감/, 'img/task-e7.jpg', '🧸'], [/친구|인사|마음/, 'img/task-a9.jpg', '💬'],
+  [/로션|크림|바르/, null, '🧴'], [/머리 ?빗|빗기/, null, '💇'], [/손톱|발톱/, null, '💅'], [/물 ?주기|화분/, null, '🪴'],
   [/줄넘기/, null, '🪢'], [/운동|달리기|체조/, null, '🏃'], [/피아노/, null, '🎹'], [/그림|색칠/, null, '🎨'],
   [/물 ?마시/, null, '🥤'], [/산책/, null, '🚶'], [/식물|화분/, null, '🪴'], [/일기|글쓰기/, null, '✏️'],
 ];
