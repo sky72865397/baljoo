@@ -455,6 +455,11 @@ input, select, textarea { font-family: inherit; outline: none; }
 .egg-choice.selected .pet-img { animation: eggWobble 1.2s ease-in-out infinite; transform-origin:50% 95%; }
 #eggpick-confirm:disabled { opacity:0.5; }
 
+/* ===== MOVE ===== */
+.move-btns { display:flex; flex-direction:column; gap:2px; }
+.move-btns button { background:var(--primary-bg); color:var(--primary); border-radius:8px; width:34px; height:24px; font-size:0.75rem; line-height:1; }
+.move-btns button:active { background:var(--primary); color:#fff; }
+
 /* ===== TASK PIC ===== */
 .task-pic-preview { width:64px; height:64px; border-radius:14px; background:var(--primary-bg); display:flex; align-items:center; justify-content:center; overflow:hidden; flex-shrink:0; font-size:0.8rem; color:var(--text-muted); }
 .task-pic-preview img { width:100%; height:100%; object-fit:cover; }
@@ -2072,6 +2077,27 @@ function init() {
     tasks.forEach(t => { if (t.id.startsWith('t_') && !t.pic && (!t.emoji || t.emoji === '⭐')) Object.assign(t, autoIcon(t.name)); });
     settings.dataVersion = 26;
   }
+  if (settings.dataVersion === 26) {
+    const lotions = tasks.filter(t => t.name.includes('로션'));
+    if (lotions.length) {
+      const base = lotions[0];
+      ['morning', 'evening'].forEach(sl => {
+        if (!lotions.some(t => t.slot === sl)) {
+          const copy = JSON.parse(JSON.stringify(base));
+          copy.id = 't_' + Date.now() + sl;
+          copy.slot = sl;
+          tasks.push(copy);
+        }
+      });
+      tasks.filter(t => t.name.includes('로션')).forEach(t => {
+        tasks.splice(tasks.indexOf(t), 1);
+        const anchor = t.slot === 'morning' ? 'm3' : t.slot === 'evening' ? 'e3' : null;
+        const at = anchor ? tasks.findIndex(x => x.id === anchor) : -1;
+        tasks.splice(at >= 0 ? at + 1 : tasks.length, 0, t);
+      });
+    }
+    settings.dataVersion = 27;
+  }
 
   saveSettings();
   saveTasks();
@@ -3399,9 +3425,19 @@ function saveTaskEdit(idx) {
   renderTasksSettings();
 }
 
+function moveTask(idx, dir) {
+  const slot = tasks[idx].slot;
+  let j = idx + dir;
+  while (j >= 0 && j < tasks.length && tasks[j].slot !== slot) j += dir;
+  if (j < 0 || j >= tasks.length) return;
+  [tasks[idx], tasks[j]] = [tasks[j], tasks[idx]];
+  saveTasks();
+  renderTasksSettings();
+}
+
 function renderTasksSettings() {
   const el = document.getElementById('tasks-settings-list');
-  el.innerHTML = tasks.map((t, i) => i === editingTaskIdx ? `
+  const row = (t, i) => i === editingTaskIdx ? `
     <div class="card" style="display:flex;flex-direction:column;gap:8px;border-color:var(--primary);">
       <div class="form-group"><label class="form-label">이름</label><input class="input-field" id="et-name" value="${escText(t.name)}"></div>
       <div class="form-group"><label class="form-label">XP</label><input class="input-field" id="et-xp" type="number" value="${t.xp}" min="5" max="100"></div>
@@ -3423,11 +3459,18 @@ function renderTasksSettings() {
         <div class="text-xs color-muted">+${t.xp} XP · ${getSlotLabel(t.slot)} ${t.photo?'· 📸':''}${t.for&&t.for.length?` · ${t.for.map(id=>{const c=settings.children.find(x=>x.id===id);return c?c.name:'?';}).join('/')}만`:''}</div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
+        <div class="move-btns">
+          <button onclick="moveTask(${i},-1)" aria-label="위로">▲</button>
+          <button onclick="moveTask(${i},1)" aria-label="아래로">▼</button>
+        </div>
         <div class="toggle${t.enabled?' on':''}" onclick="toggleTask(${i})"></div>
         <button class="btn-ghost btn-sm" onclick="editTask(${i})">수정</button>
         <button class="btn-danger btn-sm" onclick="deleteTask(${i})">삭제</button>
       </div>
-    </div>`).join('');
+    </div>`;
+  el.innerHTML = ['morning', 'afterschool', 'evening'].map(sl =>
+    `<div class="section-label" style="padding-left:4px;margin-top:10px;">${getSlotLabel(sl)} · ▲▼로 순서 바꾸기</div>` +
+    tasks.map((t, i) => t.slot === sl ? row(t, i) : '').join('')).join('');
 }
 
 function toggleTask(idx) {
