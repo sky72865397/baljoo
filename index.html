@@ -1174,6 +1174,7 @@ input, select, textarea { font-family: inherit; outline: none; }
             <option value="evening">🌙 저녁</option>
           </select>
         </div>
+        <div class="form-group" style="margin-top:8px;"><label class="form-label">언제 하나요?</label><div id="newtask-days"></div></div>
         <div class="form-group" style="margin-top:8px;"><label class="form-label">누가 하나요?</label><div id="newtask-kids"></div></div>
         <div id="newtask-pic" style="margin-top:8px;"></div>
         <div style="display:flex;gap:8px;margin-top:12px;">
@@ -1226,18 +1227,22 @@ input, select, textarea { font-family: inherit; outline: none; }
           <div class="text-xs color-muted" style="margin-top:4px;">아침 루틴 화면에 남은 시간이 막대로 보여요. 비워두면 안 보여요.</div>
         </div>
         <div class="form-group">
-          <label class="form-label">🕔 하교 후 루틴 시작 시간</label>
+          <label class="form-label">🏫 하교 시간 (평일, 이때부터 하교 후·저녁 열림)</label>
           <input class="input-field" id="slot-after-input" type="time">
         </div>
         <div class="form-group">
-          <label class="form-label">🌙 저녁 루틴 시작 시간</label>
+          <label class="form-label">🏡 주말 낮·저녁 여는 시간</label>
+          <input class="input-field" id="slot-weekend-input" type="time">
+        </div>
+        <div class="form-group">
+          <label class="form-label">🌙 저녁 탭을 먼저 보여줄 시간</label>
           <input class="input-field" id="slot-evening-input" type="time">
         </div>
         <div class="toggle-wrap">
           <span class="text-sm font-bold">🔒 아직 안 된 시간대 잠그기</span>
           <div class="toggle" id="lock-slots-toggle" onclick="this.classList.toggle('on')"></div>
         </div>
-        <div class="text-xs color-muted" style="margin-top:-8px;">켜 두면 아침에는 하교 후·저녁 할 일을 미리 누를 수 없어요. 지난 시간대는 늦게라도 체크할 수 있어요.</div>
+        <div class="text-xs color-muted" style="margin-top:-8px;">켜 두면 하교 전(주말은 낮 전)에는 아침 루틴만 보여요.</div>
         <div class="form-group">
           <label class="form-label">🔒 PIN 변경</label>
           <input class="input-field" id="new-pin-input" type="password" placeholder="새 4자리 PIN" maxlength="4">
@@ -1281,12 +1286,12 @@ const DEFAULT_TASKS = [
   { id:'m6',  name:'밥 먹기',           emoji:'🍚', xp:20, slot:'morning' },
   { id:'m10', name:'약 먹기',           emoji:'💊', xp:15, slot:'morning',     for:['c2'] },
   { id:'m7',  name:'먹은 그릇 치우기',  emoji:'🥣', xp:15, slot:'morning' },
-  { id:'m8',  name:'물병 챙기기',       emoji:'💧', xp:10, slot:'morning',     for:['c1'] },
-  { id:'m9',  name:'가방 챙기기',       emoji:'🎒', xp:20, slot:'morning' },
+  { id:'m8',  name:'물병 챙기기',       emoji:'💧', xp:10, slot:'morning',     for:['c1'], days:'weekday' },
+  { id:'m9',  name:'가방 챙기기',       emoji:'🎒', xp:20, slot:'morning', days:'weekday' },
   { id:'a1',  name:'손 씻기',           emoji:'🙌', xp:15, slot:'afterschool' },
   { id:'a2',  name:'신발 정리',         emoji:'👟', xp:10, slot:'afterschool', for:['c3'] },
-  { id:'a3',  name:'가방 제자리에 두기', emoji:'🎒', xp:10, slot:'afterschool' },
-  { id:'a11', name:'학교 숙제',         emoji:'📝', xp:40, slot:'afterschool', for:['c2'] },
+  { id:'a3',  name:'가방 제자리에 두기', emoji:'🎒', xp:10, slot:'afterschool', days:'weekday' },
+  { id:'a11', name:'학교 숙제',         emoji:'📝', xp:40, slot:'afterschool', for:['c2'], days:'weekday' },
   { id:'a6',  name:'온리원 공부',       emoji:'💻', xp:50, slot:'afterschool', for:['c1'] },
   { id:'a7',  name:'구몬 공부',         emoji:'📝', xp:50, slot:'afterschool', for:['c2'] },
   { id:'a10', name:'자전거·킥보드 제자리에 정리하기', emoji:'🚲', xp:10, slot:'afterschool' },
@@ -1640,7 +1645,7 @@ function showPop({ kind, icon, title, text, button, action, onClose }, child) {
 // ---------- streaks ----------
 function dayRatio(child, d) {
   const log = readLog(d);
-  const list = tasksForChild(child.id);
+  const list = tasksForChild(child.id, d);
   if (!list.length) return 0;
   return list.filter(t => log[`${child.id}_${t.id}`] && log[`${child.id}_${t.id}`].done).length / list.length;
 }
@@ -1724,7 +1729,7 @@ function showPraiseQueue(child) {
 // ---------- bus timer ----------
 function busState() {
   const t = settings.departTime;
-  if (!t) return null;
+  if (!t || isWeekend()) return null;
   const [h, m] = t.split(':').map(Number);
   const dep = new Date(); dep.setHours(h, m, 0, 0);
   const left = Math.round((dep - new Date()) / 60000);
@@ -2118,6 +2123,11 @@ function init() {
     if (settings.lockSlots === undefined) settings.lockSlots = true;
     settings.dataVersion = 28;
   }
+  if (settings.dataVersion === 28) {
+    settings.slotStart = Object.assign({ evening: '18:00' }, settings.slotStart || {}, { afterschool: '16:50', weekend: (settings.slotStart && settings.slotStart.weekend) || '12:00' });
+    ['m8', 'm9', 'a3', 'a11'].forEach(id => { const t = tasks.find(x => x.id === id); if (t && !t.days) t.days = 'weekday'; });
+    settings.dataVersion = 29;
+  }
 
   saveSettings();
   saveTasks();
@@ -2383,14 +2393,21 @@ function getActiveSlot() {
   const now = d.getHours() * 60 + d.getMinutes();
   const st = settings.slotStart || {};
   if (now < 4 * 60) return 'evening';
-  if (now < toMin(st.afterschool || '17:00')) return 'morning';
+  if (now < toMin(unlockTime())) return 'morning';
   if (now < toMin(st.evening || '18:00')) return 'afterschool';
   return 'evening';
 }
 
+function unlockTime() {
+  const st = settings.slotStart || {};
+  return isWeekend() ? (st.weekend || '12:00') : (st.afterschool || '16:50');
+}
+
 function slotLocked(slot) {
-  if (settings.lockSlots === false) return false;
-  return SLOTS.indexOf(slot) > SLOTS.indexOf(getActiveSlot());
+  if (settings.lockSlots === false || slot === 'morning') return false;
+  const d = new Date();
+  const now = d.getHours() * 60 + d.getMinutes();
+  return now >= 4 * 60 && now < toMin(unlockTime());
 }
 
 function toast(msg) {
@@ -2403,18 +2420,29 @@ function toast(msg) {
 
 function getSlotLabel(slot) {
   if (slot === 'morning') return '🌅 아침 루틴';
-  if (slot === 'afterschool') return '🏫 하교 후';
+  if (slot === 'afterschool') return isWeekend() ? '🏡 낮' : '🏫 하교 후';
   return '🌙 저녁 루틴';
 }
 
-function tasksForChild(childId) {
-  return tasks.filter(t => t.enabled && (!t.for || t.for.length === 0 || t.for.includes(childId)));
+function isWeekend(d = new Date()) {
+  const w = d.getDay();
+  return w === 0 || w === 6;
+}
+
+function appliesOn(t, d = new Date()) {
+  if (t.days === 'weekday') return !isWeekend(d);
+  if (t.days === 'weekend') return isWeekend(d);
+  return true;
+}
+
+function tasksForChild(childId, d = new Date()) {
+  return tasks.filter(t => t.enabled && (!t.for || t.for.length === 0 || t.for.includes(childId)) && (d === null || appliesOn(t, d)));
 }
 
 function getTasksForSlot(slot) {
   const child = getChild();
   return tasks.filter(t => {
-    if (!t.enabled || t.slot !== slot) return false;
+    if (!t.enabled || t.slot !== slot || !appliesOn(t)) return false;
     if (!t.for || t.for.length === 0) return true;
     return child && t.for.includes(child.id);
   });
@@ -2579,9 +2607,7 @@ function speakerBtn(child, text) {
 
 function setViewSlot(slot) {
   if (slotLocked(slot)) {
-    const st = settings.slotStart || {};
-    const at = slot === 'evening' ? (st.evening || '18:00') : (st.afterschool || '17:00');
-    toast(`🔒 아직 ${getSlotLabel(slot).replace(/^\S+\s/, '')} 시간이 아니에요! (${at}부터)`);
+    toast(`🔒 아직 ${getSlotLabel(slot).replace(/^\S+\s/, '')} 시간이 아니에요! (${unlockTime()}부터)`);
     return;
   }
   viewSlot = slot;
@@ -3093,18 +3119,19 @@ function weeklyReport(child) {
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const days = weekDays();
   const past = days.filter(d => d <= today);
-  const list = tasksForChild(child.id);
+  const list = tasksForChild(child.id, null);
   const slots = ['morning', 'afterschool', 'evening'];
-  const slotName = { morning: '아침', afterschool: '하교 후', evening: '저녁' };
+  const slotName = { morning: '아침', afterschool: '하교 후·낮', evening: '저녁' };
   const logs = days.map(d => d <= today ? readLog(d) : null);
   const isDone = (log, id) => log && log[`${child.id}_${id}`] && log[`${child.id}_${id}`].done;
 
   const rows = slots.map(sl => {
     const st = list.filter(t => t.slot === sl);
-    return `<span class="rl">${slotName[sl]}</span>` + logs.map(log => {
+    return `<span class="rl">${slotName[sl]}</span>` + logs.map((log, di) => {
       if (!log) return '<i class="rdot future"></i>';
-      const k = st.filter(t => isDone(log, t.id)).length;
-      return `<i class="rdot${st.length && k === st.length ? ' full' : st.length && k * 2 >= st.length ? ' half' : ''}"></i>`;
+      const sd = st.filter(t => appliesOn(t, days[di]));
+      const k = sd.filter(t => isDone(log, t.id)).length;
+      return `<i class="rdot${sd.length && k === sd.length ? ' full' : sd.length && k * 2 >= sd.length ? ' half' : ''}"></i>`;
     }).join('');
   }).join('');
   const grid = `<div class="report-grid"><span></span>${[...'월화수목금토일'].map(n => `<span class="rh">${n}</span>`).join('')}${rows}</div>`;
@@ -3128,9 +3155,9 @@ function weeklyReport(child) {
 
   const rate = sl => {
     const st = list.filter(t => t.slot === sl);
-    if (!st.length) return null;
-    const done = logs.reduce((a, log) => a + (log ? st.filter(t => isDone(log, t.id)).length : 0), 0);
-    return done / (st.length * n);
+    let done = 0, all = 0;
+    logs.forEach((log, di) => { if (!log) return; const sd = st.filter(t => appliesOn(t, days[di])); all += sd.length; done += sd.filter(t => isDone(log, t.id)).length; });
+    return all ? done / all : null;
   };
   const rates = slots.map(sl => [sl, rate(sl)]).filter(([, r]) => r !== null).sort((a, b) => b[1] - a[1]);
   const [bestSl, bestR] = rates[0];
@@ -3138,11 +3165,14 @@ function weeklyReport(child) {
   if (bestR > 0) notes.push(['good', `<b>${slotName[bestSl]}</b> 루틴을 가장 잘 지키고 있어요 (${Math.round(bestR * 100)}%).`]);
   if (rates.length > 1 && bestR - weakR >= 0.15) notes.push(['warn', `<b>${slotName[weakSl]}</b> 루틴을 자주 놓쳐요 (${Math.round(weakR * 100)}%). 이 시간에 한 번 더 챙겨 주시면 좋아요.`]);
 
-  const perTask = list.map(t => [t, logs.filter(log => isDone(log, t.id)).length]);
-  const missedAll = perTask.filter(([, k]) => k / n < 0.5).sort((a, b) => a[1] - b[1]);
+  const perTask = list.map(t => {
+    const ds = logs.map((log, di) => [log, days[di]]).filter(([log, d]) => log && appliesOn(t, d));
+    return [t, ds.filter(([log]) => isDone(log, t.id)).length, ds.length];
+  }).filter(([, , m]) => m > 0);
+  const missedAll = perTask.filter(([, k, m]) => k / m < 0.5).sort((a, b) => a[1] / a[2] - b[1] / b[2]);
   const missed = missedAll.slice(0, 3);
-  if (missed.length) notes.push(['warn', `잘 안 되는 할 일: ${missed.map(([t, k]) => `<b>${t.name}</b>(${n}일 중 ${k}일)`).join(', ')}${missedAll.length > 3 ? ` 외 ${missedAll.length - 3}개` : ''}`]);
-  const strong = perTask.filter(([, k]) => k === n && n >= 2).map(([t]) => t.name);
+  if (missed.length) notes.push(['warn', `잘 안 되는 할 일: ${missed.map(([t, k, m]) => `<b>${t.name}</b>(${m}일 중 ${k}일)`).join(', ')}${missedAll.length > 3 ? ` 외 ${missedAll.length - 3}개` : ''}`]);
+  const strong = perTask.filter(([, k, m]) => k === m && m >= 2).map(([t]) => t.name);
   if (strong.length) notes.push(['good', `매일 빠짐없이 한 일: ${strong.slice(0, 4).map(x => `<b>${x}</b>`).join(', ')}${strong.length > 4 ? ` 외 ${strong.length - 4}개` : ''}`]);
 
   const duty = dutiesFor(child.id)[0];
@@ -3396,6 +3426,14 @@ function updateChild(idx, field, value) {
 
 let editingTaskIdx = -1;
 
+function daysSelectHTML(id, val) {
+  return `<select class="input-field" id="${id}">
+    <option value="" ${!val ? 'selected' : ''}>매일</option>
+    <option value="weekday" ${val === 'weekday' ? 'selected' : ''}>평일만 (월~금)</option>
+    <option value="weekend" ${val === 'weekend' ? 'selected' : ''}>주말만 (토·일)</option>
+  </select>`;
+}
+
 function childPickerHTML(prefix, selected) {
   return `<div class="kid-picks">${settings.children.map(c => `
     <label class="kid-pick"><input type="checkbox" id="${prefix}-${c.id}" ${!selected || !selected.length || selected.includes(c.id) ? 'checked' : ''}> ${c.name}</label>`).join('')}</div>`;
@@ -3464,6 +3502,8 @@ function saveTaskEdit(idx) {
   applyTaskPic(t);
   t.xp = parseInt(document.getElementById('et-xp').value) || t.xp;
   t.slot = document.getElementById('et-slot').value;
+  const dv = document.getElementById('et-days').value;
+  if (dv) t.days = dv; else delete t.days;
   if (forIds) t.for = forIds; else delete t.for;
   saveTasks();
   editingTaskIdx = -1;
@@ -3491,6 +3531,7 @@ function renderTasksSettings() {
           ${['morning','afterschool','evening'].map(sl => `<option value="${sl}" ${t.slot === sl ? 'selected' : ''}>${getSlotLabel(sl)}</option>`).join('')}
         </select>
       </div>
+      <div class="form-group"><label class="form-label">언제 하나요?</label>${daysSelectHTML('et-days', t.days)}</div>
       <div class="form-group"><label class="form-label">누가 하나요?</label>${childPickerHTML('et-kid', t.for)}</div>
       ${taskPicPicker(t.ownPic ? t.pic : '')}
       <div style="display:flex;gap:8px;">
@@ -3501,7 +3542,7 @@ function renderTasksSettings() {
     <div class="card-sm flex-between">
       <div style="flex:1;">
         <div style="font-weight:700;display:flex;align-items:center;gap:8px;">${taskIcon(t).replace('class="check-pic"','class="mini-pic"').replace('class="check-emoji"','class="mini-emoji"')} ${t.name}</div>
-        <div class="text-xs color-muted">+${t.xp} XP · ${getSlotLabel(t.slot)} ${t.photo?'· 📸':''}${t.for&&t.for.length?` · ${t.for.map(id=>{const c=settings.children.find(x=>x.id===id);return c?c.name:'?';}).join('/')}만`:''}</div>
+        <div class="text-xs color-muted">+${t.xp} XP${t.days === 'weekday' ? ' · 평일만' : t.days === 'weekend' ? ' · 주말만' : ''}${t.for&&t.for.length?` · ${t.for.map(id=>{const c=settings.children.find(x=>x.id===id);return c?c.name:'?';}).join('/')}만`:''}</div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="move-btns">
@@ -3535,6 +3576,7 @@ function showAddTaskForm() {
   editingTaskIdx = -1;
   renderTasksSettings();
   document.getElementById('newtask-kids').innerHTML = childPickerHTML('nt-kid');
+  document.getElementById('newtask-days').innerHTML = daysSelectHTML('nt-days', '');
   document.getElementById('newtask-pic').innerHTML = taskPicPicker('');
   document.getElementById('add-task-form').classList.remove('hidden');
 }
@@ -3549,6 +3591,8 @@ function addNewTask() {
   if (forIds && !forIds.length) { alert('적어도 한 명은 골라 주세요'); return; }
   const t = { id: 't_' + Date.now(), name, xp, slot, photo: false, enabled: true, ...autoIcon(name) };
   if (forIds) t.for = forIds;
+  const dv = document.getElementById('nt-days').value;
+  if (dv) t.days = dv;
   applyTaskPic(t);
   tasks.push(t);
   saveTasks();
@@ -3612,7 +3656,8 @@ function adjustPoints(idx) {
 function renderMiscSettings() {
   document.getElementById('depart-time-input').value = settings.departTime || '';
   const st = settings.slotStart || {};
-  document.getElementById('slot-after-input').value = st.afterschool || '17:00';
+  document.getElementById('slot-after-input').value = st.afterschool || '16:50';
+  document.getElementById('slot-weekend-input').value = st.weekend || '12:00';
   document.getElementById('slot-evening-input').value = st.evening || '18:00';
   document.getElementById('lock-slots-toggle').classList.toggle('on', settings.lockSlots !== false);
 }
@@ -3620,7 +3665,8 @@ function renderMiscSettings() {
 function saveMiscSettings() {
   settings.departTime = document.getElementById('depart-time-input').value;
   settings.slotStart = {
-    afterschool: document.getElementById('slot-after-input').value || '17:00',
+    afterschool: document.getElementById('slot-after-input').value || '16:50',
+    weekend: document.getElementById('slot-weekend-input').value || '12:00',
     evening: document.getElementById('slot-evening-input').value || '18:00',
   };
   settings.lockSlots = document.getElementById('lock-slots-toggle').classList.contains('on');
