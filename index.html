@@ -347,6 +347,8 @@ input, select, textarea { font-family: inherit; outline: none; }
 .focus-next { font-size:1rem; color:var(--text-secondary); }
 .bus-timer { background:#eff6ff; border:2px solid #bfdbfe; border-radius:18px; padding:12px 16px; display:flex; flex-direction:column; gap:8px; }
 .bus-timer.hidden { display:none; }
+.bus-timer.big .bus-text { font-size:1.5rem; text-align:center; }
+.bus-timer.big .bus-track { height:20px; }
 .bus-text { font-size:1.1rem; color:#1e3a8a; }
 .bus-track { height:14px; background:#dbeafe; border-radius:99px; overflow:hidden; }
 .bus-fill { height:100%; background:#3b82f6; border-radius:99px; transition:width .6s; }
@@ -874,6 +876,7 @@ input, select, textarea { font-family: inherit; outline: none; }
       <div class="welcome-title">오늘의 루틴 🐾</div>
       <div class="welcome-date" id="welcome-date"></div>
     </div>
+    <div class="bus-timer big hidden" id="bus-timer-welcome"></div>
 
     <div class="quote-card">
       <div class="quote-label">💌 오늘의 한마디</div>
@@ -1692,26 +1695,36 @@ function showPraiseQueue(child) {
 }
 
 // ---------- bus timer ----------
-function renderBusTimer() {
-  const el = document.getElementById('bus-timer');
-  if (!el) return;
-  const slot = viewSlot || getActiveSlot();
+function busState() {
   const t = settings.departTime;
-  if (!t || slot !== 'morning') { el.classList.add('hidden'); return; }
+  if (!t) return null;
   const [h, m] = t.split(':').map(Number);
-  const now = new Date();
   const dep = new Date(); dep.setHours(h, m, 0, 0);
-  const left = Math.round((dep - now) / 60000);
-  if (left > 90 || left < -20) { el.classList.add('hidden'); return; }
-  el.classList.remove('hidden');
+  const left = Math.round((dep - new Date()) / 60000);
+  if (left > 90 || left < -20) return null;
   const pct = Math.max(0, Math.min(100, left / 60 * 100));
-  el.className = 'bus-timer' + (left <= 0 ? ' late' : left <= 10 ? ' hurry' : '');
-  el.innerHTML = `<div class="bus-text">${left > 0 ? `🚌 집에서 나갈 때까지 <b>${left}분</b> 남았어요` : '🚌 나갈 시간이에요! 신발 신고 출발!'}</div>
-    <div class="bus-track"><div class="bus-fill" style="width:${pct}%"></div></div>`;
+  return {
+    cls: 'bus-timer' + (left <= 0 ? ' late' : left <= 10 ? ' hurry' : ''),
+    html: `<div class="bus-text">${left > 0 ? `🚌 집에서 나갈 때까지 <b>${left}분</b> 남았어요` : '🚌 나갈 시간이에요! 신발 신고 출발!'}</div>
+      <div class="bus-track"><div class="bus-fill" style="width:${pct}%"></div></div>`,
+  };
 }
-setInterval(() => {
-  if (document.getElementById('screen-home').classList.contains('active')) renderBusTimer();
-}, 30000);
+
+function paintBus(el, st) {
+  if (!el) return;
+  const big = el.id === 'bus-timer-welcome' ? ' big' : '';
+  if (!st) { el.className = 'bus-timer hidden' + big; return; }
+  el.className = st.cls + big;
+  el.innerHTML = st.html;
+}
+
+function renderBusTimer() {
+  const slot = viewSlot || getActiveSlot();
+  const st = busState();
+  paintBus(document.getElementById('bus-timer'), slot === 'morning' ? st : null);
+  paintBus(document.getElementById('bus-timer-welcome'), st);
+}
+setInterval(renderBusTimer, 30000);
 
 function nextSocial() {
   document.querySelectorAll('.confetti-piece').forEach(el => el.remove());
@@ -2145,6 +2158,7 @@ function renderWelcome() {
   document.getElementById('welcome-date').innerHTML =
     `<div class="today-banner">오늘은 ${now.getMonth() + 1}월 ${now.getDate()}일 ${'일월화수목금토'[now.getDay()]}요일이에요</div>`;
   renderWeek();
+  renderBusTimer();
   document.getElementById('daily-quote').textContent = todayQuote();
   document.getElementById('profile-list').innerHTML = settings.children.map(child => {
     const allEnabled = tasksForChild(child.id);
