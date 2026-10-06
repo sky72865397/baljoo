@@ -1196,6 +1196,7 @@ const DEFAULT_TASKS = [
   { id:'a10', name:'자전거·킥보드 제자리에 정리하기', emoji:'🚲', xp:10, slot:'afterschool' },
   { id:'a8',  name:'책 읽기',           emoji:'📖', xp:30, slot:'afterschool' },
   { id:'a9',  name:'마음 공부',         emoji:'💬', xp:40, slot:'afterschool', for:['c1','c2'], type:'social' },
+  { id:'e9',  name:'약 먹기',           emoji:'💊', xp:15, slot:'evening',     for:['c2'] },
   { id:'e1',  name:'저녁 먹기',         emoji:'🍽️', xp:15, slot:'evening' },
   { id:'e2',  name:'먹은 그릇 치우기',  emoji:'🥣', xp:15, slot:'evening' },
   { id:'e3',  name:'샤워하기',          emoji:'🚿', xp:20, slot:'evening' },
@@ -1203,7 +1204,6 @@ const DEFAULT_TASKS = [
   { id:'e5',  name:'잠옷 갈아입기',     emoji:'👚', xp:10, slot:'evening',     for:['c2','c3'] },
   { id:'e6',  name:'내일 입을 옷 꺼내두기', emoji:'👔', xp:15, slot:'evening', for:['c1'] },
   { id:'e7',  name:'장난감 정리',       emoji:'🧸', xp:15, slot:'evening' },
-  { id:'e9',  name:'약 먹기',           emoji:'💊', xp:15, slot:'evening',     for:['c2'] },
   { id:'e8',  name:'양치하기',          emoji:'🦷', xp:20, slot:'evening' },
 ].map(t => ({ photo:false, enabled:true, ...t }));
 
@@ -1819,6 +1819,12 @@ function init() {
       tasks.splice(at >= 0 ? at : tasks.length, 0, JSON.parse(JSON.stringify(DEFAULT_TASKS.find(t => t.id === 'e9'))));
     }
     settings.dataVersion = 20;
+  }
+  if (settings.dataVersion === 20) {
+    const i = tasks.findIndex(t => t.id === 'e9');
+    const j = tasks.findIndex(t => t.id === 'e1');
+    if (i >= 0 && j >= 0 && i > j) tasks.splice(j, 0, tasks.splice(i, 1)[0]);
+    settings.dataVersion = 21;
   }
 
   saveSettings();
