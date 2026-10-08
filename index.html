@@ -462,6 +462,17 @@ input, select, textarea { font-family: inherit; outline: none; }
 .move-btns button { background:var(--primary-bg); color:var(--primary); border-radius:8px; width:34px; height:24px; font-size:0.75rem; line-height:1; }
 .move-btns button:active { background:var(--primary); color:#fff; }
 
+/* ===== FEED ===== */
+.feed-gauge { margin-top:12px; text-align:left; }
+.feed-head { display:flex; justify-content:space-between; font-size:0.9rem; font-weight:800; color:#b45309; gap:8px; }
+.feed-head span:last-child { color:var(--text-secondary); font-weight:700; text-align:right; }
+.feed-track { height:14px; background:#fef3c7; border-radius:99px; overflow:hidden; margin-top:6px; }
+.feed-fill { height:100%; background:linear-gradient(90deg,#fbbf24,#f97316); border-radius:99px; transition:width .6s; }
+.feed-track.warm { background:#ffe4e6; }
+.feed-track.warm .feed-fill { background:linear-gradient(90deg,#fda4af,#f43f5e); }
+.feed-sub { font-size:0.8rem; color:var(--text-muted); margin-top:4px; }
+.fly-food { position:fixed; font-size:2.6rem; z-index:550; pointer-events:none; transform:translate(-50%,-50%) scale(1.1); transition:left .6s cubic-bezier(.3,.7,.4,1), top .6s cubic-bezier(.5,-0.4,.7,1), transform .6s, opacity .6s; }
+
 /* ===== TASK PIC ===== */
 .task-pic-preview { width:64px; height:64px; border-radius:14px; background:var(--primary-bg); display:flex; align-items:center; justify-content:center; overflow:hidden; flex-shrink:0; font-size:0.8rem; color:var(--text-muted); }
 .task-pic-preview img { width:100%; height:100%; object-fit:cover; }
@@ -932,6 +943,7 @@ input, select, textarea { font-family: inherit; outline: none; }
       <div class="speech-bubble" id="speech-bubble" style="margin-bottom:14px;">...</div>
       <div class="pet-stage"><div id="pet-emoji-big" style="font-size:6rem;line-height:1;display:block;cursor:pointer;" onclick="triggerPetPat()"></div><div id="pet-fx"></div></div>
       <div style="margin-top:8px;font-size:0.85rem;font-weight:700;color:var(--text-secondary);" id="pet-stage-label"></div>
+      <div class="feed-gauge" id="feed-gauge"></div>
       <button class="duty-cta hidden" id="egg-cta" style="margin-top:10px;" onclick="openEggPick()">🥚 다 키웠어요! 새 알 고르기</button>
       <div class="xp-bar-wrap" style="margin-top:14px;">
         <div class="xp-bar-labels">
@@ -2172,6 +2184,54 @@ function withGa(word) {
 const PET_MAX_LEVEL = 20;
 const STAGE_STARTS = [1, 4, 8, 13, 20];
 
+const PET_FOOD = { dog:'🦴', cat:'🐟', rabbit:'🥕', dino:'🥬', koala:'🌿', tiger:'🍖', squirrel:'🌰', sheep:'🌾', panda:'🎋', hamster:'🌻', owl:'🫐', lion:'🍖', penguin:'🐟' };
+
+function petFood(child) {
+  return petStageOf(child) <= 1 ? '🔥' : (PET_FOOD[child.characterType] || '🍎');
+}
+
+function renderFeedGauge(child) {
+  const d = new Date(); d.setHours(0, 0, 0, 0);
+  const list = tasksForChild(child.id, d);
+  const log = readLog(d);
+  const n = list.filter(t => log[`${child.id}_${t.id}`] && log[`${child.id}_${t.id}`].done).length;
+  const pct = list.length ? Math.min(100, n / list.length * 100) : 0;
+  const egg = petStageOf(child) <= 1;
+  const label = egg ? '따뜻함' : '배부름';
+  const msg = pct >= 100 ? (egg ? '포근포근해요! 🥰' : '배불러요! 고마워 🥰') : pct >= 50 ? (egg ? '따뜻해지고 있어요' : '든든해요') : n ? (egg ? '조금 따뜻해요' : '조금 더 먹고 싶어요') : (egg ? '알이 추워요… 품어 줄래요?' : '배고파요… 밥 줄래요?');
+  document.getElementById('feed-gauge').innerHTML = `
+    <div class="feed-head"><span>${petFood(child)} ${label}</span><span>${msg}</span></div>
+    <div class="feed-track${egg ? ' warm' : ''}"><div class="feed-fill" style="width:${pct}%"></div></div>
+    <div class="feed-sub">오늘 ${egg ? '품어 준' : '밥 준'} 횟수 <b>${n}</b> / ${list.length}</div>`;
+}
+
+let lastTap = null;
+document.addEventListener('pointerdown', e => { lastTap = { x: e.clientX, y: e.clientY }; }, true);
+
+function flyFood(child) {
+  const pet = document.getElementById('pet-emoji-big');
+  if (!pet) return;
+  const r = pet.getBoundingClientRect();
+  const from = lastTap || { x: window.innerWidth / 2, y: window.innerHeight - 120 };
+  const el = document.createElement('div');
+  el.className = 'fly-food';
+  el.textContent = petFood(child);
+  el.style.left = from.x + 'px';
+  el.style.top = from.y + 'px';
+  document.body.appendChild(el);
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    el.style.left = (r.left + r.width / 2) + 'px';
+    el.style.top = (r.top + r.height * 0.55) + 'px';
+    el.style.transform = 'translate(-50%,-50%) scale(0.4)';
+    el.style.opacity = '0.2';
+  }));
+  setTimeout(() => {
+    el.remove();
+    const egg = petStageOf(child) <= 1;
+    petBurst(egg ? ['🔥', '💛', '✨'] : ['😋', '💖', '✨'], 4);
+  }, 650);
+}
+
 function petLevel(child, level = child.level) {
   return level - (child.petStart || 1) + 1;
 }
@@ -2492,7 +2552,7 @@ function renderHomeScreen() {
   let mood, moodClass, speechText;
   if (totalCount === 0 || doneCount === 0) {
     mood = 'sad'; moodClass = 'pet-droop';
-    speechText = '오늘 아직 아무것도 안 했어요... 😢';
+    speechText = petStageOf(child) <= 1 ? '알이 추워요… 할 일 하면 따뜻해져요! 🥚' : '배고파요… 할 일 하고 밥 줄래요? 🍽️';
   } else if (pctDone < 0.5) {
     mood = 'normal'; moodClass = 'pet-float';
     speechText = '같이 더 해봐요! 🌟';
@@ -2517,6 +2577,7 @@ function renderHomeScreen() {
 
   document.getElementById('speech-bubble').textContent = speechText;
   document.getElementById('speech-bubble').classList.remove('praise');
+  renderFeedGauge(child);
   const sk = streakInfo(child);
   document.getElementById('streak-chip').innerHTML = sk.days
     ? `<span class="streak-chip">🔥 ${sk.days}일 연속${sk.todayOk ? '' : ` · 오늘 절반 하면 ${sk.days + 1}일째!`}</span>`
@@ -2754,9 +2815,11 @@ function awardXP(childId, xp, taskId) {
   const lg = loadLog();
   const dn = st.filter(t => lg[`${child.id}_${t.id}`] && lg[`${child.id}_${t.id}`].done).length;
   if (st.some(t => t.id === taskId)) {
-    const msg = praiseFor(dn, st.length);
+    const egg = petStageOf(child) <= 1;
+    const msg = (egg ? '따뜻해~ ' : `냠냠 ${petFood(child)} `) + praiseFor(dn, st.length);
     const bub = document.getElementById('speech-bubble');
     bub.textContent = msg;
+    flyFood(child);
     bub.classList.remove('praise'); void bub.offsetWidth; bub.classList.add('praise');
   }
   const petEl = document.getElementById('pet-emoji-big');
