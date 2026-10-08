@@ -423,6 +423,12 @@ input, select, textarea { font-family: inherit; outline: none; }
 .report-notes li.good { background:#ecfdf5; }
 .report-notes li.warn { background:#fff7ed; }
 
+/* ===== OFF DAYS ===== */
+.wk-day.red .wk-name, .wk-day.red .wk-date { color:#dc2626; }
+.wk-day.sat .wk-name, .wk-day.sat .wk-date { color:#2563eb; }
+.wk-off { font-size:0.62rem; color:#dc2626; font-weight:800; line-height:1.1; }
+.off-row { display:flex; justify-content:space-between; align-items:center; background:var(--primary-bg); border-radius:12px; padding:6px 10px; font-size:0.9rem; }
+
 /* ===== DAILY QUOTE ===== */
 .quote-card { background:linear-gradient(135deg,#fff7ed,#fdf2f8); border:2px solid #fbcfe8; border-radius:22px; padding:16px 20px; text-align:center; }
 .quote-label { font-size:0.9rem; color:#db2777; margin-bottom:6px; }
@@ -1243,12 +1249,25 @@ input, select, textarea { font-family: inherit; outline: none; }
           <input class="input-field" id="slot-after-input" type="time">
         </div>
         <div class="form-group">
-          <label class="form-label">🏡 주말 낮·저녁 여는 시간</label>
+          <label class="form-label">🏡 쉬는 날(주말·공휴일) 낮·저녁 여는 시간</label>
           <input class="input-field" id="slot-weekend-input" type="time">
         </div>
         <div class="form-group">
           <label class="form-label">🌙 저녁 탭을 먼저 보여줄 시간</label>
           <input class="input-field" id="slot-evening-input" type="time">
+        </div>
+        <div class="form-group">
+          <label class="form-label">🗓️ 학교 안 가는 날 (방학·재량휴업일 등)</label>
+          <div class="text-xs color-muted" style="margin-bottom:6px;">주말과 공휴일은 자동이에요. 방학이나 학교 쉬는 날만 추가해 주세요.</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <input class="input-field" id="off-from" type="date" style="flex:1;min-width:130px;">
+            <input class="input-field" id="off-to" type="date" style="flex:1;min-width:130px;" title="하루면 비워두세요">
+          </div>
+          <div style="display:flex;gap:6px;margin-top:6px;">
+            <input class="input-field" id="off-name" placeholder="이름 (예: 겨울방학)" style="flex:1;">
+            <button class="btn-primary btn-sm" style="width:auto;padding:0 16px;" onclick="addOffDay()">추가</button>
+          </div>
+          <div id="off-list" style="margin-top:8px;display:flex;flex-direction:column;gap:6px;"></div>
         </div>
         <div class="toggle-wrap">
           <span class="text-sm font-bold">🔒 아직 안 된 시간대 잠그기</span>
@@ -2283,7 +2302,7 @@ function renderWelcome() {
   const log = loadLog();
   const now = new Date();
   document.getElementById('welcome-date').innerHTML =
-    `<div class="today-banner">오늘은 ${now.getMonth() + 1}월 ${now.getDate()}일 ${'일월화수목금토'[now.getDay()]}요일이에요</div>`;
+    `<div class="today-banner">오늘은 ${now.getMonth() + 1}월 ${now.getDate()}일 ${'일월화수목금토'[now.getDay()]}요일이에요${offDayName(now) ? ` · <span style="color:#dc2626">${offDayName(now)} 🎈</span>` : isWeekend(now) ? ' · 학교 안 가는 날 🎈' : ''}</div>`;
   renderWeek();
   renderBusTimer();
   document.getElementById('daily-quote').textContent = todayQuote();
@@ -2412,8 +2431,10 @@ function renderWeek() {
         return `<span class="wk-kid lv${lv}"><span>${c.name}</span><span class="wk-n">${n}</span></span>`;
       }).join('');
     }
-    return `<div class="wk-day${isToday ? ' today' : ''}${isFuture ? ' future' : ''}">
-      <span class="wk-name">${name}</span><span class="wk-date">${d.getMonth() + 1}/${d.getDate()}</span>
+    const off = offDayName(d);
+    const red = off || d.getDay() === 0;
+    return `<div class="wk-day${isToday ? ' today' : ''}${isFuture ? ' future' : ''}${red ? ' red' : d.getDay() === 6 ? ' sat' : ''}">
+      <span class="wk-name">${name}</span><span class="wk-date">${d.getMonth() + 1}/${d.getDate()}</span>${off ? `<span class="wk-off">${off}</span>` : ''}
       <div class="wk-kids">${kids}</div>
     </div>`;
   }).join('');
@@ -2484,9 +2505,60 @@ function getSlotLabel(slot) {
   return '🌙 저녁 루틴';
 }
 
+const KR_HOLIDAYS = {
+  '2026-01-01':'신정', '2026-02-16':'설날 연휴', '2026-02-17':'설날', '2026-02-18':'설날 연휴',
+  '2026-03-01':'삼일절', '2026-03-02':'대체공휴일', '2026-05-05':'어린이날', '2026-05-24':'부처님오신날',
+  '2026-05-25':'대체공휴일', '2026-06-03':'지방선거', '2026-06-06':'현충일', '2026-08-15':'광복절',
+  '2026-08-17':'대체공휴일', '2026-09-24':'추석 연휴', '2026-09-25':'추석', '2026-09-26':'추석 연휴',
+  '2026-10-03':'개천절', '2026-10-05':'대체공휴일', '2026-10-09':'한글날', '2026-12-25':'성탄절',
+  '2027-01-01':'신정', '2027-02-06':'설날 연휴', '2027-02-07':'설날', '2027-02-08':'설날 연휴',
+  '2027-02-09':'대체공휴일', '2027-03-01':'삼일절', '2027-05-05':'어린이날', '2027-05-13':'부처님오신날',
+  '2027-06-06':'현충일', '2027-08-15':'광복절', '2027-08-16':'대체공휴일', '2027-09-14':'추석 연휴',
+  '2027-09-15':'추석', '2027-09-16':'추석 연휴', '2027-10-03':'개천절', '2027-10-04':'대체공휴일',
+  '2027-10-09':'한글날', '2027-10-11':'대체공휴일', '2027-12-25':'성탄절', '2027-12-27':'대체공휴일',
+};
+
+function ymd(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function offDayName(d = new Date()) {
+  const k = ymd(d);
+  const own = (settings.offDays || []).find(o => k >= o.from && k <= (o.to || o.from));
+  if (own) return own.name || '쉬는 날';
+  return KR_HOLIDAYS[k] || '';
+}
+
 function isWeekend(d = new Date()) {
   const w = d.getDay();
-  return w === 0 || w === 6;
+  return w === 0 || w === 6 || !!offDayName(d);
+}
+
+function addOffDay() {
+  const from = document.getElementById('off-from').value;
+  const to = document.getElementById('off-to').value || from;
+  const name = document.getElementById('off-name').value.trim() || '학교 쉬는 날';
+  if (!from) { alert('날짜를 골라 주세요'); return; }
+  settings.offDays = (settings.offDays || []).concat([{ from, to: to < from ? from : to, name }]).sort((a, b) => a.from.localeCompare(b.from));
+  saveSettings();
+  ['off-from', 'off-to', 'off-name'].forEach(id => { document.getElementById(id).value = ''; });
+  renderOffDays();
+}
+
+function removeOffDay(i) {
+  settings.offDays.splice(i, 1);
+  saveSettings();
+  renderOffDays();
+}
+
+function renderOffDays() {
+  const today = ymd(new Date());
+  const own = (settings.offDays || []).map((o, i) => [o, i]).filter(([o]) => (o.to || o.from) >= today);
+  const fmt = k => { const [, m, d] = k.split('-'); return `${+m}/${+d}`; };
+  const next = Object.entries(KR_HOLIDAYS).filter(([k]) => k >= today).slice(0, 6);
+  document.getElementById('off-list').innerHTML =
+    (own.length ? own.map(([o, i]) => `<div class="off-row"><span><b>${escText(o.name)}</b> ${fmt(o.from)}${o.to && o.to !== o.from ? ' ~ ' + fmt(o.to) : ''}</span><button class="btn-ghost btn-sm" onclick="removeOffDay(${i})">빼기</button></div>`).join('') : '<div class="text-xs color-muted">아직 추가한 날이 없어요</div>') +
+    `<div class="text-xs color-muted" style="margin-top:8px;">다가오는 공휴일 (자동): ${next.map(([k, n]) => `${fmt(k)} ${n}`).join(' · ')}</div>`;
 }
 
 function appliesOn(t, d = new Date()) {
@@ -3492,8 +3564,8 @@ let editingTaskIdx = -1;
 function daysSelectHTML(id, val) {
   return `<select class="input-field" id="${id}">
     <option value="" ${!val ? 'selected' : ''}>매일</option>
-    <option value="weekday" ${val === 'weekday' ? 'selected' : ''}>평일만 (월~금)</option>
-    <option value="weekend" ${val === 'weekend' ? 'selected' : ''}>주말만 (토·일)</option>
+    <option value="weekday" ${val === 'weekday' ? 'selected' : ''}>학교 가는 날만</option>
+    <option value="weekend" ${val === 'weekend' ? 'selected' : ''}>쉬는 날만 (주말·공휴일·방학)</option>
   </select>`;
 }
 
@@ -3605,7 +3677,7 @@ function renderTasksSettings() {
     <div class="card-sm flex-between">
       <div style="flex:1;">
         <div style="font-weight:700;display:flex;align-items:center;gap:8px;">${taskIcon(t).replace('class="check-pic"','class="mini-pic"').replace('class="check-emoji"','class="mini-emoji"')} ${t.name}</div>
-        <div class="text-xs color-muted">+${t.xp} XP${t.days === 'weekday' ? ' · 평일만' : t.days === 'weekend' ? ' · 주말만' : ''}${t.for&&t.for.length?` · ${t.for.map(id=>{const c=settings.children.find(x=>x.id===id);return c?c.name:'?';}).join('/')}만`:''}</div>
+        <div class="text-xs color-muted">+${t.xp} XP${t.days === 'weekday' ? ' · 학교 가는 날만' : t.days === 'weekend' ? ' · 쉬는 날만' : ''}${t.for&&t.for.length?` · ${t.for.map(id=>{const c=settings.children.find(x=>x.id===id);return c?c.name:'?';}).join('/')}만`:''}</div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="move-btns">
@@ -3717,6 +3789,7 @@ function adjustPoints(idx) {
 }
 
 function renderMiscSettings() {
+  renderOffDays();
   document.getElementById('depart-time-input').value = settings.departTime || '';
   const st = settings.slotStart || {};
   document.getElementById('slot-after-input').value = st.afterschool || '16:50';
