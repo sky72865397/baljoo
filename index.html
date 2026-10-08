@@ -2906,19 +2906,57 @@ function dutyIcon(d) {
   return ['d1','d2','d3','d4','d5','d6','d7'].includes(d.id) ? `<img class="check-pic" src="img/duty-${d.id}.jpg" alt="">` : d.id === 'd8' ? `<img class="check-pic" src="img/task-a2.jpg" alt="">` : `<span class="check-emoji">${d.emoji}</span>`;
 }
 
+let speechUnlocked = false;
+let currentUtter = null;
+
+function unlockSpeech() {
+  if (speechUnlocked || !window.speechSynthesis) return;
+  try {
+    const u = new SpeechSynthesisUtterance(' ');
+    u.volume = 0;
+    speechSynthesis.speak(u);
+    speechUnlocked = true;
+  } catch (e) {}
+}
+['pointerdown', 'touchend', 'click'].forEach(ev => document.addEventListener(ev, unlockSpeech, { capture: true }));
+
+function koVoice() {
+  const ko = speechSynthesis.getVoices().filter(v => v.lang && v.lang.replace('_', '-').toLowerCase().startsWith('ko'));
+  const local = ko.filter(v => v.localService !== false);
+  return local.find(v => /premium|enhanced|향상|고급/i.test(v.name)) || local.find(v => /yuna|유나/i.test(v.name)) || local[0] || ko[0] || null;
+}
+
+function doSpeak(text) {
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'ko-KR';
+  u.rate = 0.85;
+  u.pitch = 0.9;
+  u.volume = 1;
+  const v = koVoice();
+  if (v) u.voice = v;
+  currentUtter = u;
+  u.onend = () => { if (currentUtter === u) currentUtter = null; };
+  try { speechSynthesis.resume(); } catch (e) {}
+  speechSynthesis.speak(u);
+}
+
 function speak(text) {
   try {
-    if (!window.speechSynthesis) return;
-    speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'ko-KR';
-    u.rate = 0.85;
-    u.pitch = 0.9;
-    const ko = speechSynthesis.getVoices().filter(v => v.lang && v.lang.replace('_', '-').startsWith('ko'));
-    const v = ko.find(v => /premium|enhanced|향상|고급/i.test(v.name)) || ko.find(v => /yuna|유나/i.test(v.name)) || ko[0];
-    if (v) u.voice = v;
-    speechSynthesis.speak(u);
+    if (!window.speechSynthesis || !text) return;
+    if (speechSynthesis.speaking || speechSynthesis.pending) {
+      speechSynthesis.cancel();
+      setTimeout(() => doSpeak(text), 150);
+    } else {
+      doSpeak(text);
+    }
   } catch (e) {}
+}
+
+function testSpeech(idx) {
+  if (!window.speechSynthesis) { alert('이 기기의 브라우저는 읽어주기를 지원하지 않아요.'); return; }
+  const c = settings.children[idx];
+  doSpeak(`안녕 ${c.name}! 소리가 잘 들리나요?`);
+  toast('🔊 소리가 안 들리면 아래 안내를 확인해 주세요');
 }
 
 function speakerBtn(child, text) {
@@ -4281,8 +4319,12 @@ function renderChildrenSettings() {
       </div>
       <div class="toggle-wrap" style="margin-top:10px;">
         <span class="text-sm font-bold">🔊 할 일 소리로 읽어주기</span>
-        <div class="toggle${child.speak ? ' on' : ''}" onclick="updateChild(${i},'speak',${!child.speak})"></div>
+        <div class="flex-row" style="gap:8px;">
+          ${child.speak ? `<button class="btn-ghost btn-sm" onclick="testSpeech(${i})">소리 테스트</button>` : ''}
+          <div class="toggle${child.speak ? ' on' : ''}" onclick="updateChild(${i},'speak',${!child.speak})"></div>
+        </div>
       </div>
+      ${child.speak ? `<div class="text-xs color-muted">소리가 안 나면: ① 패드 옆 볼륨 버튼으로 소리 키우기 ② 제어 센터에서 🔔 무음 모드 끄기 ③ 블루투스 이어폰·스피커 연결 확인</div>` : ''}
       <div class="flex-row" style="margin-top:10px;">
         ${child.photo ? `<img class="avatar" style="font-size:3rem;" src="${child.photo}">` : '<span style="font-size:2.4rem;">🙂</span>'}
         <label class="btn-ghost btn-sm" style="position:relative;overflow:hidden;flex:1;text-align:center;">📷 사진 ${child.photo ? '바꾸기' : '넣기'}
