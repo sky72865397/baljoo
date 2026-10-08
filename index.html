@@ -514,6 +514,11 @@ input, select, textarea { font-family: inherit; outline: none; }
 .coop-sub { font-size:0.75rem; color:var(--text-muted); }
 @media (max-width: 600px) { .calm-ball-wrap { height:240px; } .calm-ball.in, .calm-ball.hold { width:220px; height:220px; } .timer-ring { width:240px; height:240px; } .timer-face { width:200px; height:200px; } }
 
+/* ===== CLOUD ===== */
+.gas-help summary { cursor:pointer; font-weight:800; color:var(--primary); padding:6px 0; }
+.gas-help ol { padding-left:20px; display:flex; flex-direction:column; gap:6px; font-size:0.9rem; line-height:1.5; margin:8px 0; }
+.gas-code { background:#1e1b4b; color:#e0e7ff; border-radius:12px; padding:10px; font-size:0.7rem; overflow:auto; max-height:220px; white-space:pre; margin-top:8px; user-select:all; -webkit-user-select:all; }
+
 /* ===== FEED ===== */
 .feed-gauge { margin-top:12px; text-align:left; }
 .feed-head { display:flex; justify-content:space-between; font-size:0.9rem; font-weight:800; color:#b45309; gap:8px; }
@@ -1356,6 +1361,67 @@ input, select, textarea { font-family: inherit; outline: none; }
           <input type="file" accept=".json,application/json" style="position:absolute;width:0;height:0;opacity:0;" onchange="restoreData(event)">
         </label>
         <div class="text-xs color-muted" id="backup-info"></div>
+      </div>
+      <div class="card" style="display:flex;flex-direction:column;gap:10px;margin-bottom:12px;">
+        <div style="font-weight:800;">☁️ 구글 자동 백업</div>
+        <div class="text-sm color-secondary">한 번만 연결해 두면 하루 한 번 자동으로 엄마 구글 드라이브에 기록이 저장되고, 구글 시트에 아이별 기록이 한 줄씩 쌓여요.</div>
+        <input class="input-field" id="sheet-url" placeholder="웹 앱 주소 붙여넣기 (https://script.google.com/macros/s/.../exec)">
+        <div class="flex-row" style="gap:8px;">
+          <button class="btn-primary btn-sm" style="flex:1;" onclick="saveSheetUrl()">연결 저장</button>
+          <button class="btn-ghost btn-sm" style="flex:1;" onclick="cloudBackup(true)">☁️ 지금 백업</button>
+          <button class="btn-ghost btn-sm" style="flex:1;" onclick="cloudRestore()">⬇️ 구글에서 불러오기</button>
+        </div>
+        <div class="text-xs color-muted" id="cloud-info"></div>
+        <details class="gas-help">
+          <summary>📘 처음 연결하는 방법 (5분, 한 번만)</summary>
+          <ol>
+            <li>컴퓨터나 패드에서 <b>구글 시트</b>를 새로 하나 만들어요. 이름은 "오늘의 루틴 기록"처럼 지어 주세요.</li>
+            <li>시트 위쪽 메뉴에서 <b>확장 프로그램 → Apps Script</b>를 눌러요.</li>
+            <li>안에 있는 글을 다 지우고, 아래 <b>코드 복사</b> 버튼으로 복사한 걸 붙여넣고 💾 저장해요.</li>
+            <li>오른쪽 위 <b>배포 → 새 배포</b> → 톱니바퀴에서 <b>웹 앱</b>을 골라요.</li>
+            <li><b>실행:</b> 나 · <b>액세스 권한:</b> 모든 사용자 로 두고 <b>배포</b>를 눌러요. 권한 허용 창이 나오면 내 구글 계정으로 허용해요. ("확인되지 않은 앱" 경고가 나오면 고급 → 이동을 눌러요. 내가 만든 거라 괜찮아요.)</li>
+            <li>나오는 <b>웹 앱 URL</b>을 복사해서 위 칸에 붙여넣고 <b>연결 저장</b>을 누르면 끝이에요.</li>
+          </ol>
+          <button class="btn-ghost btn-sm" onclick="copyGas()">📋 코드 복사</button>
+          <pre class="gas-code" id="gas-code">const FOLDER_NAME = &#x27;오늘의루틴 백업&#x27;;
+const KEEP = 30;
+
+function doPost(e) {
+  const text = e.postData.contents;
+  const body = JSON.parse(text);
+  if (body.app !== &#x27;routinepet&#x27;) return ContentService.createTextOutput(&#x27;skip&#x27;);
+  const folder = getFolder_();
+  const stamp = Utilities.formatDate(new Date(), &#x27;Asia/Seoul&#x27;, &#x27;yyyy-MM-dd_HHmm&#x27;);
+  folder.createFile(&#x27;backup_&#x27; + stamp + &#x27;.json&#x27;, text, MimeType.PLAIN_TEXT);
+  const files = [];
+  const it = folder.getFiles();
+  while (it.hasNext()) files.push(it.next());
+  files.sort((a, b) =&gt; b.getDateCreated() - a.getDateCreated());
+  files.slice(KEEP).forEach(f =&gt; f.setTrashed(true));
+  const sh = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
+  if (sh.getLastRow() === 0) sh.appendRow([&#x27;백업 시각&#x27;, &#x27;아이&#x27;, &#x27;레벨&#x27;, &#x27;보석&#x27;, &#x27;오늘 해낸 할 일&#x27;, &#x27;연속 기록(일)&#x27;, &#x27;키우는 펫&#x27;, &#x27;오늘 기분&#x27;]);
+  (body.summary || []).forEach(r =&gt; sh.appendRow([new Date()].concat(r)));
+  return ContentService.createTextOutput(&#x27;ok&#x27;);
+}
+
+function doGet() {
+  const it = getFolder_().getFiles();
+  let latest = null;
+  while (it.hasNext()) {
+    const f = it.next();
+    if (!latest || f.getDateCreated() &gt; latest.getDateCreated()) latest = f;
+  }
+  const out = latest ? latest.getBlob().getDataAsString() : &#x27;{}&#x27;;
+  return ContentService.createTextOutput(out).setMimeType(ContentService.MimeType.JSON);
+}
+
+function getFolder_() {
+  const it = DriveApp.getFoldersByName(FOLDER_NAME);
+  return it.hasNext() ? it.next() : DriveApp.createFolder(FOLDER_NAME);
+}
+</pre>
+          <div class="text-xs color-muted">⚠️ 웹 앱 주소를 아는 사람은 백업을 볼 수 있어요. 주소는 다른 사람에게 알려주지 마세요.</div>
+        </details>
       </div>
       <div class="card" style="display:flex;flex-direction:column;gap:14px;">
         <div class="form-group">
@@ -3360,6 +3426,88 @@ function saveCoop() {
   toast('협동 목표를 저장했어요!');
 }
 
+// ---------- cloud backup ----------
+function backupPayload() {
+  const data = {};
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith('routinepet_')) data[k] = localStorage.getItem(k);
+  }
+  const log = loadLog();
+  const summary = settings.children.map(c => {
+    const list = tasksForChild(c.id);
+    const done = list.filter(t => log[`${c.id}_${t.id}`] && log[`${c.id}_${t.id}`].done).length;
+    const mood = log[`${c.id}_mood_pm`] || log[`${c.id}_mood_am`];
+    const m = mood && MOODS.find(x => x[0] === mood.mood);
+    return [c.name, c.level, c.points, `${done}/${list.length}`, streakInfo(c).days, petStageOf(c) <= 1 ? '알' : animalName(c.characterType), m ? m[2] : ''];
+  });
+  return { app: 'routinepet', at: new Date().toISOString(), data, summary };
+}
+
+function saveSheetUrl() {
+  const url = document.getElementById('sheet-url').value.trim();
+  if (url && !/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec/.test(url)) { alert('웹 앱 주소가 아닌 것 같아요. https://script.google.com/macros/s/…/exec 모양이어야 해요.'); return; }
+  settings.sheetUrl = url;
+  saveSettings();
+  renderCloudInfo();
+  if (url) cloudBackup(true);
+}
+
+async function cloudBackup(manual) {
+  const url = settings.sheetUrl;
+  if (!url) { if (manual) alert('먼저 웹 앱 주소를 연결해 주세요.'); return; }
+  try {
+    await fetch(url, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(backupPayload()) });
+    settings.lastCloud = new Date().toISOString();
+    saveSettings();
+    if (manual) toast('☁️ 구글에 백업을 보냈어요!');
+  } catch (e) {
+    if (manual) alert('백업을 보내지 못했어요. 인터넷 연결을 확인해 주세요.');
+  }
+  renderCloudInfo();
+}
+
+async function cloudRestore() {
+  const url = settings.sheetUrl;
+  if (!url) { alert('먼저 웹 앱 주소를 연결해 주세요.'); return; }
+  let obj;
+  try { obj = await (await fetch(url)).json(); } catch (e) { alert('구글에서 백업을 가져오지 못했어요. 주소와 인터넷 연결을 확인해 주세요.'); return; }
+  if (!obj || obj.app !== 'routinepet' || !obj.data) { alert('구글에 저장된 백업이 아직 없어요.'); return; }
+  if (!confirm(`${obj.at ? new Date(obj.at).toLocaleString('ko-KR', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}에 구글에 저장된 기록으로 바꿀까요? 지금 패드의 기록은 그 내용으로 바뀌어요.`)) return;
+  const keepUrl = url;
+  Object.keys(localStorage).filter(k => k.startsWith('routinepet_')).forEach(k => localStorage.removeItem(k));
+  Object.entries(obj.data).forEach(([k, v]) => { if (k.startsWith('routinepet_')) localStorage.setItem(k, v); });
+  try { const st = JSON.parse(localStorage.getItem('routinepet_settings')); st.sheetUrl = keepUrl; localStorage.setItem('routinepet_settings', JSON.stringify(st)); } catch (e) {}
+  alert('구글에서 기록을 불러왔어요! 앱을 다시 시작할게요.');
+  location.reload();
+}
+
+function renderCloudInfo() {
+  const el = document.getElementById('cloud-info');
+  if (!el) return;
+  const inp = document.getElementById('sheet-url');
+  if (inp && document.activeElement !== inp) inp.value = settings.sheetUrl || '';
+  el.textContent = !settings.sheetUrl ? '아직 연결하지 않았어요.'
+    : settings.lastCloud ? `연결됨 · 마지막 자동 백업: ${new Date(settings.lastCloud).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}` : '연결됨 · 아직 백업 전이에요.';
+}
+
+function copyGas() {
+  const text = document.getElementById('gas-code').textContent;
+  (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(() => toast('코드를 복사했어요!')).catch(() => {
+    const r = document.createRange(); r.selectNodeContents(document.getElementById('gas-code'));
+    const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+    toast('코드를 길게 눌러 복사해 주세요');
+  });
+}
+
+function autoCloudBackup() {
+  if (!settings.sheetUrl) return;
+  const last = settings.lastCloud ? new Date(settings.lastCloud) : null;
+  if (!last || ymd(last) !== ymd(new Date()) || Date.now() - last > 6 * 3600000) cloudBackup(false);
+}
+setTimeout(() => { try { autoCloudBackup(); } catch (e) {} }, 5000);
+setInterval(() => { try { autoCloudBackup(); } catch (e) {} }, 30 * 60000);
+
 // ---------- backup ----------
 function backupData() {
   const data = {};
@@ -4430,6 +4578,7 @@ function adjustPoints(idx) {
 function renderMiscSettings() {
   renderOffDays();
   renderBackupInfo();
+  renderCloudInfo();
   const c = coopSettings();
   document.getElementById('coop-target').value = c.target;
   document.getElementById('coop-reward').value = c.reward;
