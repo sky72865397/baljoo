@@ -511,6 +511,7 @@ input, select, textarea { font-family: inherit; outline: none; }
 .coop-track { height:20px; background:#ede9fe; border-radius:99px; overflow:hidden; }
 .coop-fill { height:100%; background:linear-gradient(90deg,#a78bfa,#f472b6,#fbbf24); border-radius:99px; transition:width .6s; }
 .coop-reward { font-size:1rem; color:var(--text-secondary); }
+.coop-sub { font-size:0.75rem; color:var(--text-muted); }
 @media (max-width: 600px) { .calm-ball-wrap { height:240px; } .calm-ball.in, .calm-ball.hold { width:220px; height:220px; } .timer-ring { width:240px; height:240px; } .timer-face { width:200px; height:200px; } }
 
 /* ===== FEED ===== */
@@ -1204,6 +1205,7 @@ input, select, textarea { font-family: inherit; outline: none; }
     </div>
 
     <div id="holiday-notice"></div>
+    <div id="coop-parent"></div>
     <div class="card" style="display:flex;flex-direction:column;gap:8px;">
       <div style="font-weight:800;">😮‍💨 아이가 속상해할 때</div>
       <div class="text-sm color-secondary">엄마가 대신 열어서 같이 숨 고르기를 해 주세요. 평소 기분 좋을 때 한두 번 같이 연습해 두면, 화났을 때 훨씬 잘 따라와요.</div>
@@ -1319,11 +1321,16 @@ input, select, textarea { font-family: inherit; outline: none; }
     <!-- Tab: Misc -->
     <div id="stab-content-misc" class="hidden">
       <div class="card" style="display:flex;flex-direction:column;gap:12px;margin-bottom:12px;">
-        <div style="font-weight:800;">👨‍👧‍👧 이번 주 형제 협동 목표</div>
-        <div class="text-xs color-muted" style="margin-top:-6px;">세 아이가 이번 주(월~일) 함께 해낸 할 일 개수로 채워요. 첫 화면에 보여요.</div>
+        <div style="font-weight:800;">👨‍👧‍👧 협동 목표</div>
+        <div class="text-xs color-muted" style="margin-top:-6px;">세 아이가 그 주(월~일) 함께 해낸 할 일 개수로 채워요. 매주 월요일에 0부터 새로 시작해요.</div>
+        <div class="text-sm" id="coop-suggest" style="background:#f0fdf4;border-radius:10px;padding:8px 10px;"></div>
         <div style="display:flex;gap:8px;">
-          <div class="form-group" style="flex:1;"><label class="form-label">목표 개수</label><input class="input-field" id="coop-target" type="number" min="10" max="999"></div>
-          <div class="form-group" style="flex:2;"><label class="form-label">다 채우면 받을 가족 보상</label><input class="input-field" id="coop-reward" placeholder="예: 가족 영화의 밤"></div>
+          <div class="form-group" style="flex:1;"><label class="form-label">이번 주 목표</label><input class="input-field" id="coop-target" type="number" min="10" max="999"></div>
+          <div class="form-group" style="flex:2;"><label class="form-label">이번 주 보상</label><input class="input-field" id="coop-reward" placeholder="예: 가족 영화의 밤"></div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <div class="form-group" style="flex:1;"><label class="form-label">다음 주부터 목표</label><input class="input-field" id="coop-next-target" type="number" min="10" max="999" placeholder="비우면 그대로"></div>
+          <div class="form-group" style="flex:2;"><label class="form-label">다음 주부터 보상</label><input class="input-field" id="coop-next-reward" placeholder="비우면 이번 주와 같아요"></div>
         </div>
         <button class="btn-primary" onclick="saveCoop()">협동 목표 저장</button>
       </div>
@@ -3113,22 +3120,82 @@ function coopCount() {
     return a + Object.keys(log).filter(k => log[k] && log[k].done && !k.endsWith('_calm')).length;
   }, 0);
 }
+function coopSettings() {
+  if (settings.coopNext && weekIndex() >= settings.coopNext.from) {
+    settings.coop = { target: settings.coopNext.target, reward: settings.coopNext.reward };
+    delete settings.coopNext;
+    saveSettings();
+  }
+  return settings.coop || { target: 150, reward: '가족 영화의 밤 🎬' };
+}
+
+function coopSuggest() {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const days = [...weekDays(-1), ...weekDays()].filter(d => d <= today);
+  const counts = days.map(d => { const log = readLog(d); return Object.keys(log).filter(k => log[k] && log[k].done).length; }).filter(n => n > 0);
+  if (!counts.length) return 0;
+  const avg = counts.reduce((a, b) => a + b, 0) / counts.length;
+  return Math.round(avg * 7 * 0.9 / 10) * 10;
+}
+
 function renderCoop() {
-  const c = settings.coop || { target: 150, reward: '가족 영화의 밤 🎬' };
+  const c = coopSettings();
   const n = coopCount();
   const pct = Math.min(100, n / c.target * 100);
   const done = n >= c.target;
+  const wk = 'w' + weekIndex();
+  settings.coopWins = settings.coopWins || {};
+  const win = settings.coopWins[wk];
+  if (done && !win) {
+    settings.coopWins[wk] = { target: c.target, reward: c.reward, given: false };
+    saveSettings();
+    setTimeout(() => showPop({ kind: 'right', icon: '👨‍👧‍👧', title: '협동 목표 성공!', text: `셋이 힘을 합쳐 <b>${c.target}개</b>를 해냈어요!<br>엄마 아빠한테 <b>${escText(c.reward)}</b> 받으러 가자!`, button: '야호! 🎉' }), 300);
+  }
+  const given = win && win.given;
   document.getElementById('coop-card').innerHTML = `<div class="card coop-card${done ? ' done' : ''}">
-    <div class="coop-head"><span>👨‍👧‍👧 이번 주 형제 협동 목표</span><span class="coop-n"><b>${n}</b> / ${c.target}</span></div>
-    <div class="coop-track"><div class="coop-fill" style="width:${pct}%"></div>${settings.children.map(() => '').join('')}</div>
-    <div class="coop-reward">${done ? `🎉 성공! <b>${escText(c.reward)}</b> 받으러 가자!` : `셋이 합쳐 ${c.target}개 하면 <b>${escText(c.reward)}</b>! ${c.target - n}개 남았어요`}</div>
+    <div class="coop-head"><span>👨‍👧‍👧 이번 주 협동 목표</span><span class="coop-n"><b>${n}</b> / ${c.target}</span></div>
+    <div class="coop-track"><div class="coop-fill" style="width:${pct}%"></div></div>
+    <div class="coop-reward">${!done ? `셋이 합쳐 ${c.target}개 하면 <b>${escText(c.reward)}</b>! ${c.target - n}개 남았어요`
+      : given ? `✅ <b>${escText(c.reward)}</b> 받았어요! 그래도 계속 해내는 중 · 목표보다 <b>${n - c.target}개</b> 더!`
+      : `🎉 성공! <b>${escText(c.reward)}</b> 받으러 가자!${n > c.target ? ` · 목표보다 ${n - c.target}개 더!` : ''}`}</div>
+    <div class="coop-sub">매주 월요일에 새로 시작해요</div>
   </div>`;
 }
+
+function markCoopGiven(wk) {
+  settings.coopWins[wk].given = true;
+  saveSettings();
+  renderParentDashboard();
+  toast('보상 준 것으로 표시했어요!');
+}
+
+function renderCoopParent() {
+  const c = coopSettings();
+  const n = coopCount();
+  const wk = 'w' + weekIndex();
+  const wins = settings.coopWins || {};
+  const win = wins[wk];
+  const past = Object.entries(wins).filter(([k]) => k !== wk).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 4);
+  document.getElementById('coop-parent').innerHTML = `<div class="card" style="display:flex;flex-direction:column;gap:8px;">
+    <div class="flex-between"><b>👨‍👧‍👧 이번 주 협동 목표</b><span class="text-sm color-muted">${n} / ${c.target}</span></div>
+    ${win ? (win.given ? `<div class="text-sm">✅ 이번 주 보상(${escText(win.reward)})을 줬어요.</div>`
+      : `<div class="text-sm">🎉 아이들이 목표를 채웠어요! <b>${escText(win.reward)}</b>를 해 주세요.</div>
+         <button class="btn-primary btn-sm" onclick="markCoopGiven('${wk}')">보상 줬어요 ✓</button>`)
+      : `<div class="text-sm color-secondary">${c.target - n}개 남았어요. 보상: ${escText(c.reward)}</div>`}
+    ${settings.coopNext ? `<div class="text-xs color-muted">다음 주부터 목표: ${settings.coopNext.target}개 · ${escText(settings.coopNext.reward)}</div>` : ''}
+    ${past.length ? `<div class="text-xs color-muted">지난 성공: ${past.map(([, w]) => `${w.target}개${w.given ? ' ✅' : ' (보상 아직)'}`).join(' · ')}</div>` : ''}
+  </div>`;
+}
+
 function saveCoop() {
   settings.coop = {
     target: Math.max(10, parseInt(document.getElementById('coop-target').value) || 150),
     reward: document.getElementById('coop-reward').value.trim() || '가족 영화의 밤 🎬',
   };
+  const nt = parseInt(document.getElementById('coop-next-target').value);
+  if (nt >= 10) {
+    settings.coopNext = { target: nt, reward: document.getElementById('coop-next-reward').value.trim() || settings.coop.reward, from: weekIndex() + 1 };
+  } else delete settings.coopNext;
   saveSettings();
   toast('협동 목표를 저장했어요!');
 }
@@ -3741,6 +3808,7 @@ function holidayNotice() {
 
 function renderParentDashboard() {
   document.getElementById('holiday-notice').innerHTML = holidayNotice();
+  renderCoopParent();
   document.getElementById('parent-calm-btns').innerHTML = settings.children.map(c => `<button class="btn-ghost btn-sm" onclick="openCalm('${c.id}')">${c.name}와 숨 고르기</button>`).join('');
   renderWeeklyReport();
   const log = loadLog();
@@ -4202,9 +4270,13 @@ function adjustPoints(idx) {
 function renderMiscSettings() {
   renderOffDays();
   renderBackupInfo();
-  const c = settings.coop || { target: 150, reward: '가족 영화의 밤 🎬' };
+  const c = coopSettings();
   document.getElementById('coop-target').value = c.target;
   document.getElementById('coop-reward').value = c.reward;
+  document.getElementById('coop-next-target').value = settings.coopNext ? settings.coopNext.target : '';
+  document.getElementById('coop-next-reward').value = settings.coopNext ? settings.coopNext.reward : '';
+  const sg = coopSuggest();
+  document.getElementById('coop-suggest').innerHTML = sg ? `💡 요즘 기록으로 보면 한 주에 <b>${sg}개</b> 정도가 적당해요. (조금 노력하면 닿는 정도)` : '💡 기록이 쌓이면 적당한 목표 개수를 추천해 드려요.';
   document.getElementById('depart-time-input').value = settings.departTime || '';
   const st = settings.slotStart || {};
   document.getElementById('slot-after-input').value = st.afterschool || '16:50';
