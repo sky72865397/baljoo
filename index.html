@@ -1324,11 +1324,19 @@ input, select, textarea { font-family: inherit; outline: none; }
         <div style="font-weight:800;">👨‍👧‍👧 협동 목표</div>
         <div class="text-xs color-muted" style="margin-top:-6px;">세 아이가 그 주(월~일) 함께 해낸 할 일 개수로 채워요. 매주 월요일에 0부터 새로 시작해요.</div>
         <div class="text-sm" id="coop-suggest" style="background:#f0fdf4;border-radius:10px;padding:8px 10px;"></div>
-        <div style="display:flex;gap:8px;">
-          <div class="form-group" style="flex:1;"><label class="form-label">이번 주 목표</label><input class="input-field" id="coop-target" type="number" min="10" max="999"></div>
-          <div class="form-group" style="flex:2;"><label class="form-label">이번 주 보상</label><input class="input-field" id="coop-reward" placeholder="예: 가족 영화의 밤"></div>
+        <div class="toggle-wrap">
+          <span class="text-sm font-bold">🤖 쉬는 날에 맞춰 목표 자동으로 정하기</span>
+          <div class="toggle" id="coop-auto" onclick="this.classList.toggle('on');coopAutoUI()"></div>
+        </div>
+        <div id="coop-auto-box" class="hidden" style="display:flex;flex-direction:column;gap:6px;">
+          <div class="form-group"><label class="form-label">할 수 있는 할 일 중 몇 %를 목표로 할까요?</label><input class="input-field" id="coop-pct" type="number" min="20" max="100" oninput="coopAutoUI()"></div>
+          <div class="text-sm" id="coop-auto-info" style="background:#eef2ff;border-radius:10px;padding:8px 10px;"></div>
         </div>
         <div style="display:flex;gap:8px;">
+          <div class="form-group" style="flex:1;" id="coop-target-box"><label class="form-label">이번 주 목표</label><input class="input-field" id="coop-target" type="number" min="10" max="999"></div>
+          <div class="form-group" style="flex:2;"><label class="form-label">이번 주 보상</label><input class="input-field" id="coop-reward" placeholder="예: 가족 영화의 밤"></div>
+        </div>
+        <div style="display:flex;gap:8px;" id="coop-next-box">
           <div class="form-group" style="flex:1;"><label class="form-label">다음 주부터 목표</label><input class="input-field" id="coop-next-target" type="number" min="10" max="999" placeholder="비우면 그대로"></div>
           <div class="form-group" style="flex:2;"><label class="form-label">다음 주부터 보상</label><input class="input-field" id="coop-next-reward" placeholder="비우면 이번 주와 같아요"></div>
         </div>
@@ -3122,11 +3130,27 @@ function coopCount() {
 }
 function coopSettings() {
   if (settings.coopNext && weekIndex() >= settings.coopNext.from) {
-    settings.coop = { target: settings.coopNext.target, reward: settings.coopNext.reward };
+    settings.coop = Object.assign({}, settings.coop, { target: settings.coopNext.target, reward: settings.coopNext.reward, auto: false });
     delete settings.coopNext;
     saveSettings();
   }
-  return settings.coop || { target: 150, reward: '가족 영화의 밤 🎬' };
+  const c = Object.assign({ target: 150, reward: '가족 영화의 밤 🎬' }, settings.coop || {});
+  if (c.auto) {
+    const info = coopPossible();
+    c.possible = info.total;
+    c.schoolDays = info.school;
+    c.target = Math.max(10, Math.round(info.total * (c.pct || 60) / 100 / 10) * 10);
+  }
+  return c;
+}
+
+function coopPossible() {
+  let total = 0, school = 0;
+  weekDays().forEach(d => {
+    if (!isWeekend(d)) school++;
+    settings.children.forEach(ch => { total += tasksForChild(ch.id, d).length; });
+  });
+  return { total, school };
 }
 
 function coopSuggest() {
@@ -3141,25 +3165,40 @@ function coopSuggest() {
 function renderCoop() {
   const c = coopSettings();
   const n = coopCount();
-  const pct = Math.min(100, n / c.target * 100);
-  const done = n >= c.target;
   const wk = 'w' + weekIndex();
   settings.coopWins = settings.coopWins || {};
   const win = settings.coopWins[wk];
+  if (win) { c.target = win.target; c.reward = win.reward; }
+  const pct = Math.min(100, n / c.target * 100);
+  const done = n >= c.target;
   if (done && !win) {
     settings.coopWins[wk] = { target: c.target, reward: c.reward, given: false };
     saveSettings();
-    setTimeout(() => showPop({ kind: 'right', icon: '👨‍👧‍👧', title: '협동 목표 성공!', text: `셋이 힘을 합쳐 <b>${c.target}개</b>를 해냈어요!<br>엄마 아빠한테 <b>${escText(c.reward)}</b> 받으러 가자!`, button: '야호! 🎉' }), 300);
   }
-  const given = win && win.given;
-  document.getElementById('coop-card').innerHTML = `<div class="card coop-card${done ? ' done' : ''}">
+  const w2 = settings.coopWins[wk];
+  const today = ymd(new Date());
+  if (done && w2 && !w2.given && w2.shown !== today) {
+    w2.shown = today;
+    saveSettings();
+    setTimeout(coopCelebrate, 300);
+  }
+  const given = w2 && w2.given;
+  document.getElementById('coop-card').innerHTML = `<div class="card coop-card${done ? ' done' : ''}"${done ? ' onclick="coopCelebrate()" style="cursor:pointer;"' : ''}>
     <div class="coop-head"><span>👨‍👧‍👧 이번 주 협동 목표</span><span class="coop-n"><b>${n}</b> / ${c.target}</span></div>
     <div class="coop-track"><div class="coop-fill" style="width:${pct}%"></div></div>
     <div class="coop-reward">${!done ? `셋이 합쳐 ${c.target}개 하면 <b>${escText(c.reward)}</b>! ${c.target - n}개 남았어요`
       : given ? `✅ <b>${escText(c.reward)}</b> 받았어요! 그래도 계속 해내는 중 · 목표보다 <b>${n - c.target}개</b> 더!`
       : `🎉 성공! <b>${escText(c.reward)}</b> 받으러 가자!${n > c.target ? ` · 목표보다 ${n - c.target}개 더!` : ''}`}</div>
-    <div class="coop-sub">매주 월요일에 새로 시작해요</div>
+    <div class="coop-sub">${done ? '카드를 누르면 축하 화면을 다시 볼 수 있어요 · ' : ''}${c.auto && !win ? `이번 주 학교 가는 날 ${c.schoolDays}일에 맞춘 목표 · ` : ''}매주 월요일에 새로 시작해요</div>
   </div>`;
+}
+
+function coopCelebrate() {
+  const c = coopSettings();
+  const w = (settings.coopWins || {})['w' + weekIndex()] || {};
+  showPop({ kind: 'right', icon: '👨‍👧‍👧', title: '협동 목표 성공!',
+    text: `셋이 힘을 합쳐 <b>${coopCount()}개</b>를 해냈어요!<br>${w.given ? `<b>${escText(c.reward)}</b> 정말 신났지? 🎉` : `엄마 아빠한테 <b>${escText(c.reward)}</b> 받으러 가자!`}`,
+    button: '야호! 🎉' });
 }
 
 function markCoopGiven(wk) {
@@ -3175,6 +3214,7 @@ function renderCoopParent() {
   const wk = 'w' + weekIndex();
   const wins = settings.coopWins || {};
   const win = wins[wk];
+  if (win) { c.target = win.target; c.reward = win.reward; }
   const past = Object.entries(wins).filter(([k]) => k !== wk).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 4);
   document.getElementById('coop-parent').innerHTML = `<div class="card" style="display:flex;flex-direction:column;gap:8px;">
     <div class="flex-between"><b>👨‍👧‍👧 이번 주 협동 목표</b><span class="text-sm color-muted">${n} / ${c.target}</span></div>
@@ -3187,13 +3227,29 @@ function renderCoopParent() {
   </div>`;
 }
 
+function coopAutoUI() {
+  const on = document.getElementById('coop-auto').classList.contains('on');
+  document.getElementById('coop-auto-box').classList.toggle('hidden', !on);
+  document.getElementById('coop-target-box').classList.toggle('hidden', on);
+  document.getElementById('coop-next-box').classList.toggle('hidden', on);
+  if (!on) return;
+  const pct = Math.min(100, Math.max(20, parseInt(document.getElementById('coop-pct').value) || 60));
+  const info = coopPossible();
+  const target = Math.max(10, Math.round(info.total * pct / 100 / 10) * 10);
+  document.getElementById('coop-auto-info').innerHTML = `이번 주는 학교 가는 날 <b>${info.school}일</b>, 쉬는 날 <b>${7 - info.school}일</b>이에요.<br>세 아이가 할 수 있는 할 일 ${info.total}개의 ${pct}% → 이번 주 목표 <b>${target}개</b><br><span class="color-muted">공휴일·방학이 있는 주는 목표가 저절로 바뀌어요.</span>`;
+}
+
 function saveCoop() {
+  const auto = document.getElementById('coop-auto').classList.contains('on');
   settings.coop = {
     target: Math.max(10, parseInt(document.getElementById('coop-target').value) || 150),
     reward: document.getElementById('coop-reward').value.trim() || '가족 영화의 밤 🎬',
+    auto,
+    pct: Math.min(100, Math.max(20, parseInt(document.getElementById('coop-pct').value) || 60)),
   };
+  if (auto) delete settings.coopNext;
   const nt = parseInt(document.getElementById('coop-next-target').value);
-  if (nt >= 10) {
+  if (!auto && nt >= 10) {
     settings.coopNext = { target: nt, reward: document.getElementById('coop-next-reward').value.trim() || settings.coop.reward, from: weekIndex() + 1 };
   } else delete settings.coopNext;
   saveSettings();
@@ -4275,6 +4331,9 @@ function renderMiscSettings() {
   document.getElementById('coop-reward').value = c.reward;
   document.getElementById('coop-next-target').value = settings.coopNext ? settings.coopNext.target : '';
   document.getElementById('coop-next-reward').value = settings.coopNext ? settings.coopNext.reward : '';
+  document.getElementById('coop-auto').classList.toggle('on', !!c.auto);
+  document.getElementById('coop-pct').value = c.pct || 60;
+  coopAutoUI();
   const sg = coopSuggest();
   document.getElementById('coop-suggest').innerHTML = sg ? `💡 요즘 기록으로 보면 한 주에 <b>${sg}개</b> 정도가 적당해요. (조금 노력하면 닿는 정도)` : '💡 기록이 쌓이면 적당한 목표 개수를 추천해 드려요.';
   document.getElementById('depart-time-input').value = settings.departTime || '';
