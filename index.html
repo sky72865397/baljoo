@@ -426,7 +426,9 @@ input, select, textarea { font-family: inherit; outline: none; }
 /* ===== OFF DAYS ===== */
 .wk-day.red .wk-name, .wk-day.red .wk-date { color:#dc2626; }
 .wk-day.sat .wk-name, .wk-day.sat .wk-date { color:#2563eb; }
-.wk-off { font-size:0.62rem; color:#dc2626; font-weight:800; line-height:1.1; }
+.wk-date { white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:ellipsis; }
+.wk-off { font-size:0.85em; color:#dc2626; font-weight:800; }
+@media (max-width: 600px) { .wk-off { display:none; } .week-grid { gap:3px; } .wk-kid { font-size:0.6rem; padding:1px 2px; gap:2px; white-space:nowrap; } .wk-n { min-width:1.1em; padding:0 2px; } }
 .off-row { display:flex; justify-content:space-between; align-items:center; background:var(--primary-bg); border-radius:12px; padding:6px 10px; font-size:0.9rem; }
 
 /* ===== DAILY QUOTE ===== */
@@ -439,7 +441,8 @@ input, select, textarea { font-family: inherit; outline: none; }
 .week-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:6px; }
 .week-title { font-size:1.1rem; font-weight:900; }
 .week-legend { font-size:0.75rem; color:var(--text-secondary); font-weight:600; display:flex; align-items:center; gap:4px; }
-.week-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:6px; }
+.week-grid { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:6px; }
+.wk-day { min-width:0; }
 .wk-day { background:var(--primary-bg); border-radius:14px; padding:8px 2px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:4px; }
 .wk-day.today { background:#fff7ed; color:#c2410c; box-shadow:inset 0 0 0 3px #fdba74, 0 4px 12px rgba(249,115,22,0.2); }
 .wk-day.future { background:var(--primary-bg); opacity:0.6; }
@@ -1130,6 +1133,7 @@ input, select, textarea { font-family: inherit; outline: none; }
       <button class="btn-ghost btn-sm" onclick="showScreen('screen-welcome')">← 나가기</button>
     </div>
 
+    <div id="holiday-notice"></div>
     <!-- Child overview -->
     <div class="card" id="parent-child-overview"></div>
 
@@ -2434,7 +2438,7 @@ function renderWeek() {
     const off = offDayName(d);
     const red = off || d.getDay() === 0;
     return `<div class="wk-day${isToday ? ' today' : ''}${isFuture ? ' future' : ''}${red ? ' red' : d.getDay() === 6 ? ' sat' : ''}">
-      <span class="wk-name">${name}</span><span class="wk-date">${d.getMonth() + 1}/${d.getDate()}</span>${off ? `<span class="wk-off">${off}</span>` : ''}
+      <span class="wk-name">${name}</span><span class="wk-date">${d.getMonth() + 1}/${d.getDate()}${off ? ` <span class="wk-off">${off.replace('대체공휴일', '대체휴일')}</span>` : ''}</span>
       <div class="wk-kids">${kids}</div>
     </div>`;
   }).join('');
@@ -3330,7 +3334,18 @@ function renderWeeklyReport() {
     </div>`).join('');
 }
 
+function holidayNotice() {
+  const years = Object.keys(KR_HOLIDAYS).map(k => +k.slice(0, 4));
+  const last = Math.max(...years);
+  const now = new Date();
+  if (now.getFullYear() > last || (now.getFullYear() === last && now.getMonth() >= 11)) {
+    return `<div class="card" style="background:#fff7ed;border-color:#fdba74;">📅 <b>${last + 1}년 공휴일 정보가 아직 없어요.</b><br><span class="text-sm">달력에 ${last + 1}년 공휴일이 자동으로 표시되려면 업데이트가 필요해요. 그 전까지는 설정 → 기타 → "학교 안 가는 날"에 직접 넣을 수 있어요.</span></div>`;
+  }
+  return '';
+}
+
 function renderParentDashboard() {
+  document.getElementById('holiday-notice').innerHTML = holidayNotice();
   renderWeeklyReport();
   const log = loadLog();
   const overview = document.getElementById('parent-child-overview');
