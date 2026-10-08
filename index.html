@@ -471,6 +471,48 @@ input, select, textarea { font-family: inherit; outline: none; }
 .move-btns button { background:var(--primary-bg); color:var(--primary); border-radius:8px; width:34px; height:24px; font-size:0.75rem; line-height:1; }
 .move-btns button:active { background:var(--primary); color:#fff; }
 
+/* ===== MOOD / CALM / TIMER / NOTE / COOP ===== */
+.mood-card { background:#fff; border:2px solid #fbcfe8; border-radius:20px; padding:14px; }
+.mood-q { font-size:1.15rem; text-align:center; margin-bottom:10px; }
+.mood-row, .timer-picks { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+.mood-opt { background:#fdf2f8; border-radius:16px; padding:10px 4px; display:flex; flex-direction:column; align-items:center; gap:4px; font-size:0.95rem; color:var(--text); }
+.mood-opt span { font-size:2.4rem; line-height:1; }
+.mood-opt:active { transform:scale(0.95); }
+.mood-done { background:#fdf2f8; border-radius:14px; padding:8px 14px; font-size:0.95rem; display:flex; align-items:center; gap:8px; justify-content:center; }
+.mood-change { background:#fff; color:var(--text-secondary); border-radius:99px; padding:3px 10px; font-size:0.8rem; }
+.calm-btn { margin-top:12px; width:100%; background:#e0f2fe; color:#0369a1; border-radius:14px; padding:10px; font-size:0.95rem; }
+.calm-screen { position:fixed; inset:0; z-index:650; background:linear-gradient(180deg,#e0f2fe,#ede9fe); display:flex; align-items:center; justify-content:center; padding:20px; }
+.calm-screen.timer { background:linear-gradient(180deg,#fff7ed,#fef9c3); }
+.calm-inner { width:100%; max-width:560px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:14px; }
+.calm-title { font-size:1.8rem; color:var(--text); }
+.calm-ball-wrap { height:300px; display:flex; align-items:center; justify-content:center; }
+.calm-ball { width:120px; height:120px; border-radius:50%; background:radial-gradient(circle at 35% 30%,#fff,#93c5fd); box-shadow:0 10px 40px rgba(59,130,246,.35); display:flex; align-items:center; justify-content:center; font-size:3rem; transition:all 4s ease-in-out; }
+.calm-ball .pet-img { height:1.3em; }
+.calm-ball.in, .calm-ball.hold { width:280px; height:280px; font-size:5rem; }
+.calm-ball.out { width:120px; height:120px; font-size:3rem; }
+.calm-say { font-size:1.35rem; line-height:1.5; color:var(--text); word-break:keep-all; }
+.calm-count { font-size:1rem; color:var(--text-muted); }
+.timer-chip { background:#fef3c7; color:#b45309; border-radius:99px; padding:6px 10px; font-size:0.85rem; font-weight:800; flex-shrink:0; }
+.timer-big { width:100%; max-width:420px; padding:14px; border-radius:18px; background:#fef3c7; color:#b45309; font-size:1.15rem; font-weight:800; }
+.timer-ring { width:280px; height:280px; border-radius:50%; display:flex; align-items:center; justify-content:center; }
+.timer-face { width:236px; height:236px; border-radius:50%; background:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; }
+.timer-pet { font-size:4.5rem; line-height:1; position:relative; }
+.timer-pet .pet-img { height:1.1em; }
+.timer-book { position:absolute; right:-0.4em; bottom:-0.1em; font-size:0.5em; }
+.timer-num { font-size:2.6rem; font-weight:900; color:#b45309; font-variant-numeric:tabular-nums; }
+.note-card { background:#eef2ff; border-radius:20px; padding:14px; margin-top:6px; }
+.note-card.saved { display:flex; flex-direction:column; gap:6px; }
+.note-q { font-size:1.1rem; margin-bottom:8px; }
+.note-text { font-size:1.15rem; line-height:1.5; }
+.coop-card { display:flex; flex-direction:column; gap:8px; }
+.coop-card.done { border-color:#86efac; background:#f0fdf4; }
+.coop-head { display:flex; justify-content:space-between; font-size:1.1rem; font-weight:900; }
+.coop-n { color:var(--primary); }
+.coop-track { height:20px; background:#ede9fe; border-radius:99px; overflow:hidden; }
+.coop-fill { height:100%; background:linear-gradient(90deg,#a78bfa,#f472b6,#fbbf24); border-radius:99px; transition:width .6s; }
+.coop-reward { font-size:1rem; color:var(--text-secondary); }
+@media (max-width: 600px) { .calm-ball-wrap { height:240px; } .calm-ball.in, .calm-ball.hold { width:220px; height:220px; } .timer-ring { width:240px; height:240px; } .timer-face { width:200px; height:200px; } }
+
 /* ===== FEED ===== */
 .feed-gauge { margin-top:12px; text-align:left; }
 .feed-head { display:flex; justify-content:space-between; font-size:0.9rem; font-weight:800; color:#b45309; gap:8px; }
@@ -925,6 +967,7 @@ input, select, textarea { font-family: inherit; outline: none; }
     </div>
 
     <div class="profile-list" id="profile-list"></div>
+    <div id="coop-card"></div>
 
     <div class="card duty-board">
       <div class="duty-board-title"><svg class="badge-ico" viewBox="0 0 24 28" aria-hidden="true"><path d="M6.5 1h4.5l2 9H8.5z" fill="#60a5fa"/><path d="M17.5 1H13l-2 9h4.5z" fill="#f472b6"/><circle cx="12" cy="17.5" r="9" fill="#fbbf24" stroke="#f59e0b" stroke-width="1.6"/><circle cx="12" cy="17.5" r="6.4" fill="none" stroke="#fde68a" stroke-width="1"/><path d="M12 12.6l1.6 3.3 3.6.5-2.6 2.5.6 3.6L12 20.8l-3.2 1.7.6-3.6-2.6-2.5 3.6-.5z" fill="#fff"/></svg> 이번 주 반장</div>
@@ -953,6 +996,7 @@ input, select, textarea { font-family: inherit; outline: none; }
       <div class="pet-stage"><div id="pet-emoji-big" style="font-size:6rem;line-height:1;display:block;cursor:pointer;" onclick="triggerPetPat()"></div><div id="pet-fx"></div></div>
       <div style="margin-top:8px;font-size:0.85rem;font-weight:700;color:var(--text-secondary);" id="pet-stage-label"></div>
       <div class="feed-gauge" id="feed-gauge"></div>
+      <button class="calm-btn" onclick="openCalm()">😮‍💨 마음이 힘들 때 · 숨 고르기</button>
       <button class="duty-cta hidden" id="egg-cta" style="margin-top:10px;" onclick="openEggPick()">🥚 다 키웠어요! 새 알 고르기</button>
       <div class="xp-bar-wrap" style="margin-top:14px;">
         <div class="xp-bar-labels">
@@ -966,6 +1010,7 @@ input, select, textarea { font-family: inherit; outline: none; }
 
     <div class="home-right">
     <div class="bus-timer hidden" id="bus-timer"></div>
+    <div id="mood-card"></div>
     <div class="slot-tabs" id="slot-tabs"></div>
     <div class="flex-between" style="padding:0 4px;">
       <div class="section-label" id="checklist-label">오늘 할 일</div>
@@ -982,6 +1027,8 @@ input, select, textarea { font-family: inherit; outline: none; }
       <div style="font-size:0.85rem;color:var(--text-secondary);margin-top:6px;">정말 최고예요! 펫이 행복해해요 😊</div>
     </div>
 
+    <div id="night-note"></div>
+
     <div id="duty-section" class="hidden" style="display:flex;flex-direction:column;gap:10px;">
       <div class="section-label" style="padding-left:4px;margin-top:8px;"><svg class="badge-ico" viewBox="0 0 24 28" aria-hidden="true"><path d="M6.5 1h4.5l2 9H8.5z" fill="#60a5fa"/><path d="M17.5 1H13l-2 9h4.5z" fill="#f472b6"/><circle cx="12" cy="17.5" r="9" fill="#fbbf24" stroke="#f59e0b" stroke-width="1.6"/><circle cx="12" cy="17.5" r="6.4" fill="none" stroke="#fde68a" stroke-width="1"/><path d="M12 12.6l1.6 3.3 3.6.5-2.6 2.5.6 3.6L12 20.8l-3.2 1.7.6-3.6-2.6-2.5 3.6-.5z" fill="#fff"/></svg> 이번 주 반장 임무</div>
       <div style="display:flex;flex-direction:column;gap:10px;" id="duty-list"></div>
@@ -997,6 +1044,23 @@ input, select, textarea { font-family: inherit; outline: none; }
 <!-- ============================================================
      SCREEN 2b: REWARD SHOP (child)
      ============================================================ -->
+<div id="calm-screen" class="calm-screen hidden">
+  <div class="calm-inner">
+    <div class="calm-title" id="calm-title">같이 숨 쉬어 볼까?</div>
+    <div class="calm-ball-wrap"><div class="calm-ball" id="calm-ball"><span id="calm-pet"></span></div></div>
+    <div class="calm-say" id="calm-say">준비됐으면 시작을 눌러요</div>
+    <div class="calm-count" id="calm-count"></div>
+    <div id="calm-actions"></div>
+  </div>
+</div>
+
+<div id="timer-screen" class="calm-screen timer hidden">
+  <div class="calm-inner">
+    <div class="calm-title" id="timer-title"></div>
+    <div id="timer-body"></div>
+  </div>
+</div>
+
 <div id="praise-overlay" class="pop-overlay hidden">
   <div class="pop-card" style="text-align:left;">
     <div class="pop-title" id="praise-title" style="font-size:1.7rem;text-align:center;"></div>
@@ -1134,6 +1198,11 @@ input, select, textarea { font-family: inherit; outline: none; }
     </div>
 
     <div id="holiday-notice"></div>
+    <div class="card" style="display:flex;flex-direction:column;gap:8px;">
+      <div style="font-weight:800;">😮‍💨 아이가 속상해할 때</div>
+      <div class="text-sm color-secondary">엄마가 대신 열어서 같이 숨 고르기를 해 주세요. 평소 기분 좋을 때 한두 번 같이 연습해 두면, 화났을 때 훨씬 잘 따라와요.</div>
+      <div class="flex-row" id="parent-calm-btns" style="flex-wrap:wrap;"></div>
+    </div>
     <!-- Child overview -->
     <div class="card" id="parent-child-overview"></div>
 
@@ -1242,6 +1311,24 @@ input, select, textarea { font-family: inherit; outline: none; }
     </div>
     <!-- Tab: Misc -->
     <div id="stab-content-misc" class="hidden">
+      <div class="card" style="display:flex;flex-direction:column;gap:12px;margin-bottom:12px;">
+        <div style="font-weight:800;">👨‍👧‍👧 이번 주 형제 협동 목표</div>
+        <div class="text-xs color-muted" style="margin-top:-6px;">세 아이가 이번 주(월~일) 함께 해낸 할 일 개수로 채워요. 첫 화면에 보여요.</div>
+        <div style="display:flex;gap:8px;">
+          <div class="form-group" style="flex:1;"><label class="form-label">목표 개수</label><input class="input-field" id="coop-target" type="number" min="10" max="999"></div>
+          <div class="form-group" style="flex:2;"><label class="form-label">다 채우면 받을 가족 보상</label><input class="input-field" id="coop-reward" placeholder="예: 가족 영화의 밤"></div>
+        </div>
+        <button class="btn-primary" onclick="saveCoop()">협동 목표 저장</button>
+      </div>
+      <div class="card" style="display:flex;flex-direction:column;gap:10px;margin-bottom:12px;">
+        <div style="font-weight:800;">💾 기록 백업</div>
+        <div class="text-sm color-secondary">레벨, 보석, 펫, 할 일, 사진까지 모든 기록을 파일 하나로 저장해요. 한 달에 한 번쯤 저장해 두면 패드가 바뀌어도 그대로 옮길 수 있어요.</div>
+        <button class="btn-primary" onclick="backupData()">📥 지금 기록 파일로 저장</button>
+        <label class="btn-ghost" style="position:relative;overflow:hidden;text-align:center;">📤 저장한 파일에서 불러오기
+          <input type="file" accept=".json,application/json" style="position:absolute;width:0;height:0;opacity:0;" onchange="restoreData(event)">
+        </label>
+        <div class="text-xs color-muted" id="backup-info"></div>
+      </div>
       <div class="card" style="display:flex;flex-direction:column;gap:14px;">
         <div class="form-group">
           <label class="form-label">🚌 아침에 집에서 나가는 시간</label>
@@ -2309,6 +2396,7 @@ function renderWelcome() {
     `<div class="today-banner">오늘은 ${now.getMonth() + 1}월 ${now.getDate()}일 ${'일월화수목금토'[now.getDay()]}요일이에요${offDayName(now) ? ` · <span style="color:#dc2626">${offDayName(now)} 🎈</span>` : isWeekend(now) ? ' · 학교 안 가는 날 🎈' : ''}</div>`;
   renderWeek();
   renderBusTimer();
+  renderCoop();
   document.getElementById('daily-quote').textContent = todayQuote();
   document.getElementById('profile-list').innerHTML = settings.children.map(child => {
     const allEnabled = tasksForChild(child.id);
@@ -2430,7 +2518,7 @@ function renderWeek() {
       let log = {};
       try { log = JSON.parse(localStorage.getItem(dateKey(d)) || '{}'); } catch(e) {}
       kids = settings.children.map(c => {
-        const n = Object.keys(log).filter(k => k.startsWith(c.id + '_') && log[k].done).length;
+        const n = Object.keys(log).filter(k => k.startsWith(c.id + '_') && log[k] && log[k].done).length;
         const lv = n === 0 ? 0 : n < 8 ? 1 : n < 15 ? 2 : 3;
         return `<span class="wk-kid lv${lv}"><span>${c.name}</span><span class="wk-n">${n}</span></span>`;
       }).join('');
@@ -2654,6 +2742,8 @@ function renderHomeScreen() {
   document.getElementById('speech-bubble').textContent = speechText;
   document.getElementById('speech-bubble').classList.remove('praise');
   renderFeedGauge(child);
+  renderMoodCard(child, log);
+  renderNightNote(child, log);
   const sk = streakInfo(child);
   document.getElementById('streak-chip').innerHTML = sk.days
     ? `<span class="streak-chip">🔥 ${sk.days}일 연속${sk.todayOk ? '' : ` · 오늘 절반 하면 ${sk.days + 1}일째!`}</span>`
@@ -2776,6 +2866,7 @@ function renderTasks(child, log, slot, slotTasks, doneCount, totalCount) {
       <div class="focus-label">지금 할 일</div>
       ${pic}
       <div class="focus-name">${cur.name} ${speakerBtn(child, cur.name)}</div>
+      ${isStudy(cur) ? `<button class="timer-big" onclick="openTimer('${cur.id}')">⏱️ 집중 타이머로 하기</button>` : ''}
       <button class="focus-done" onclick="toggleCheck('${child.id}','${cur.id}')">✓ 다 했어요!</button>
       <div class="focus-next">${next ? `다음: ${next.name}` : '이게 마지막이에요! 💪'}</div>
     </div>`;
@@ -2789,9 +2880,289 @@ function renderTasks(child, log, slot, slotTasks, doneCount, totalCount) {
       ${taskIcon(t)}
       <span class="check-name">${t.name}</span>
       ${speakerBtn(child, t.name)}
+      ${!done && isStudy(t) ? `<span class="timer-chip" onclick="event.stopPropagation();openTimer('${t.id}')">⏱️ 집중</span>` : ''}
       <span class="xp-badge">+${t.xp} XP</span>
     </button>`;
   }).join('');
+}
+
+// ---------- mood ----------
+const MOODS = [
+  ['sun', '☀️', '좋아요', '기분 좋아서 나도 신나! 😆'],
+  ['cloud', '⛅', '그저 그래요', '그런 날도 있지. 같이 힘내 보자! 💪'],
+  ['rain', '🌧️', '슬퍼요', '속상했구나… 내가 옆에 있을게 💛 엄마한테 말해 볼까?'],
+  ['storm', '⛈️', '화나요', '화가 났구나. 숨 고르기 같이 해 볼래? 😮‍💨'],
+];
+function moodSlot() {
+  const sl = viewSlot || getActiveSlot();
+  return sl === 'morning' ? 'am' : 'pm';
+}
+function renderMoodCard(child, log) {
+  const key = `${child.id}_mood_${moodSlot()}`;
+  const cur = log[key] && log[key].mood;
+  const el = document.getElementById('mood-card');
+  if (cur) {
+    const m = MOODS.find(x => x[0] === cur);
+    el.innerHTML = `<div class="mood-done">${moodSlot() === 'am' ? '오늘 아침' : '지금'} 기분: <b>${m[1]} ${m[2]}</b> <button class="mood-change" onclick="clearMood()">바꾸기</button></div>`;
+    return;
+  }
+  el.innerHTML = `<div class="mood-card">
+    <div class="mood-q">${moodSlot() === 'am' ? '🌈 오늘 아침 기분은 어때?' : '🌈 지금 기분은 어때?'}</div>
+    <div class="mood-row">${MOODS.map(([id, ic, name]) => `<button class="mood-opt" onclick="pickMood('${id}')"><span>${ic}</span>${name}</button>`).join('')}</div>
+  </div>`;
+}
+function pickMood(id) {
+  const child = getChild();
+  const log = loadLog();
+  log[`${child.id}_mood_${moodSlot()}`] = { mood: id, ts: Date.now() };
+  saveLog(log);
+  renderHomeScreen();
+  const m = MOODS.find(x => x[0] === id);
+  const bub = document.getElementById('speech-bubble');
+  bub.textContent = m[3];
+  bub.classList.remove('praise'); void bub.offsetWidth; bub.classList.add('praise');
+  if (child.speak) speak(m[3].replace(/[^\uAC00-\uD7A3\s.,!?]/g, ''));
+  if (id === 'storm') setTimeout(() => openCalm(), 1200);
+}
+function clearMood() {
+  const child = getChild();
+  const log = loadLog();
+  delete log[`${child.id}_mood_${moodSlot()}`];
+  saveLog(log);
+  renderHomeScreen();
+}
+
+// ---------- calm corner ----------
+let calmTimer = null, calmChildId = null;
+function openCalm(childId) {
+  calmChildId = childId || currentChildId;
+  const child = settings.children.find(c => c.id === calmChildId) || settings.children[0];
+  document.getElementById('calm-pet').innerHTML = getPetEmoji(child);
+  document.getElementById('calm-title').textContent = `${child.name}, 같이 숨 쉬어 볼까?`;
+  document.getElementById('calm-say').textContent = '풍선이 커질 때 코로 숨을 들이쉬고, 작아질 때 입으로 후~ 내쉬어요';
+  document.getElementById('calm-count').textContent = '';
+  document.getElementById('calm-ball').className = 'calm-ball';
+  document.getElementById('calm-actions').innerHTML = `<button class="focus-done" onclick="startCalm()">시작 🫧</button>
+    <button class="btn-ghost" style="margin-top:10px;" onclick="closeCalm()">나중에 할래요</button>`;
+  document.getElementById('calm-screen').classList.remove('hidden');
+}
+function startCalm() {
+  const child = settings.children.find(c => c.id === calmChildId);
+  const ball = document.getElementById('calm-ball');
+  const say = document.getElementById('calm-say');
+  const cnt = document.getElementById('calm-count');
+  document.getElementById('calm-actions').innerHTML = `<button class="btn-ghost" onclick="closeCalm()">그만할래요</button>`;
+  let round = 0, phase = 0;
+  const steps = [['in', '코로 들이쉬어요… 🌬️', 4], ['hold', '잠깐 멈춰요…', 2], ['out', '입으로 후~ 내쉬어요… 🫧', 5]];
+  const run = () => {
+    if (round >= 3) { finishCalm(); return; }
+    const [cls, text, sec] = steps[phase];
+    ball.className = 'calm-ball ' + cls;
+    ball.style.transitionDuration = sec + 's';
+    say.textContent = text;
+    cnt.textContent = `${round + 1} / 3`;
+    if (child && child.speak) speak(text.replace(/[^\uAC00-\uD7A3\s~…]/g, ''));
+    calmTimer = setTimeout(() => { phase++; if (phase >= steps.length) { phase = 0; round++; } run(); }, sec * 1000);
+  };
+  run();
+}
+function finishCalm() {
+  const child = settings.children.find(c => c.id === calmChildId);
+  document.getElementById('calm-ball').className = 'calm-ball';
+  document.getElementById('calm-say').textContent = '정말 잘했어! 마음이 조금 편해졌어? 💛';
+  document.getElementById('calm-count').textContent = '';
+  if (child && child.speak) speak('정말 잘했어! 마음이 조금 편해졌어?');
+  const log = loadLog();
+  const k = `${calmChildId}_calm`;
+  log[k] = { count: ((log[k] && log[k].count) || 0) + 1, done: false };
+  saveLog(log);
+  document.getElementById('calm-actions').innerHTML = `
+    <div class="flex-row" style="justify-content:center;gap:10px;">
+      <button class="focus-done" style="max-width:220px;" onclick="closeCalm()">조금 편해졌어요 😊</button>
+      <button class="btn-ghost" style="max-width:220px;" onclick="startCalm()">한 번 더 할래요</button>
+    </div>
+    <div class="text-sm color-secondary" style="margin-top:12px;">아직 속상하면 엄마 아빠한테 꼭 안아 달라고 말해 봐요 🤗</div>`;
+}
+function closeCalm() {
+  clearTimeout(calmTimer);
+  document.getElementById('calm-screen').classList.add('hidden');
+}
+
+// ---------- focus timer ----------
+const STUDY_RE = /공부|숙제|구몬|온리원|학습|읽기|독서|문제|받아쓰기/;
+let timerState = null, timerTick = null;
+function isStudy(t) { return STUDY_RE.test(t.name) && t.type !== 'social'; }
+function openTimer(taskId) {
+  const t = tasks.find(x => x.id === taskId);
+  const child = getChild();
+  timerState = { taskId, childId: child.id, mins: 0, end: 0, paused: 0 };
+  document.getElementById('timer-title').textContent = `⏱️ ${t.name} 집중 타이머`;
+  document.getElementById('timer-body').innerHTML = `
+    <div class="calm-say">몇 분 동안 집중해 볼까요?</div>
+    <div class="timer-picks">${[10, 15, 20, 30].map(m => `<button class="mood-opt" onclick="startTimer(${m})"><span>${m}</span>분</button>`).join('')}</div>
+    <button class="btn-ghost" style="margin-top:16px;" onclick="closeTimer()">닫기</button>`;
+  document.getElementById('timer-screen').classList.remove('hidden');
+}
+function startTimer(mins) {
+  timerState.mins = mins;
+  timerState.end = Date.now() + mins * 60000;
+  timerState.paused = 0;
+  drawTimer();
+  clearInterval(timerTick);
+  timerTick = setInterval(drawTimer, 500);
+}
+function drawTimer() {
+  if (!timerState) return;
+  const child = settings.children.find(c => c.id === timerState.childId);
+  const left = timerState.paused || Math.max(0, timerState.end - Date.now());
+  const total = timerState.mins * 60000;
+  const pct = 1 - left / total;
+  const mm = Math.floor(left / 60000), ss = Math.floor(left % 60000 / 1000);
+  if (left <= 0 && !timerState.paused) { clearInterval(timerTick); timerDone(); return; }
+  const deg = Math.round(pct * 360);
+  document.getElementById('timer-body').innerHTML = `
+    <div class="timer-ring" style="background:conic-gradient(#f59e0b ${deg}deg, #fef3c7 ${deg}deg);">
+      <div class="timer-face"><div class="timer-pet">${getPetEmoji(child)}<span class="timer-book">📖</span></div><div class="timer-num">${mm}:${String(ss).padStart(2, '0')}</div></div>
+    </div>
+    <div class="calm-say">${timerState.paused ? '잠깐 쉬는 중이에요' : pct < 0.5 ? '펫이 옆에서 같이 공부하고 있어요 ✏️' : '거의 다 왔어! 조금만 더! 💪'}</div>
+    <div class="flex-row" style="justify-content:center;gap:10px;">
+      <button class="btn-ghost" style="max-width:180px;" onclick="pauseTimer()">${timerState.paused ? '▶ 다시 시작' : '⏸ 잠깐 쉬기'}</button>
+      <button class="btn-ghost" style="max-width:180px;" onclick="closeTimer()">그만하기</button>
+    </div>`;
+}
+function pauseTimer() {
+  if (timerState.paused) { timerState.end = Date.now() + timerState.paused; timerState.paused = 0; }
+  else timerState.paused = Math.max(1, timerState.end - Date.now());
+  drawTimer();
+}
+function timerDone() {
+  const { taskId, childId, mins } = timerState;
+  const child = settings.children.find(c => c.id === childId);
+  const bonus = Math.min(20, mins);
+  if (child.speak) speak('집중 시간 끝! 정말 대단해!');
+  document.getElementById('timer-body').innerHTML = `
+    <div style="font-size:5rem;">🏆</div>
+    <div class="pop-title">${mins}분 집중 성공!</div>
+    <div class="calm-say">끝까지 해낸 ${child.name} 정말 대단해! 보너스 <b>+${bonus} XP</b></div>
+    <button class="focus-done" onclick="finishTimer(${bonus})">확인 ✓</button>`;
+  spawnConfetti();
+}
+function finishTimer(bonus) {
+  const { taskId, childId } = timerState;
+  closeTimer();
+  const log = loadLog();
+  const done = log[`${childId}_${taskId}`] && log[`${childId}_${taskId}`].done;
+  const t = tasks.find(x => x.id === taskId);
+  if (!done) completeTask(childId, taskId, t.xp + bonus);
+  else awardXP(childId, bonus, 'focus');
+}
+function closeTimer() {
+  clearInterval(timerTick);
+  timerState = null;
+  document.querySelectorAll('.confetti-piece').forEach(el => el.remove());
+  document.getElementById('timer-screen').classList.add('hidden');
+}
+
+// ---------- night note ----------
+function renderNightNote(child, log) {
+  const el = document.getElementById('night-note');
+  const slot = viewSlot || getActiveSlot();
+  if (slot !== 'evening') { el.innerHTML = ''; return; }
+  const k = `${child.id}_note`;
+  const saved = log[k] && log[k].text;
+  el.innerHTML = saved
+    ? `<div class="note-card saved"><div class="note-q">🌙 오늘 내가 잘한 일</div><div class="note-text">${escText(saved)}</div><button class="mood-change" onclick="editNote()">고치기</button></div>`
+    : `<div class="note-card"><div class="note-q">🌙 자기 전에 · 오늘 내가 잘한 일은?</div>
+        <textarea id="note-input" class="input-field" rows="2" placeholder="예: 동생이랑 블록 같이 했어요 (엄마가 대신 써 줘도 돼요)"></textarea>
+        <button class="btn-primary" style="margin-top:8px;" onclick="saveNote()">저장하고 +10 XP 받기 ✨</button></div>`;
+}
+function saveNote() {
+  const child = getChild();
+  const text = document.getElementById('note-input').value.trim();
+  if (!text) { toast('잘한 일을 한 줄만 써 볼까요? ✏️'); return; }
+  const log = loadLog();
+  const k = `${child.id}_note`;
+  const first = !log[k];
+  log[k] = { text, ts: Date.now() };
+  saveLog(log);
+  if (first) awardXP(child.id, 10, 'note'); else renderHomeScreen();
+  showPop({ kind: 'right', icon: '🌙', title: '멋진 하루였어!', text: escText(text), button: '잘 자요 💤' }, child);
+}
+function editNote() {
+  const child = getChild();
+  const log = loadLog();
+  const old = log[`${child.id}_note`].text;
+  delete log[`${child.id}_note`].text;
+  log[`${child.id}_note`] = { edited: true };
+  saveLog(log);
+  renderHomeScreen();
+  document.getElementById('note-input').value = old;
+}
+
+// ---------- sibling coop ----------
+function coopCount() {
+  return weekDays().reduce((a, d) => {
+    const log = readLog(d);
+    return a + Object.keys(log).filter(k => log[k] && log[k].done && !k.endsWith('_calm')).length;
+  }, 0);
+}
+function renderCoop() {
+  const c = settings.coop || { target: 150, reward: '가족 영화의 밤 🎬' };
+  const n = coopCount();
+  const pct = Math.min(100, n / c.target * 100);
+  const done = n >= c.target;
+  document.getElementById('coop-card').innerHTML = `<div class="card coop-card${done ? ' done' : ''}">
+    <div class="coop-head"><span>👨‍👧‍👧 이번 주 형제 협동 목표</span><span class="coop-n"><b>${n}</b> / ${c.target}</span></div>
+    <div class="coop-track"><div class="coop-fill" style="width:${pct}%"></div>${settings.children.map(() => '').join('')}</div>
+    <div class="coop-reward">${done ? `🎉 성공! <b>${escText(c.reward)}</b> 받으러 가자!` : `셋이 합쳐 ${c.target}개 하면 <b>${escText(c.reward)}</b>! ${c.target - n}개 남았어요`}</div>
+  </div>`;
+}
+function saveCoop() {
+  settings.coop = {
+    target: Math.max(10, parseInt(document.getElementById('coop-target').value) || 150),
+    reward: document.getElementById('coop-reward').value.trim() || '가족 영화의 밤 🎬',
+  };
+  saveSettings();
+  toast('협동 목표를 저장했어요!');
+}
+
+// ---------- backup ----------
+function backupData() {
+  const data = {};
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith('routinepet_')) data[k] = localStorage.getItem(k);
+  }
+  const blob = new Blob([JSON.stringify({ app: 'routinepet', at: new Date().toISOString(), data })], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `오늘의루틴_백업_${ymd(new Date())}.json`;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  settings.lastBackup = ymd(new Date());
+  saveSettings();
+  renderBackupInfo();
+}
+function restoreData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    let obj;
+    try { obj = JSON.parse(e.target.result); } catch (err) { alert('백업 파일을 읽을 수 없어요.'); return; }
+    if (!obj || obj.app !== 'routinepet' || !obj.data) { alert('이 앱의 백업 파일이 아니에요.'); return; }
+    if (!confirm(`${(obj.at || '').slice(0, 10)}에 저장한 기록으로 바꿀까요? 지금 패드의 기록은 이 파일 내용으로 바뀌어요.`)) return;
+    Object.keys(localStorage).filter(k => k.startsWith('routinepet_')).forEach(k => localStorage.removeItem(k));
+    Object.entries(obj.data).forEach(([k, v]) => { if (k.startsWith('routinepet_')) localStorage.setItem(k, v); });
+    alert('기록을 불러왔어요! 앱을 다시 시작할게요.');
+    location.reload();
+  };
+  reader.readAsText(file);
+}
+function renderBackupInfo() {
+  const el = document.getElementById('backup-info');
+  if (el) el.textContent = settings.lastBackup ? `마지막 저장: ${settings.lastBackup}` : '아직 저장한 적이 없어요.';
 }
 
 function toggleFocus() {
@@ -3319,6 +3690,23 @@ function weeklyReport(child) {
     const k = logs.filter(log => isDone(log, 'duty_' + duty.id)).length;
     notes.push([k * 2 >= n ? 'good' : 'warn', `${duty.name}: ${n}일 중 <b>${k}일</b> 했어요.`]);
   }
+  const moods = logs.flatMap((log, di) => log ? ['am', 'pm'].map(p => log[`${child.id}_mood_${p}`] && [log[`${child.id}_mood_${p}`].mood, di]).filter(Boolean) : []);
+  if (moods.length) {
+    const cnt = id => moods.filter(([m]) => m === id).length;
+    const bad = moods.filter(([m]) => m === 'rain' || m === 'storm');
+    const icons = MOODS.map(([id, ic]) => cnt(id) ? `${ic}${cnt(id)}` : '').filter(Boolean).join(' ');
+    let t = `🌈 기분 기록 ${moods.length}번: ${icons}`;
+    if (bad.length >= 2) {
+      const dayCnt = {}; bad.forEach(([, di]) => { dayCnt[di] = (dayCnt[di] || 0) + 1; });
+      const worst = Object.entries(dayCnt).sort((a, b) => b[1] - a[1])[0];
+      t += ` · 속상하거나 화난 날이 ${bad.length}번 있었어요${worst[1] >= 2 ? ` (특히 ${'월화수목금토일'[worst[0]]}요일)` : ''}. 무슨 일이 있었는지 이야기 나눠 보세요.`;
+    }
+    notes.push([bad.length >= 2 ? 'warn' : '', t]);
+  }
+  const calms = logs.reduce((a, log) => a + ((log && log[`${child.id}_calm`] && log[`${child.id}_calm`].count) || 0), 0);
+  if (calms) notes.push(['good', `😮‍💨 숨 고르기를 ${calms}번 했어요. 스스로 마음을 다스리려고 노력했어요!`]);
+  const nts = logs.map((log, di) => log && log[`${child.id}_note`] && log[`${child.id}_note`].text ? `${'월화수목금토일'[di]}: ${escText(log[`${child.id}_note`].text)}` : '').filter(Boolean);
+  if (nts.length) notes.push(['good', `🌙 오늘 잘한 일<br>${nts.join('<br>')}`]);
   const sk = streakInfo(child);
   if (sk.days >= 2) notes.push(['good', `🔥 ${sk.days}일 연속으로 하루 할 일의 절반 넘게 해냈어요.`]);
   const best = counts.indexOf(Math.max(...counts));
@@ -3346,6 +3734,7 @@ function holidayNotice() {
 
 function renderParentDashboard() {
   document.getElementById('holiday-notice').innerHTML = holidayNotice();
+  document.getElementById('parent-calm-btns').innerHTML = settings.children.map(c => `<button class="btn-ghost btn-sm" onclick="openCalm('${c.id}')">${c.name}와 숨 고르기</button>`).join('');
   renderWeeklyReport();
   const log = loadLog();
   const overview = document.getElementById('parent-child-overview');
@@ -3805,6 +4194,10 @@ function adjustPoints(idx) {
 
 function renderMiscSettings() {
   renderOffDays();
+  renderBackupInfo();
+  const c = settings.coop || { target: 150, reward: '가족 영화의 밤 🎬' };
+  document.getElementById('coop-target').value = c.target;
+  document.getElementById('coop-reward').value = c.reward;
   document.getElementById('depart-time-input').value = settings.departTime || '';
   const st = settings.slotStart || {};
   document.getElementById('slot-after-input').value = st.afterschool || '16:50';
