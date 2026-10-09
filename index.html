@@ -319,6 +319,8 @@ input, select, textarea { font-family: inherit; outline: none; }
 
 /* ===== SOCIAL LESSON ===== */
 .social-card { display:flex; flex-direction:column; gap:12px; }
+.problem-scene { font-size:5.5rem; text-align:center; letter-spacing:12px; padding:24px 0; background:#fef9c3; border-radius:20px; line-height:1.1; }
+.problem-sit { font-size:1.3rem; line-height:1.5; display:flex; align-items:center; gap:8px; justify-content:space-between; }
 .social-kind { font-size:0.85rem; font-weight:800; color:var(--primary); }
 .social-situation { background:#fef9c3; border-radius:10px; padding:8px 12px; font-weight:700; font-size:1rem; }
 .social-scene { font-size:3.2rem; text-align:center; letter-spacing:6px; padding:10px 0; background:var(--primary-bg); border-radius:16px; }
@@ -1564,6 +1566,7 @@ const DEFAULT_TASKS = [
   { id:'a6',  name:'온리원 공부',       emoji:'💻', xp:50, slot:'afterschool', for:['c1'] },
   { id:'a7',  name:'구몬 공부',         emoji:'📝', xp:50, slot:'afterschool', for:['c2'] },
   { id:'a10', name:'자전거·킥보드 제자리에 정리하기', emoji:'🚲', xp:10, slot:'afterschool' },
+  { id:'a12', name:'문제 찾기',         emoji:'🔍', xp:20, slot:'afterschool', type:'problem' },
   { id:'a8',  name:'책 읽기',           emoji:'📖', xp:30, slot:'afterschool' },
   { id:'a9',  name:'마음 공부',         emoji:'💬', xp:40, slot:'afterschool', for:['c1','c2'], type:'social' },
   { id:'e9',  name:'약 먹기',           emoji:'💊', xp:15, slot:'evening',     for:['c2'] },
@@ -1706,6 +1709,23 @@ function allLessons() {
   return SOCIAL_LESSONS.concat(loadCustomLessons());
 }
 
+const PROBLEMS = [{"id": "pb1", "situation": "현관에 신발이 여기저기 흩어져 있어요.", "scene": "👟 👞 🥿", "q1": {"q": "무엇이 문제인가요?", "choices": ["신발이 흩어져서 걸려 넘어질 수 있어요", "신발 색이 예뻐요", "현관이 너무 넓어요"], "answer": 0, "explain": "신발이 흩어져서 걸려 넘어질 수 있어요."}, "q2": {"q": "어떻게 해야 할까요?", "choices": ["신발을 가지런히 짝 맞춰 놓아요", "신발을 발로 차서 치워요", "그냥 지나가요"], "answer": 0, "explain": "맞아요! 신발을 가지런히 짝 맞춰 놓아요."}}, {"id": "pb2", "situation": "거실 바닥에 블록이 떨어져 있어요.", "scene": "🧱 🦶", "q1": {"q": "무엇이 문제인가요?", "choices": ["밟으면 발이 아플 수 있어요", "블록이 너무 많아요", "블록 색이 섞였어요"], "answer": 0, "explain": "밟으면 발이 아플 수 있어요."}, "q2": {"q": "어떻게 해야 할까요?", "choices": ["블록을 주워서 상자에 넣어요", "블록을 소파 밑으로 밀어요", "동생이 치울 때까지 기다려요"], "answer": 0, "explain": "맞아요! 블록을 주워서 상자에 넣어요."}}, {"id": "pb3", "situation": "세면대 물이 계속 틀어져 있어요.", "scene": "🚰 💧", "q1": {"q": "무엇이 문제인가요?", "choices": ["물이 낭비되고 넘칠 수 있어요", "물이 차가워요", "세면대가 하얘요"], "answer": 0, "explain": "물이 낭비되고 넘칠 수 있어요."}, "q2": {"q": "어떻게 해야 할까요?", "choices": ["수도꼭지를 꼭 잠가요", "물이 다 나올 때까지 기다려요", "모른 척해요"], "answer": 0, "explain": "맞아요! 수도꼭지를 꼭 잠가요."}}, {"id": "pb4", "situation": "냉장고 문이 열려 있어요.", "scene": "🧊 🚪", "q1": {"q": "무엇이 문제인가요?", "choices": ["음식이 상하고 전기가 낭비돼요", "냉장고가 커요", "안에 반찬이 많아요"], "answer": 0, "explain": "음식이 상하고 전기가 낭비돼요."}, "q2": {"q": "어떻게 해야 할까요?", "choices": ["냉장고 문을 꼭 닫아요", "시원하니까 그대로 둬요", "문을 더 활짝 열어요"], "answer": 0, "explain": "맞아요! 냉장고 문을 꼭 닫아요."}}, {"id": "pb5", "situation": "밥을 먹으려는데 숟가락이 없어요.", "scene": "🍚 ❔", "q1": {"q": "무엇이 문제인가요?", "choices": ["밥을 떠먹을 수가 없어요", "밥이 너무 많아요", "그릇이 동그래요"], "answer": 0, "explain": "밥을 떠먹을 수가 없어요."}, "q2": {"q": "어떻게 해야 할까요?", "choices": ["수저통에서 숟가락을 가져와요", "손으로 먹어요", "울면서 기다려요"], "answer": 0, "explain": "맞아요! 수저통에서 숟가락을 가져와요."}}, {"id": "pb6", "situation": "양말 한 짝이 소파 위에 있어요.", "scene": "🧦 🛋️", "q1": {"q": "무엇이 문제인가요?", "choices": ["양말이 제자리에 있지 않아요", "양말이 너무 작아요", "소파가 푹신해요"], "answer": 0, "explain": "양말이 제자리에 있지 않아요."}, "q2": {"q": "어떻게 해야 할까요?", "choices": ["빨래 바구니에 넣어요", "소파 쿠션 뒤에 숨겨요", "그대로 둬요"], "answer": 0, "explain": "맞아요! 빨래 바구니에 넣어요."}}, {"id": "pb7", "situation": "옷을 입으려는데 옷이 뒤집혀 있어요.", "scene": "👕 🔄", "q1": {"q": "무엇이 문제인가요?", "choices": ["뒤집힌 채로 입으면 이상해요", "옷 색이 마음에 안 들어요", "옷이 너무 깨끗해요"], "answer": 0, "explain": "뒤집힌 채로 입으면 이상해요."}, "q2": {"q": "어떻게 해야 할까요?", "choices": ["옷을 바르게 뒤집어서 입어요", "뒤집힌 채로 그냥 입어요", "옷을 던져요"], "answer": 0, "explain": "맞아요! 옷을 바르게 뒤집어서 입어요."}}, {"id": "pb8", "situation": "쓰레기통이 꽉 차서 넘쳐요.", "scene": "🗑️ 📄", "q1": {"q": "무엇이 문제인가요?", "choices": ["쓰레기가 바닥에 떨어지고 냄새가 나요", "쓰레기통이 작아요", "쓰레기통 뚜껑이 예뻐요"], "answer": 0, "explain": "쓰레기가 바닥에 떨어지고 냄새가 나요."}, "q2": {"q": "어떻게 해야 할까요?", "choices": ["엄마에게 말하거나 봉투를 묶어 비워요", "꾹꾹 눌러서 더 넣어요", "쓰레기를 옆에 놓아요"], "answer": 0, "explain": "맞아요! 엄마에게 말하거나 봉투를 묶어 비워요."}}, {"id": "pb9", "situation": "책을 읽으려는데 책상 위에 물건이 가득해요.", "scene": "📚 🧸 ✏️", "q1": {"q": "무엇이 문제인가요?", "choices": ["책을 펼칠 자리가 없어요", "책이 너무 두꺼워요", "책상이 나무예요"], "answer": 0, "explain": "책을 펼칠 자리가 없어요."}, "q2": {"q": "어떻게 해야 할까요?", "choices": ["물건을 제자리에 정리하고 책을 펴요", "물건 위에 책을 올려놓고 읽어요", "읽기 싫다고 해요"], "answer": 0, "explain": "맞아요! 물건을 제자리에 정리하고 책을 펴요."}}, {"id": "pb10", "situation": "가방이 열려 있고 물건이 다 나와 있어요.", "scene": "🎒 📝 🖍️", "q1": {"q": "무엇이 문제인가요?", "choices": ["물건을 잃어버릴 수 있어요", "가방이 파래요", "물건이 예뻐요"], "answer": 0, "explain": "물건을 잃어버릴 수 있어요."}, "q2": {"q": "어떻게 해야 할까요?", "choices": ["물건을 가방에 넣고 지퍼를 닫아요", "열린 채로 메고 나가요", "물건을 발로 밀어요"], "answer": 0, "explain": "맞아요! 물건을 가방에 넣고 지퍼를 닫아요."}}, {"id": "pb11", "situation": "시루 물그릇이 비어 있어요.", "scene": "🐶 🥣", "q1": {"q": "무엇이 문제인가요?", "choices": ["시루가 목이 마를 수 있어요", "그릇이 너무 작아요", "시루가 귀여워요"], "answer": 0, "explain": "시루가 목이 마를 수 있어요."}, "q2": {"q": "어떻게 해야 할까요?", "choices": ["물그릇에 깨끗한 물을 채워요", "시루가 알아서 마시게 둬요", "내 물을 줘요"], "answer": 0, "explain": "맞아요! 물그릇에 깨끗한 물을 채워요."}}, {"id": "pb12", "situation": "연필심이 부러졌어요.", "scene": "✏️ 💥", "q1": {"q": "무엇이 문제인가요?", "choices": ["부러진 연필로는 글씨를 쓸 수 없어요", "연필이 노래요", "공책이 하얘요"], "answer": 0, "explain": "부러진 연필로는 글씨를 쓸 수 없어요."}, "q2": {"q": "어떻게 해야 할까요?", "choices": ["연필을 깎거나 다른 연필을 써요", "부러진 채로 꾹꾹 눌러 써요", "숙제를 안 해요"], "answer": 0, "explain": "맞아요! 연필을 깎거나 다른 연필을 써요."}}, {"id": "pb13", "situation": "의자가 넘어져 있어요.", "scene": "🪑 ↘️", "q1": {"q": "무엇이 문제인가요?", "choices": ["누가 걸려 넘어질 수 있어요", "의자가 무거워요", "의자 다리가 네 개예요"], "answer": 0, "explain": "누가 걸려 넘어질 수 있어요."}, "q2": {"q": "어떻게 해야 할까요?", "choices": ["의자를 바로 세워요", "의자를 넘어서 지나가요", "의자를 발로 차요"], "answer": 0, "explain": "맞아요! 의자를 바로 세워요."}}, {"id": "pb14", "situation": "문 앞에 상자가 있어서 나갈 수 없어요.", "scene": "🚪 📦", "q1": {"q": "무엇이 문제인가요?", "choices": ["길이 막혀서 지나갈 수 없어요", "상자가 갈색이에요", "문이 하얘요"], "answer": 0, "explain": "길이 막혀서 지나갈 수 없어요."}, "q2": {"q": "어떻게 해야 할까요?", "choices": ["상자를 옆으로 옮겨요", "상자를 넘어가다 넘어져요", "나가는 걸 포기해요"], "answer": 0, "explain": "맞아요! 상자를 옆으로 옮겨요."}}, {"id": "pb15", "situation": "색연필이 통 밖으로 다 나와 있어요.", "scene": "🖍️ 🖍️ 🖍️", "q1": {"q": "무엇이 문제인가요?", "choices": ["색연필을 잃어버리거나 밟을 수 있어요", "색연필 색이 많아요", "색연필이 길어요"], "answer": 0, "explain": "색연필을 잃어버리거나 밟을 수 있어요."}, "q2": {"q": "어떻게 해야 할까요?", "choices": ["색연필을 통에 다시 넣어요", "색연필을 서랍에 막 던져요", "그대로 놀러 가요"], "answer": 0, "explain": "맞아요! 색연필을 통에 다시 넣어요."}}, {"id": "pb16", "situation": "휴지가 바닥에 떨어져 있어요.", "scene": "🧻 ⬇️", "q1": {"q": "무엇이 문제인가요?", "choices": ["바닥이 지저분해 보여요", "휴지가 부드러워요", "휴지가 하얘요"], "answer": 0, "explain": "바닥이 지저분해 보여요."}, "q2": {"q": "어떻게 해야 할까요?", "choices": ["휴지를 주워서 쓰레기통에 버려요", "휴지를 발로 밀어요", "누가 버렸는지 따져요"], "answer": 0, "explain": "맞아요! 휴지를 주워서 쓰레기통에 버려요."}}, {"id": "pb17", "situation": "앉으려는데 의자 위에 가방이 있어요.", "scene": "🪑 🎒", "q1": {"q": "무엇이 문제인가요?", "choices": ["의자에 앉을 수가 없어요", "가방이 커요", "의자가 높아요"], "answer": 0, "explain": "의자에 앉을 수가 없어요."}, "q2": {"q": "어떻게 해야 할까요?", "choices": ["가방을 걸이에 걸고 앉아요", "가방 위에 그냥 앉아요", "바닥에 앉아요"], "answer": 0, "explain": "맞아요! 가방을 걸이에 걸고 앉아요."}}, {"id": "pb18", "situation": "신발 안에 양말이 들어 있어요.", "scene": "👟 🧦", "q1": {"q": "무엇이 문제인가요?", "choices": ["신발을 신을 때 불편해요", "양말이 줄무늬예요", "신발이 새것이에요"], "answer": 0, "explain": "신발을 신을 때 불편해요."}, "q2": {"q": "어떻게 해야 할까요?", "choices": ["양말을 꺼내서 빨래 바구니에 넣어요", "양말 위로 신발을 신어요", "신발을 숨겨요"], "answer": 0, "explain": "맞아요! 양말을 꺼내서 빨래 바구니에 넣어요."}}, {"id": "pb19", "situation": "바지를 입었는데 지퍼가 열려 있어요.", "scene": "👖 ⬇️", "q1": {"q": "무엇이 문제인가요?", "choices": ["옷차림이 단정하지 않아요", "바지가 길어요", "바지 색이 진해요"], "answer": 0, "explain": "옷차림이 단정하지 않아요."}, "q2": {"q": "어떻게 해야 할까요?", "choices": ["지퍼를 올려요", "그냥 학교에 가요", "윗옷으로 가려요"], "answer": 0, "explain": "맞아요! 지퍼를 올려요."}}, {"id": "pb20", "situation": "양말을 신었는데 뒤꿈치가 발등에 와 있어요.", "scene": "🧦 🦶", "q1": {"q": "무엇이 문제인가요?", "choices": ["양말이 비뚤게 신겨져 불편해요", "양말이 두꺼워요", "발이 커요"], "answer": 0, "explain": "양말이 비뚤게 신겨져 불편해요."}, "q2": {"q": "어떻게 해야 할까요?", "choices": ["양말을 다시 바르게 신어요", "그대로 신발을 신어요", "양말을 벗어 던져요"], "answer": 0, "explain": "맞아요! 양말을 다시 바르게 신어요."}}, {"id": "pb21", "situation": "옷장 문이 열려 있어서 지나가기 불편해요.", "scene": "🚪 👗", "q1": {"q": "무엇이 문제인가요?", "choices": ["부딪히거나 걸릴 수 있어요", "옷장이 커요", "옷이 많아요"], "answer": 0, "explain": "부딪히거나 걸릴 수 있어요."}, "q2": {"q": "어떻게 해야 할까요?", "choices": ["옷장 문을 닫아요", "몸을 비틀어 지나가요", "문을 세게 쳐요"], "answer": 0, "explain": "맞아요! 옷장 문을 닫아요."}}, {"id": "pb22", "situation": "물을 마시려는데 컵이 없어요.", "scene": "🚰 ❔", "q1": {"q": "무엇이 문제인가요?", "choices": ["물을 따를 컵이 없어요", "물이 너무 시원해요", "정수기가 커요"], "answer": 0, "explain": "물을 따를 컵이 없어요."}, "q2": {"q": "어떻게 해야 할까요?", "choices": ["찬장에서 깨끗한 컵을 꺼내요", "손으로 물을 받아요", "목마른 걸 참아요"], "answer": 0, "explain": "맞아요! 찬장에서 깨끗한 컵을 꺼내요."}}, {"id": "pb23", "situation": "자전거가 마당 한가운데 쓰러져 있어요.", "scene": "🚲 ↘️", "q1": {"q": "무엇이 문제인가요?", "choices": ["차나 사람이 걸려 넘어질 수 있어요", "자전거 바퀴가 둥글어요", "마당이 넓어요"], "answer": 0, "explain": "차나 사람이 걸려 넘어질 수 있어요."}, "q2": {"q": "어떻게 해야 할까요?", "choices": ["자전거를 세워서 정해진 자리에 둬요", "그 위로 뛰어넘어요", "내일 치워요"], "answer": 0, "explain": "맞아요! 자전거를 세워서 정해진 자리에 둬요."}}, {"id": "pb24", "situation": "화장실 휴지가 다 떨어졌어요.", "scene": "🚽 🧻", "q1": {"q": "무엇이 문제인가요?", "choices": ["다음 사람이 곤란해져요", "휴지심이 동그래요", "화장실이 깨끗해요"], "answer": 0, "explain": "다음 사람이 곤란해져요."}, "q2": {"q": "어떻게 해야 할까요?", "choices": ["새 휴지를 걸거나 엄마에게 알려요", "모른 척 나가요", "휴지심을 버려요"], "answer": 0, "explain": "맞아요! 새 휴지를 걸거나 엄마에게 알려요."}}, {"id": "pb25", "situation": "수건이 젖은 채 바닥에 있어요.", "scene": "🧺 💦", "q1": {"q": "무엇이 문제인가요?", "choices": ["냄새가 나고 바닥이 젖어요", "수건이 커요", "수건이 파래요"], "answer": 0, "explain": "냄새가 나고 바닥이 젖어요."}, "q2": {"q": "어떻게 해야 할까요?", "choices": ["수건을 걸이에 펴서 걸어요", "수건을 뭉쳐서 구석에 둬요", "수건 위를 밟고 다녀요"], "answer": 0, "explain": "맞아요! 수건을 걸이에 펴서 걸어요."}}, {"id": "pb26", "situation": "숙제를 하려는데 지우개가 안 보여요.", "scene": "📝 ❔", "q1": {"q": "무엇이 문제인가요?", "choices": ["틀린 글씨를 지울 수 없어요", "숙제가 어려워요", "공책이 두꺼워요"], "answer": 0, "explain": "틀린 글씨를 지울 수 없어요."}, "q2": {"q": "어떻게 해야 할까요?", "choices": ["필통과 책상 주변을 차분히 찾아봐요", "공책을 찢어요", "숙제를 안 해요"], "answer": 0, "explain": "맞아요! 필통과 책상 주변을 차분히 찾아봐요."}}, {"id": "pb27", "situation": "밥을 먹고 나서 그릇이 식탁에 그대로 있어요.", "scene": "🍽️ 🥄", "q1": {"q": "무엇이 문제인가요?", "choices": ["식탁이 지저분하고 설거지가 늦어져요", "그릇이 예뻐요", "밥이 맛있었어요"], "answer": 0, "explain": "식탁이 지저분하고 설거지가 늦어져요."}, "q2": {"q": "어떻게 해야 할까요?", "choices": ["그릇을 싱크대로 가져가요", "그릇을 바닥에 내려놔요", "동생에게 시켜요"], "answer": 0, "explain": "맞아요! 그릇을 싱크대로 가져가요."}}, {"id": "pb28", "situation": "스쿨버스 시간이 다 됐는데 신발 끈이 풀려 있어요.", "scene": "🚌 👟", "q1": {"q": "무엇이 문제인가요?", "choices": ["뛰다가 넘어질 수 있어요", "신발이 새것이에요", "버스가 노래요"], "answer": 0, "explain": "뛰다가 넘어질 수 있어요."}, "q2": {"q": "어떻게 해야 할까요?", "choices": ["멈춰서 끈을 단단히 묶어요", "끈을 밟으며 뛰어가요", "신발을 벗고 가요"], "answer": 0, "explain": "맞아요! 멈춰서 끈을 단단히 묶어요."}}, {"id": "pb29", "situation": "책장에 책이 거꾸로 꽂혀 있어요.", "scene": "📚 🔃", "q1": {"q": "무엇이 문제인가요?", "choices": ["책 제목이 안 보여서 찾기 힘들어요", "책이 많아요", "책장이 나무예요"], "answer": 0, "explain": "책 제목이 안 보여서 찾기 힘들어요."}, "q2": {"q": "어떻게 해야 할까요?", "choices": ["책을 바르게 돌려서 꽂아요", "더 거꾸로 꽂아요", "책을 바닥에 쌓아요"], "answer": 0, "explain": "맞아요! 책을 바르게 돌려서 꽂아요."}}, {"id": "pb30", "situation": "불이 켜진 채로 방을 나왔어요.", "scene": "💡 🚪", "q1": {"q": "무엇이 문제인가요?", "choices": ["전기가 낭비돼요", "방이 밝아요", "전구가 동그래요"], "answer": 0, "explain": "전기가 낭비돼요."}, "q2": {"q": "어떻게 해야 할까요?", "choices": ["다시 가서 불을 꺼요", "다음에 끄면 돼요", "모든 방 불을 켜요"], "answer": 0, "explain": "맞아요! 다시 가서 불을 꺼요."}}];
+
+function problemSetForToday(childId) {
+  settings.problemsDone = settings.problemsDone || {};
+  const done = settings.problemsDone[childId] || [];
+  let fresh = PROBLEMS.filter(p => !done.includes(p.id));
+  if (fresh.length < 3) { settings.problemsDone[childId] = []; fresh = PROBLEMS.slice(); }
+  const idx = settings.children.findIndex(c => c.id === childId);
+  const start = (idx * 7) % fresh.length;
+  const picks = [0, 1, 2].map(k => fresh[(start + k) % fresh.length]);
+  const questions = [];
+  picks.forEach((pb, n) => {
+    [pb.q1, pb.q2].forEach(q => questions.push(Object.assign({}, q, { situation: pb.situation, scene: pb.scene, num: n + 1, pid: pb.id })));
+  });
+  return { id: 'pset', type: 'problem', questions, pids: picks.map(p => p.id) };
+}
+
 function lessonForToday(childId) {
   const lessons = allLessons();
   const done = (settings.lessonsDone || {})[childId] || [];
@@ -1819,7 +1839,7 @@ function renderLessonSettings() {
 }
 
 function openSocial(childId, task) {
-  socialState = { childId, task, lesson: lessonForToday(childId), qi: 0, answered: false };
+  socialState = { childId, task, lesson: task.type === 'problem' ? problemSetForToday(childId) : lessonForToday(childId), qi: 0, answered: false };
   renderSocial();
   showScreen('screen-social');
 }
@@ -1827,6 +1847,32 @@ function openSocial(childId, task) {
 function renderSocial() {
   const { lesson, qi } = socialState;
   const q = lesson.questions[qi];
+  if (lesson.type === 'problem') {
+    const child = settings.children.find(c => c.id === socialState.childId);
+    document.getElementById('social-inner').innerHTML = `
+      <div class="flex-between">
+        <button class="btn-ghost btn-sm" onclick="closeSocial()">← 나가기</button>
+        <span class="text-sm color-muted">${q.num} / 3번째 상황</span>
+      </div>
+      <div class="social-grid">
+      <div class="social-left">
+      <div class="card social-card">
+        <div class="social-kind">🔍 문제 찾기</div>
+        <div class="problem-scene">${q.scene}</div>
+        <div class="social-situation problem-sit">${q.situation} ${speakerBtn(child, q.situation)}</div>
+      </div>
+      </div>
+      <div class="social-right">
+      <div class="social-q">${q.q === '무엇이 문제인가요?' ? '❓ ' : '💡 '}${q.q} ${speakerBtn(child, q.q)}</div>
+      <div id="social-choices" style="display:flex;flex-direction:column;gap:10px;">
+        ${q.choices.map((c, i) => ({ c, i })).sort(() => Math.random() - 0.5).map(({ c, i }) => `<button class="social-choice" onclick="answerSocial(${i}, this)">${c}</button>`).join('')}
+      </div>
+      <div id="social-feedback"></div>
+      </div>
+      </div>`;
+    if (child && child.speak && qi % 2 === 0) speak(q.situation);
+    return;
+  }
   const head = lesson.type === 'purpose'
     ? `<div class="social-kind">🔍 말의 목적 찾기</div>
        <div class="social-situation">상황: ${lesson.situation}</div>`
@@ -2036,9 +2082,14 @@ function nextSocial() {
 
 function finishSocial() {
   const { childId, task, lesson } = socialState;
-  settings.lessonsDone = settings.lessonsDone || {};
-  const done = settings.lessonsDone[childId] || [];
-  if (!done.includes(lesson.id)) settings.lessonsDone[childId] = done.concat(lesson.id);
+  if (lesson.type === 'problem') {
+    settings.problemsDone = settings.problemsDone || {};
+    settings.problemsDone[childId] = (settings.problemsDone[childId] || []).concat(lesson.pids);
+  } else {
+    settings.lessonsDone = settings.lessonsDone || {};
+    const done = settings.lessonsDone[childId] || [];
+    if (!done.includes(lesson.id)) settings.lessonsDone[childId] = done.concat(lesson.id);
+  }
   saveSettings();
   socialState = null;
   showScreen('screen-home');
@@ -2396,6 +2447,13 @@ function init() {
     settings.slotStart = Object.assign({ evening: '18:00' }, settings.slotStart || {}, { afterschool: '16:50', weekend: (settings.slotStart && settings.slotStart.weekend) || '12:00' });
     ['m8', 'm9', 'a3', 'a11'].forEach(id => { const t = tasks.find(x => x.id === id); if (t && !t.days) t.days = 'weekday'; });
     settings.dataVersion = 29;
+  }
+  if (settings.dataVersion === 29) {
+    if (!tasks.some(t => t.id === 'a12')) {
+      const at = tasks.findIndex(t => t.id === 'a8');
+      tasks.splice(at >= 0 ? at : tasks.length, 0, JSON.parse(JSON.stringify(DEFAULT_TASKS.find(t => t.id === 'a12'))));
+    }
+    settings.dataVersion = 30;
   }
 
   saveSettings();
@@ -3058,7 +3116,7 @@ function renderTasks(child, log, slot, slotTasks, doneCount, totalCount) {
       ${pic}
       <div class="focus-name">${cur.name} ${speakerBtn(child, cur.name)}</div>
       ${buddyLine(child, cur, true)}
-      ${isStudy(cur) ? `<button class="timer-big" onclick="openTimer('${cur.id}')">⏱️ 집중 타이머로 하기</button>` : cur.type !== 'social' ? `<button class="timer-big race" onclick="openRace('${cur.id}')">🏁 펫이랑 시합하기</button>` : ''}
+      ${isStudy(cur) ? `<button class="timer-big" onclick="openTimer('${cur.id}')">⏱️ 집중 타이머로 하기</button>` : cur.type !== 'social' && cur.type !== 'problem' ? `<button class="timer-big race" onclick="openRace('${cur.id}')">🏁 펫이랑 시합하기</button>` : ''}
       <button class="focus-done" onclick="toggleCheck('${child.id}','${cur.id}')">✓ 다 했어요!</button>
       <div class="focus-next">${next ? `다음: ${next.name}` : '이게 마지막이에요! 💪'}</div>
     </div>`;
@@ -3073,7 +3131,7 @@ function renderTasks(child, log, slot, slotTasks, doneCount, totalCount) {
       <span class="check-name">${t.name}${buddyLine(child, t)}</span>
       ${speakerBtn(child, t.name)}
       ${!done && isStudy(t) ? `<span class="timer-chip" onclick="event.stopPropagation();openTimer('${t.id}')">⏱️ 집중</span>` : ''}
-      ${!done && !isStudy(t) && t.type !== 'social' ? `<span class="race-chip" onclick="event.stopPropagation();openRace('${t.id}')">🏁 시합</span>` : ''}
+      ${!done && !isStudy(t) && t.type !== 'social' && t.type !== 'problem' ? `<span class="race-chip" onclick="event.stopPropagation();openRace('${t.id}')">🏁 시합</span>` : ''}
       <span class="xp-badge">+${t.xp} XP</span>
     </button>`;
   }).join('');
@@ -3994,7 +4052,7 @@ function toggleCheck(childId, taskId) {
     return;
   }
   if (child.speak) speak(`${task.name}, 잘했어요!`);
-  if (task.type === 'social') { openSocial(childId, task); return; }
+  if (task.type === 'social' || task.type === 'problem') { openSocial(childId, task); return; }
   completeTask(childId, taskId, task.xp);
 }
 
