@@ -319,6 +319,7 @@ input, select, textarea { font-family: inherit; outline: none; }
 
 /* ===== SOCIAL LESSON ===== */
 .social-card { display:flex; flex-direction:column; gap:12px; }
+.problem-img { width:100%; max-width:440px; aspect-ratio:1; object-fit:cover; border-radius:20px; align-self:center; }
 .problem-scene { font-size:5.5rem; text-align:center; letter-spacing:12px; padding:24px 0; background:#fef9c3; border-radius:20px; line-height:1.1; }
 .problem-sit { font-size:1.3rem; line-height:1.5; display:flex; align-items:center; gap:8px; justify-content:space-between; }
 .social-kind { font-size:0.85rem; font-weight:800; color:var(--primary); }
@@ -1858,7 +1859,7 @@ function renderSocial() {
       <div class="social-left">
       <div class="card social-card">
         <div class="social-kind">🔍 문제 찾기</div>
-        <div class="problem-scene">${q.scene}</div>
+        <img class="problem-img" src="img/prob-${q.pid.slice(2).padStart(2, '0')}.jpg" alt="">
         <div class="social-situation problem-sit">${q.situation} ${speakerBtn(child, q.situation)}</div>
       </div>
       </div>
