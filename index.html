@@ -363,6 +363,9 @@ input, select, textarea { font-family: inherit; outline: none; }
 .bus-timer.late { background:#fef2f2; border-color:#fca5a5; animation:pulse 1s infinite; }
 .bus-timer.late .bus-text { color:#b91c1c; }
 .praise-btn { background:#fef3c7; color:#92400e; border-radius:12px; padding:8px 12px; font-weight:800; font-size:0.9rem; flex-shrink:0; }
+.praise-gem-row { display:flex; align-items:center; gap:10px; margin-top:6px; font-size:1.2rem; }
+.praise-gem-input { width:90px !important; flex:0 0 90px; text-align:center; font-size:1.4rem; font-weight:900; }
+.praise-step { width:44px; height:44px; flex:0 0 44px; border-radius:12px; background:var(--primary-bg); color:var(--primary); font-size:1.5rem; font-weight:900; }
 .praise-chips { display:flex; flex-wrap:wrap; gap:8px; margin-top:6px; }
 .praise-chip { background:var(--primary-bg); color:var(--text); border-radius:99px; padding:8px 14px; font-size:0.95rem; border:2px solid transparent; }
 .praise-chip.on { border-color:var(--primary); background:#fff; color:var(--primary); font-weight:800; }
@@ -1133,7 +1136,13 @@ input, select, textarea { font-family: inherit; outline: none; }
     <div class="praise-chips" id="praise-reasons"></div>
     <input class="input-field" id="praise-custom" placeholder="직접 쓰기 (예: 시루 물을 스스로 챙겨줬어요)" style="margin-top:8px;">
     <div class="form-label" style="margin-top:14px;">보석</div>
-    <div class="praise-chips" id="praise-gems"></div>
+    <div class="praise-gem-row">
+      <button class="praise-step" onclick="stepPraiseGems(-1)">−</button>
+      <span class="praise-gem-ico">💎</span>
+      <input class="input-field praise-gem-input" id="praise-gem-input" type="number" inputmode="numeric" min="1" max="99" value="1">
+      <span>개</span>
+      <button class="praise-step" onclick="stepPraiseGems(1)">+</button>
+    </div>
     <div style="display:flex;gap:8px;margin-top:18px;">
       <button class="btn-ghost" style="flex:1;" onclick="document.getElementById('praise-overlay').classList.add('hidden')">취소</button>
       <button class="btn-primary" style="flex:2;" onclick="confirmPraise()">칭찬 보내기 👏</button>
@@ -2015,12 +2024,19 @@ function renderPraise() {
   document.getElementById('praise-title').textContent = `👏 ${c.name} 칭찬하기`;
   document.getElementById('praise-reasons').innerHTML = PRAISE_REASONS.map(r =>
     `<button class="praise-chip${r === praiseReason ? ' on' : ''}" onclick="praiseReason=this.textContent;renderPraise()">${r}</button>`).join('');
-  document.getElementById('praise-gems').innerHTML = [1, 2, 3].map(g =>
-    `<button class="praise-chip${g === praiseGems ? ' on' : ''}" onclick="praiseGems=${g};renderPraise()">💎 ${g}개</button>`).join('');
+  document.getElementById('praise-gem-input').value = praiseGems;
+}
+
+function stepPraiseGems(d) {
+  const el = document.getElementById('praise-gem-input');
+  el.value = Math.min(99, Math.max(1, (parseInt(el.value) || 0) + d));
 }
 
 function confirmPraise() {
   const c = settings.children.find(x => x.id === praiseChildId);
+  const n = parseInt(document.getElementById('praise-gem-input').value);
+  if (!(n >= 1 && n <= 99)) { alert('보석 개수를 1~99 사이 숫자로 적어 주세요.'); return; }
+  praiseGems = n;
   const custom = document.getElementById('praise-custom').value.trim();
   const reason = custom || praiseReason;
   c.points += praiseGems;
