@@ -1277,6 +1277,12 @@ input, select, textarea { font-family: inherit; outline: none; }
     <div id="holiday-notice"></div>
     <div id="coop-parent"></div>
     <div class="card" style="display:flex;flex-direction:column;gap:8px;">
+      <div style="font-weight:800;">↩️ 잘못 누른 체크 되돌리기</div>
+      <div class="text-sm color-secondary">오늘 체크한 것을 취소하면 받은 XP가 빠지고, 그 때문에 오른 레벨과 보석도 같이 되돌아가요.</div>
+      <div class="slot-tabs" id="undo-tabs"></div>
+      <div id="undo-list" style="display:flex;flex-direction:column;gap:6px;"></div>
+    </div>
+    <div class="card" style="display:flex;flex-direction:column;gap:8px;">
       <div style="font-weight:800;">😮‍💨 아이가 속상해할 때</div>
       <div class="text-sm color-secondary">엄마가 대신 열어서 같이 숨 고르기를 해 주세요. 평소 기분 좋을 때 한두 번 같이 연습해 두면, 화났을 때 훨씬 잘 따라와요.</div>
       <div class="flex-row" id="parent-calm-btns" style="flex-wrap:wrap;"></div>
@@ -2210,11 +2216,9 @@ function toggleDuty(childId, dutyId) {
   const log = loadLog();
   const key = `${childId}_duty_${dutyId}`;
   if (log[key] && log[key].done) {
-    delete log[key];
-    saveLog(log);
-    child.xp = Math.max(0, child.xp - duty.xp);
-    saveSettings();
+    const r = undoCheck(childId, key, duty.xp);
     renderHomeScreen();
+    if (r && r.levels) toast(`체크를 취소해서 레벨이 ${r.levels} 내려갔어요`);
     return;
   }
   if (child.speak) speak(`${duty.name}, 잘했어요!`);
@@ -4061,11 +4065,9 @@ function toggleCheck(childId, taskId) {
   const log = loadLog();
   const key = `${childId}_${taskId}`;
   if (log[key] && log[key].done) {
-    delete log[key];
-    saveLog(log);
-    child.xp = Math.max(0, child.xp - task.xp);
-    saveSettings();
+    const r = undoCheck(childId, key, task.xp);
     renderHomeScreen();
+    if (r && r.levels) toast(`체크를 취소해서 레벨이 ${r.levels} 내려갔어요`);
     return;
   }
   if (child.speak) speak(`${task.name}, 잘했어요!`);
@@ -4086,9 +4088,46 @@ function completeTask(childId, taskId, xp) {
   const ch = settings.children.find(c => c.id === childId);
   if (ch) { const d = new Date(); d.setHours(0, 0, 0, 0); ch._wasOk = dayRatio(ch, d) >= 0.5; }
   const log = loadLog();
-  log[`${childId}_${taskId}`] = { done: true, approved: true, ts: Date.now() };
+  log[`${childId}_${taskId}`] = { done: true, approved: true, ts: Date.now(), xp };
   saveLog(log);
   awardXP(childId, xp, taskId);
+}
+
+function revokeXP(child, xp) {
+  let lost = 0;
+  while (xp > 0) {
+    if (child.xp >= xp) { child.xp -= xp; xp = 0; break; }
+    if (child.level <= 1) { child.xp = 0; break; }
+    xp -= child.xp + 1;
+    child.level -= 1;
+    child.xp = xpNeeded(child.level) - 1;
+    if (child.points > 0) { child.points -= 1; lost++; }
+    if (child.needsEgg && petLevel(child) < PET_MAX_LEVEL) {
+      (child.collection || []).pop();
+      child.needsEgg = false;
+    }
+    if (child.prevPet && child.level < child.petStart) {
+      child.characterType = child.prevPet.type;
+      child.petStart = child.prevPet.start;
+      (child.collection || []).pop();
+      delete child.prevPet;
+    }
+  }
+  return lost;
+}
+
+function undoCheck(childId, key, fallbackXp) {
+  const child = settings.children.find(c => c.id === childId);
+  const log = loadLog();
+  const e = log[key];
+  if (!child || !e || !e.done) return null;
+  delete log[key];
+  saveLog(log);
+  const xp = typeof e.xp === 'number' ? e.xp : fallbackXp;
+  const before = child.level;
+  const lost = revokeXP(child, xp);
+  saveSettings();
+  return { xp, levels: before - child.level, gems: lost };
 }
 
 function awardXP(childId, xp, taskId) {
@@ -4245,6 +4284,7 @@ function renderEggPick() {
 function confirmEggPick() {
   const child = getChild();
   if (!pickingEgg || !child) return;
+  child.prevPet = { type: child.characterType, start: child.petStart || 1 };
   child.characterType = pickingEgg;
   child.petStart = child.level;
   child.needsEgg = false;
@@ -4614,7 +4654,41 @@ function holidayNotice() {
   return '';
 }
 
+let undoChildId = null;
+
+function renderUndo() {
+  const kids = settings.children;
+  if (!kids.find(c => c.id === undoChildId)) undoChildId = kids[0].id;
+  document.getElementById('undo-tabs').innerHTML = kids.map(c =>
+    `<button class="slot-tab${c.id === undoChildId ? ' active' : ''}" onclick="undoChildId='${c.id}';renderUndo()">${c.name}</button>`).join('');
+  const child = kids.find(c => c.id === undoChildId);
+  const log = loadLog();
+  const items = Object.entries(log)
+    .filter(([k, e]) => k.startsWith(child.id + '_') && e && e.done && e.ts)
+    .map(([k, e]) => {
+      const id = k.slice(child.id.length + 1);
+      let name = id, xp = e.xp;
+      if (id.startsWith('duty_')) { const d = (settings.duties || []).find(x => x.id === id.slice(5)); name = d ? d.name : '반장 임무'; if (xp == null && d) xp = d.xp; }
+      else { const t = tasks.find(x => x.id === id); if (!t) return null; name = t.name; if (xp == null) xp = t.xp; }
+      return { k, name, xp: xp || 0, ts: e.ts };
+    }).filter(Boolean).sort((a, b) => b.ts - a.ts);
+  document.getElementById('undo-list').innerHTML = items.length ? items.map(it => `
+    <div class="off-row"><span><b>${escText(it.name)}</b> <span class="text-xs color-muted">${new Date(it.ts).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} · +${it.xp} XP</span></span>
+      <button class="btn-ghost btn-sm" onclick="parentUndo('${child.id}','${it.k}',${it.xp})">취소</button></div>`).join('')
+    : `<div class="text-sm color-muted">${child.name}가 오늘 체크한 게 아직 없어요.</div>`;
+}
+
+function parentUndo(childId, key, xp) {
+  const c = settings.children.find(x => x.id === childId);
+  const name = document.querySelector(`#undo-list button[onclick*="${key}"]`).closest('.off-row').querySelector('b').textContent;
+  if (!confirm(`${c.name}의 "${name}" 체크를 취소할까요?`)) return;
+  const r = undoCheck(childId, key, xp);
+  renderParentDashboard();
+  if (r) toast(`취소했어요 · -${r.xp} XP${r.levels ? ` · 레벨 ${r.levels} 내려감 · 보석 -${r.gems}` : ''}`);
+}
+
 function renderParentDashboard() {
+  renderUndo();
   document.getElementById('holiday-notice').innerHTML = holidayNotice();
   renderCoopParent();
   document.getElementById('parent-calm-btns').innerHTML = settings.children.map(c => `<button class="btn-ghost btn-sm" onclick="openCalm('${c.id}')">${c.name}와 숨 고르기</button>`).join('');
