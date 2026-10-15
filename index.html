@@ -528,6 +528,7 @@ input, select, textarea { font-family: inherit; outline: none; }
 /* ===== BUDDY / RACE / PLAN / BRAIN ===== */
 .pet-actions { display:flex; gap:8px; margin-top:12px; }
 .pet-actions .calm-btn { margin-top:0; flex:1; }
+.brain-btn.locked { background:#f1f5f9; color:#94a3b8; }
 .brain-btn { flex:1; background:#fef3c7; color:#b45309; border-radius:14px; padding:10px; font-size:0.95rem; }
 .calm-screen.game { background:linear-gradient(180deg,#f0fdf4,#eef2ff); overflow-y:auto; }
 .buddy-line { display:block; font-size:0.8rem; color:#7c3aed; font-weight:700; margin-top:2px; text-decoration:none; }
@@ -2974,7 +2975,11 @@ function renderHomeScreen() {
   renderFeedGauge(child);
   renderMoodCard(child, log);
   const bb = document.getElementById('brain-btn');
-  if (bb) bb.textContent = brainDone(child) ? '🧠 두뇌 게임 ✓' : '🧠 오늘의 두뇌 게임';
+  if (bb) {
+    const locked = brainLocked();
+    bb.textContent = locked ? `🔒 두뇌 게임 (${unlockTime()}부터)` : brainDone(child) ? '🧠 두뇌 게임 ✓' : '🧠 오늘의 두뇌 게임';
+    bb.classList.toggle('locked', locked);
+  }
   renderNightNote(child, log);
   const sk = streakInfo(child);
   document.getElementById('streak-chip').innerHTML = sk.days
@@ -3338,7 +3343,14 @@ function brainDone(child) {
   const log = loadLog();
   return !!(log[`${child.id}_brain`] && log[`${child.id}_brain`].ok);
 }
+function brainLocked() {
+  const d = new Date();
+  const now = d.getHours() * 60 + d.getMinutes();
+  return now >= 4 * 60 && now < toMin(unlockTime());
+}
+
 function openBrain() {
+  if (brainLocked()) { toast(`🧠 두뇌 게임은 ${unlockTime()}부터 할 수 있어요!`); return; }
   const child = getChild();
   const g = brainToday(child);
   const names = { seq: '🔢 순서 기억하기', stop: '🛑 멈춰! 게임', pair: '🃏 짝 맞추기' };
