@@ -587,7 +587,22 @@ input, select, textarea { font-family: inherit; outline: none; }
 .deco-ic { font-size:2.2rem; }
 .deco-name { font-size:0.85rem; }
 .deco-cost { font-size:0.75rem; color:var(--primary); font-weight:800; }
-.tomorrow-card { background:#ecfeff; border:2px solid #a5f3fc; border-radius:20px; padding:14px; margin-top:6px; display:flex; flex-direction:column; gap:6px; }
+.tomorrow-card { background:#fff7ed; border:2px solid #fed7aa; border-radius:20px; padding:12px 14px; display:flex; flex-direction:column; gap:6px; }
+.tomorrow-card.eve { background:#ecfeff; border-color:#a5f3fc; }
+.tm-plan { font-size:1.15rem; font-weight:800; color:#7c2d12; }
+.week-btn { background:#fff; border:2px solid var(--border); border-radius:99px; padding:5px 12px; font-size:0.9rem; white-space:nowrap; }
+.week-plan { width:100%; max-width:620px; display:flex; flex-direction:column; gap:8px; }
+.wp-row { display:flex; gap:12px; background:#fff; border:2px solid var(--border); border-radius:16px; padding:10px 12px; text-align:left; }
+.wp-row.today { border-color:#fb923c; background:#fff7ed; }
+.wp-row.off .wp-day b { color:#dc2626; }
+.wp-day { width:52px; flex-shrink:0; display:flex; flex-direction:column; align-items:center; }
+.wp-day b { font-size:1.4rem; }
+.wp-day span { font-size:0.8rem; color:var(--text-muted); }
+.wp-day em { font-style:normal; font-size:0.7rem; background:#fb923c; color:#fff; border-radius:99px; padding:0 6px; }
+.wp-body { flex:1; display:flex; flex-direction:column; gap:3px; font-size:1rem; }
+.wp-plan { font-weight:800; color:#7c2d12; }
+.wp-note { color:var(--text-secondary); font-size:0.9rem; }
+.week-edit summary { cursor:pointer; font-weight:800; color:var(--primary); padding:6px 0; }
 .tm-row { font-size:1rem; line-height:1.5; }
 .tm-note { background:#fff; border-radius:10px; padding:6px 10px; }
 .daynote-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:6px; }
@@ -1107,6 +1122,7 @@ input, select, textarea { font-family: inherit; outline: none; }
 
     <div class="home-right">
     <div class="bus-timer hidden" id="bus-timer"></div>
+    <div id="tomorrow-card"></div>
     <div id="mood-card"></div>
     <div class="slot-tabs" id="slot-tabs"></div>
     <div class="flex-between" style="padding:0 4px;">
@@ -1125,7 +1141,6 @@ input, select, textarea { font-family: inherit; outline: none; }
       <div style="font-size:0.85rem;color:var(--text-secondary);margin-top:6px;">정말 최고예요! 펫이 행복해해요 😊</div>
     </div>
 
-    <div id="tomorrow-card"></div>
     <div id="night-note"></div>
 
     <div id="duty-section" class="hidden" style="display:flex;flex-direction:column;gap:10px;">
@@ -3411,27 +3426,72 @@ function renderPetDeco(child) {
 }
 
 // ---------- tomorrow preview ----------
+function dayInfo(child, t) {
+  const off = isWeekend(t);
+  const list = tasksForChild(child.id, t);
+  const special = [...new Set(list.filter(x => (x.for && x.for.length) || x.days).filter(x => !['m1', 'm4', 'm5', 'e5', 'e6'].includes(x.id)).map(x => x.name))];
+  return {
+    off, offName: offDayName(t), wd: '일월화수목금토'[t.getDay()],
+    plan: ((child.week || {})[t.getDay()] || '').trim(),
+    note: ((settings.dayNotes || {})[t.getDay()] || '').trim(),
+    morning: list.filter(x => x.slot === 'morning').length, special,
+  };
+}
+
 function renderTomorrow(child) {
   const el = document.getElementById('tomorrow-card');
   const slot = viewSlot || getActiveSlot();
-  if (slot !== 'evening') { el.innerHTML = ''; return; }
-  const t = new Date(); t.setDate(t.getDate() + 1); t.setHours(0, 0, 0, 0);
-  const off = isWeekend(t);
-  const offName = offDayName(t);
-  const wd = '일월화수목금토'[t.getDay()];
-  const list = tasksForChild(child.id, t);
-  const morning = list.filter(x => x.slot === 'morning');
-  const special = list.filter(x => (x.for && x.for.length) || x.days).filter(x => !['m1', 'm4', 'm5', 'e5', 'e6'].includes(x.id));
-  const note = (settings.dayNotes || {})[t.getDay()];
+  const isEve = slot === 'evening';
+  const t = new Date(); t.setHours(0, 0, 0, 0);
+  if (isEve) t.setDate(t.getDate() + 1);
+  const d = dayInfo(child, t);
   const duty = dutiesFor(child.id)[0];
-  el.innerHTML = `<div class="tomorrow-card">
-    <div class="note-q">📅 내일 미리 보기 · <b>${t.getMonth() + 1}월 ${t.getDate()}일 ${wd}요일</b></div>
-    <div class="tm-row">${off ? `🏡 <b>${offName || '쉬는 날'}</b> · 학교 안 가는 날이에요!` : `🏫 학교 가는 날 · 🚌 <b>${settings.departTime || '07:55'}</b>에 집에서 나가요`}</div>
-    <div class="tm-row">🌅 아침 할 일 <b>${morning.length}개</b>${special.length ? ` · 내일 할 것: ${[...new Set(special.map(x => x.name))].slice(0, 4).join(', ')}` : ''}</div>
-    ${duty ? `<div class="tm-row">🏅 ${duty.name} 잊지 말기</div>` : ''}
-    ${note ? `<div class="tm-row tm-note">🎒 ${escText(note)}</div>` : ''}
+  el.innerHTML = `<div class="tomorrow-card${isEve ? ' eve' : ''}">
+    <div class="flex-between" style="gap:8px;">
+      <div class="note-q" style="margin:0;">${isEve ? '🌙 내일 미리 보기' : '☀️ 오늘 일정'} · <b>${t.getMonth() + 1}/${t.getDate()} ${d.wd}요일</b></div>
+      <button class="week-btn" onclick="openWeekPlan()">📅 일주일 계획표</button>
+    </div>
+    <div class="tm-row">${d.off ? `🏡 <b>${d.offName || '쉬는 날'}</b> · 학교 안 가는 날!` : `🏫 학교 가는 날${isEve ? ` · 🚌 <b>${settings.departTime || '07:55'}</b>에 나가요` : ''}`}</div>
+    ${d.plan ? `<div class="tm-row tm-plan">⭐ ${escText(d.plan)}</div>` : ''}
+    ${isEve && duty ? `<div class="tm-row">🏅 ${duty.name} 잊지 말기</div>` : ''}
+    ${d.note ? `<div class="tm-row tm-note">🎒 ${escText(d.note)}</div>` : ''}
   </div>`;
 }
+
+function openWeekPlan() {
+  const child = getChild();
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const days = weekDays();
+  document.getElementById('game-title').textContent = `📅 ${child.name}의 일주일 계획표`;
+  document.getElementById('game-body').innerHTML = `
+    <div class="week-plan">${days.map(dt => {
+      const d = dayInfo(child, dt);
+      const isToday = dt.getTime() === today.getTime();
+      return `<div class="wp-row${isToday ? ' today' : ''}${d.off ? ' off' : ''}">
+        <div class="wp-day"><b>${d.wd}</b><span>${dt.getMonth() + 1}/${dt.getDate()}</span>${isToday ? '<em>오늘</em>' : ''}</div>
+        <div class="wp-body">
+          <div>${d.off ? `🏡 ${d.offName || '쉬는 날'}` : '🏫 학교 가는 날'}</div>
+          ${d.plan ? `<div class="wp-plan">⭐ ${escText(d.plan)}</div>` : ''}
+          ${d.note ? `<div class="wp-note">🎒 ${escText(d.note)}</div>` : ''}
+        </div></div>`;
+    }).join('')}</div>
+    ${Object.keys(child.week || {}).length ? '' : '<div class="text-sm color-muted">엄마가 부모 모드 → 설정 → 아이 탭에서 요일별 계획을 적을 수 있어요.</div>'}
+    <button class="focus-done" style="max-width:300px;" onclick="closeGame()">닫기</button>`;
+  document.getElementById('game-screen').classList.remove('hidden');
+  if (child.speak) {
+    const d = dayInfo(child, today);
+    speak(`오늘은 ${d.wd}요일${d.plan ? ', ' + d.plan : ''}`);
+  }
+}
+
+function saveWeek(idx) {
+  const c = settings.children[idx];
+  c.week = {};
+  [0, 1, 2, 3, 4, 5, 6].forEach(w => { const v = document.getElementById(`wk-${idx}-${w}`).value.trim(); if (v) c.week[w] = v; });
+  saveSettings();
+  toast(`${c.name} 일주일 계획표를 저장했어요!`);
+}
+
 function renderDayNotes() {
   const n = settings.dayNotes || {};
   document.getElementById('daynote-grid').innerHTML = [1, 2, 3, 4, 5, 6, 0].map(w =>
@@ -5203,6 +5263,11 @@ function renderChildrenSettings() {
         </label>
         ${child.photo ? `<button class="btn-ghost btn-sm" onclick="updateChild(${i},'photo','')">사진 빼기</button>` : ''}
       </div>
+      <details class="week-edit">
+        <summary>📅 ${child.name} 일주일 계획표 적기</summary>
+        <div class="daynote-grid" style="margin-top:8px;">${[1, 2, 3, 4, 5, 6, 0].map(w => `<label class="daynote"><span>${'일월화수목금토'[w]}</span><input class="input-field" id="wk-${i}-${w}" value="${escText((child.week || {})[w] || '')}" placeholder="예: 구몬, 피아노"></label>`).join('')}</div>
+        <button class="btn-primary btn-sm" style="margin-top:8px;" onclick="saveWeek(${i})">계획표 저장</button>
+      </details>
       <button class="btn-danger btn-sm w-full" style="margin-top:8px;" onclick="resetChild(${i})">↺ ${child.name} 기록 처음으로 되돌리기</button>
     </div>`).join('');
 }
