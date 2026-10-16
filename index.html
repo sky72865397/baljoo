@@ -577,16 +577,34 @@ input, select, textarea { font-family: inherit; outline: none; }
 .mystery-btn { margin-top:10px; width:100%; padding:12px; border-radius:16px; background:linear-gradient(135deg,#fde68a,#f9a8d4); color:#7c2d12; font-size:1.1rem; font-weight:900; animation:pulse 1.2s infinite; }
 .box-shake { font-size:8rem; animation:boxShake .5s infinite; }
 @keyframes boxShake { 0%,100%{transform:rotate(0)} 25%{transform:rotate(-10deg) scale(1.05)} 75%{transform:rotate(10deg) scale(1.05)} }
-#pet-deco { position:absolute; inset:0; pointer-events:none; }
-.deco-hat { position:absolute; left:50%; top:-0.32em; transform:translateX(-50%) rotate(-8deg); font-size:2.6rem; }
-.deco-face { position:absolute; left:50%; top:42%; transform:translateX(-50%); font-size:2rem; }
-.deco-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
-@media (min-width: 900px) { .deco-grid { grid-template-columns:repeat(6,1fr); } }
-.deco-card { background:#fff; border:2px solid var(--border); border-radius:16px; padding:10px 4px; display:flex; flex-direction:column; align-items:center; gap:2px; }
-.deco-card.on { border-color:#a855f7; background:#faf5ff; }
-.deco-ic { font-size:2.2rem; }
-.deco-name { font-size:0.85rem; }
-.deco-cost { font-size:0.75rem; color:var(--primary); font-weight:800; }
+.pet-scene { position:relative; width:min(280px, 78vw); aspect-ratio:1; margin:0 auto; border-radius:24px; overflow:hidden; }
+.pet-scene.big { width:min(340px, 58vw); box-shadow:var(--shadow-md); background:#fff; }
+.pet-scene.has-bg { box-shadow:inset 0 0 0 3px rgba(255,255,255,.7), 0 6px 16px rgba(30,27,75,.12); }
+.ps-bg { position:absolute; inset:0; background-size:cover; background-position:center; background-color:transparent; }
+.pet-scene:not(.has-bg) .ps-bg { background:radial-gradient(circle at 50% 70%, #f5f3ff 0%, #fdf2f8 45%, transparent 72%); }
+#pet-emoji-big, .ps-body { position:absolute; inset:0; }
+.pet-scene .ps-pet { position:absolute; width:auto; max-width:none; }
+.pet-scene .ps-item { position:absolute; height:auto; pointer-events:none; filter:drop-shadow(0 2px 2px rgba(0,0,0,.12)); }
+.pet-scene .ps-hand { animation:handBob 2.4s ease-in-out infinite; transform-origin:50% 100%; }
+@keyframes handBob { 0%,100%{transform:rotate(-4deg)} 50%{transform:rotate(4deg)} }
+.ps-fx { position:absolute; inset:0; pointer-events:none; }
+.ps-fxi { position:absolute; width:34%; opacity:.9; }
+.ps-fxi.a { left:4%; top:6%; animation:fxFloat 4s ease-in-out infinite; }
+.ps-fxi.b { right:4%; top:28%; width:28%; animation:fxFloat 4s ease-in-out infinite 2s; }
+@keyframes fxFloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+.closet-btn { margin-top:6px; background:#faf5ff; color:#7c3aed; border-radius:99px; padding:6px 16px; font-size:0.95rem; }
+.closet-top { position:sticky; top:0; z-index:5; background:var(--bg); padding:8px 0; display:flex; flex-direction:column; gap:8px; align-items:center; }
+.closet-try { font-size:0.95rem; text-align:center; color:var(--text-secondary); }
+.closet-cats .slot-tab { font-size:0.85rem; padding:10px 2px; }
+.deco-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+@media (min-width: 900px) { .deco-grid { grid-template-columns:repeat(5,1fr); } .closet-top { flex-direction:row; justify-content:center; gap:20px; } .closet-top #closet-bar { max-width:420px; display:flex; flex-direction:column; gap:10px; } }
+.deco-card { background:#fff; border:3px solid var(--border); border-radius:18px; padding:8px 4px; display:flex; flex-direction:column; align-items:center; gap:4px; }
+.deco-card.own { border-color:#c4b5fd; }
+.deco-card.on { border-color:#a855f7; background:#faf5ff; box-shadow:0 4px 12px rgba(168,85,247,.25); }
+.deco-thumb { width:84px; height:84px; background-size:contain; background-position:center; background-repeat:no-repeat; }
+.deco-thumb.bg { background-size:cover; border-radius:12px; }
+.deco-name { font-size:0.9rem; text-align:center; }
+.deco-cost { font-size:0.8rem; color:var(--primary); font-weight:800; }
 .tomorrow-card { background:#fff7ed; border:2px solid #fed7aa; border-radius:20px; padding:12px 14px; display:flex; flex-direction:column; gap:6px; }
 .tomorrow-card.eve { background:#ecfeff; border-color:#a5f3fc; }
 .tm-plan { font-size:1.15rem; font-weight:800; color:#7c2d12; }
@@ -1101,7 +1119,8 @@ input, select, textarea { font-family: inherit; outline: none; }
       <div class="home-name" id="pet-owner-label"></div>
       <div id="streak-chip"></div>
       <div class="speech-bubble" id="speech-bubble" style="margin-bottom:14px;">...</div>
-      <div class="pet-stage" id="pet-stage"><div id="pet-emoji-big" style="font-size:6rem;line-height:1;display:block;cursor:pointer;" onclick="triggerPetPat()"></div><div id="pet-deco"></div><div id="pet-fx"></div></div>
+      <div class="pet-stage" id="pet-stage"><div class="pet-scene" id="pet-scene"><div class="ps-bg" id="pet-bg"></div><div id="pet-emoji-big" style="cursor:pointer;" onclick="triggerPetPat()"></div><div class="ps-fx" id="pet-sfx"></div><div id="pet-fx"></div></div></div>
+      <button class="closet-btn" onclick="openCloset()">🎨 꾸미기</button>
       <button class="mystery-btn hidden" id="mystery-btn" onclick="openMystery()">🎁 오늘의 깜짝 상자 열기!</button>
       <div style="margin-top:8px;font-size:0.85rem;font-weight:700;color:var(--text-secondary);" id="pet-stage-label"></div>
       <div class="feed-gauge" id="feed-gauge"></div>
@@ -1247,11 +1266,20 @@ input, select, textarea { font-family: inherit; outline: none; }
       <div style="font-size:1.2rem;font-weight:800;">💎 보석 교환상점</div>
       <div class="diamond-chip" id="shop-points-display">💎 0개</div>
     </div>
+    <div class="slot-tabs" id="shop-tabs">
+      <button class="slot-tab active" id="shop-tab-gift" onclick="setShopTab('gift')">🎁 선물 교환</button>
+      <button class="slot-tab" id="shop-tab-deco" onclick="setShopTab('deco')">🎨 펫 꾸미기</button>
+    </div>
 
-    <div class="reward-grid" id="shop-grid"></div>
-    <div style="font-size:1.2rem;font-weight:800;margin-top:18px;">🎨 펫 꾸미기</div>
-    <div class="text-sm color-muted" style="margin-top:-6px;">한 번 사면 계속 쓸 수 있어요. 누르면 입히고 다시 누르면 벗어요.</div>
-    <div class="deco-grid" id="deco-grid"></div>
+    <div id="shop-gift"><div class="reward-grid" id="shop-grid"></div></div>
+    <div id="shop-deco" class="hidden">
+      <div class="closet-top">
+        <div class="pet-scene big" id="closet-scene"></div>
+        <div id="closet-bar"></div>
+      </div>
+      <div class="slot-tabs closet-cats" id="closet-cats"></div>
+      <div class="deco-grid" id="deco-grid"></div>
+    </div>
   </div>
 
   <nav class="bottom-nav" data-tab="shop"></nav>
@@ -1396,7 +1424,7 @@ input, select, textarea { font-family: inherit; outline: none; }
 <div class="tab-bar" id="settings-tabs">
       <button class="tab-btn active" onclick="switchSettingsTab('children')" id="stab-children">아이</button>
       <button class="tab-btn" onclick="switchSettingsTab('tasks')" id="stab-tasks">할 일</button>
-      <button class="tab-btn" onclick="switchSettingsTab('rewards')" id="stab-rewards">보상</button>
+      <button class="tab-btn" onclick="switchSettingsTab('rewards')" id="stab-rewards">선물</button>
       <button class="tab-btn" onclick="switchSettingsTab('points')" id="stab-points">보석</button>
       <button class="tab-btn" onclick="switchSettingsTab('lessons')" id="stab-lessons">마음 공부</button>
       <button class="tab-btn" onclick="switchSettingsTab('misc')" id="stab-misc">기타</button>
@@ -1434,9 +1462,9 @@ input, select, textarea { font-family: inherit; outline: none; }
     <!-- Tab: Rewards -->
     <div id="stab-content-rewards" class="hidden">
       <div style="display:flex;flex-direction:column;gap:8px;" id="rewards-settings-list"></div>
-      <button class="btn-ghost" style="margin-top:12px;width:100%;" onclick="showAddRewardForm()">+ 보상 추가</button>
+      <button class="btn-ghost" style="margin-top:12px;width:100%;" onclick="showAddRewardForm()">+ 선물 추가</button>
       <div id="add-reward-form" class="card hidden" style="margin-top:8px;">
-        <div style="font-weight:700;margin-bottom:10px;">새 보상 추가</div>
+        <div style="font-weight:700;margin-bottom:10px;">새 선물 추가</div>
         <div class="form-group"><label class="form-label">이름</label><input class="input-field" id="newreward-name" placeholder="편의점 간식"></div>
         <div class="form-group" style="margin-top:8px;"><label class="form-label">이모지</label><input class="input-field" id="newreward-emoji" placeholder="🏪" maxlength="2"></div>
         <div class="form-group" style="margin-top:8px;"><label class="form-label">💎 보석 개수</label><input class="input-field" id="newreward-cost" type="number" value="50" min="10"></div>
@@ -1488,11 +1516,11 @@ input, select, textarea { font-family: inherit; outline: none; }
         </div>
         <div style="display:flex;gap:8px;">
           <div class="form-group" style="flex:1;" id="coop-target-box"><label class="form-label">이번 주 목표</label><input class="input-field" id="coop-target" type="number" min="10" max="999"></div>
-          <div class="form-group" style="flex:2;"><label class="form-label">이번 주 보상</label><input class="input-field" id="coop-reward" placeholder="예: 가족 영화의 밤"></div>
+          <div class="form-group" style="flex:2;"><label class="form-label">이번 주 선물</label><input class="input-field" id="coop-reward" placeholder="예: 가족 영화의 밤"></div>
         </div>
         <div style="display:flex;gap:8px;" id="coop-next-box">
           <div class="form-group" style="flex:1;"><label class="form-label">다음 주부터 목표</label><input class="input-field" id="coop-next-target" type="number" min="10" max="999" placeholder="비우면 그대로"></div>
-          <div class="form-group" style="flex:2;"><label class="form-label">다음 주부터 보상</label><input class="input-field" id="coop-next-reward" placeholder="비우면 이번 주와 같아요"></div>
+          <div class="form-group" style="flex:2;"><label class="form-label">다음 주부터 선물</label><input class="input-field" id="coop-next-reward" placeholder="비우면 이번 주와 같아요"></div>
         </div>
         <button class="btn-primary" onclick="saveCoop()">협동 목표 저장</button>
       </div>
@@ -3013,7 +3041,7 @@ function renderHomeScreen() {
 
   // Pet emoji element
   const petEl = document.getElementById('pet-emoji-big');
-  petEl.innerHTML = petEmoji;
+
 
   // Determine mood
   const doneTasks = slotTasks.filter(t => {
@@ -3347,12 +3375,12 @@ function mysteryReady(child) {
 function openMystery() {
   const child = getChild();
   if (!mysteryReady(child)) return;
-  const unowned = DECOS.filter(x => !((child.deco || {}).owned || []).includes(x.id) && x.cost <= 4);
+  const unowned = DECOS.filter(x => !decoOf(child).owned.includes(x.id) && x.cost <= 4);
   const r = Math.random();
   let prize;
   if (r < 0.4) prize = { kind: 'gem', n: 1, ic: '💎', text: '보석 1개' };
   else if (r < 0.75 || !unowned.length) prize = { kind: 'xp', n: 20, ic: '⭐', text: '경험치 20' };
-  else { const it = unowned[Math.floor(Math.random() * unowned.length)]; prize = { kind: 'deco', id: it.id, ic: it.ic, text: `펫 꾸미기 "${it.name}"` }; }
+  else { const it = unowned[Math.floor(Math.random() * unowned.length)]; prize = { kind: 'deco', id: it.id, ic: `<img src="${it.img}" style="height:1em;">`, text: `펫 꾸미기 "${it.name}"` }; }
   const log = loadLog();
   log[`${child.id}_box`] = { prize: prize.text, ts: Date.now() };
   saveLog(log);
@@ -3362,13 +3390,13 @@ function openMystery() {
   wrap.classList.remove('hidden');
   setTimeout(() => {
     if (prize.kind === 'gem') { child.points += 1; }
-    if (prize.kind === 'deco') { child.deco = child.deco || { owned: [], wear: {} }; child.deco.owned.push(prize.id); }
+    if (prize.kind === 'deco') { decoOf(child).owned.push(prize.id); }
     saveSettings();
     if (child.speak) speak(`와! ${prize.text}을 받았어요!`);
     document.getElementById('game-body').innerHTML = `
       <div style="font-size:6rem;animation:popIn .5s;">${prize.ic}</div>
       <div class="pop-title">${prize.text}!</div>
-      <div class="calm-say">${prize.kind === 'deco' ? '보석 교환상점 아래 "펫 꾸미기"에서 입혀 볼 수 있어요!' : '내일도 절반 넘게 하면 또 열 수 있어요!'}</div>
+      <div class="calm-say">${prize.kind === 'deco' ? '펫 아래 "🎨 꾸미기"에서 입혀 볼 수 있어요!' : '내일도 절반 넘게 하면 또 열 수 있어요!'}</div>
       <button class="focus-done" id="box-ok" style="max-width:300px;">야호! 🎉</button>`;
     spawnConfetti();
     document.getElementById('box-ok').onclick = () => { closeGame(); if (prize.kind === 'xp') awardXP(child.id, 20, 'box'); else renderHomeScreen(); };
@@ -3376,53 +3404,177 @@ function openMystery() {
 }
 
 // ---------- pet decorations ----------
-const DECOS = [
-  { id: 'ribbon', ic: '🎀', name: '리본', slot: 'hat', cost: 2 },
-  { id: 'cap', ic: '🧢', name: '모자', slot: 'hat', cost: 3 },
-  { id: 'crown', ic: '👑', name: '왕관', slot: 'hat', cost: 6 },
-  { id: 'party', ic: '🥳', name: '파티 모자', slot: 'hat', cost: 4, show: '🎉' },
-  { id: 'flower', ic: '🌸', name: '꽃핀', slot: 'hat', cost: 2 },
-  { id: 'glasses', ic: '🕶️', name: '선글라스', slot: 'face', cost: 3 },
-  { id: 'star', ic: '⭐', name: '별 스티커', slot: 'face', cost: 2 },
-  { id: 'heart', ic: '💖', name: '하트 볼터치', slot: 'face', cost: 2 },
-  { id: 'bg-sky', ic: '🌤️', name: '하늘 배경', slot: 'bg', cost: 4, bg: 'linear-gradient(180deg,#bae6fd,#f0f9ff)' },
-  { id: 'bg-forest', ic: '🌳', name: '숲 배경', slot: 'bg', cost: 4, bg: 'linear-gradient(180deg,#bbf7d0,#f0fdf4)' },
-  { id: 'bg-candy', ic: '🍭', name: '사탕 배경', slot: 'bg', cost: 4, bg: 'linear-gradient(180deg,#fbcfe8,#fdf2f8)' },
-  { id: 'bg-night', ic: '🌙', name: '밤하늘 배경', slot: 'bg', cost: 5, bg: 'linear-gradient(180deg,#c7d2fe,#eef2ff)' },
+const PET_BOX = {"pet-c1-0.png": {"ar": 0.772, "top": 0.0, "hx": 0.504, "hw": 0.914}, "pet-c1-1.png": {"ar": 0.789, "top": 0.0, "hx": 0.504, "hw": 0.852}, "pet-c1-2.png": {"ar": 1.017, "top": 0.051, "hx": 0.492, "hw": 0.711}, "pet-c1-3.png": {"ar": 0.956, "top": 0.036, "hx": 0.481, "hw": 0.747}, "pet-c1-4.png": {"ar": 0.997, "top": 0.011, "hx": 0.499, "hw": 0.613}, "pet-c2-0.png": {"ar": 0.769, "top": 0.0, "hx": 0.504, "hw": 0.913}, "pet-c2-1.png": {"ar": 0.781, "top": 0.0, "hx": 0.498, "hw": 0.861}, "pet-c2-2.png": {"ar": 0.875, "top": 0.0, "hx": 0.505, "hw": 0.946}, "pet-c2-3.png": {"ar": 0.906, "top": 0.0, "hx": 0.567, "hw": 0.859}, "pet-c2-4.png": {"ar": 0.702, "top": 0.0, "hx": 0.462, "hw": 0.837}, "pet-c3-0.png": {"ar": 0.769, "top": 0.0, "hx": 0.505, "hw": 0.917}, "pet-c3-1.png": {"ar": 0.803, "top": 0.0, "hx": 0.498, "hw": 0.844}, "pet-c3-2.png": {"ar": 0.739, "top": 0.0, "hx": 0.568, "hw": 0.812}, "pet-c3-3.png": {"ar": 0.667, "top": 0.0, "hx": 0.637, "hw": 0.717}, "pet-c3-4.png": {"ar": 0.65, "top": 0.0, "hx": 0.613, "hw": 0.756}, "pet-dino-0.png": {"ar": 0.815, "top": 0.0, "hx": 0.502, "hw": 0.893}, "pet-dino-1.png": {"ar": 0.733, "top": 0.0, "hx": 0.502, "hw": 0.89}, "pet-dino-2.png": {"ar": 0.775, "top": 0.0, "hx": 0.448, "hw": 0.875}, "pet-dino-3.png": {"ar": 0.764, "top": 0.0, "hx": 0.385, "hw": 0.713}, "pet-dino-4.png": {"ar": 0.761, "top": 0.0, "hx": 0.391, "hw": 0.672}, "pet-hamster-0.png": {"ar": 0.803, "top": 0.0, "hx": 0.5, "hw": 0.896}, "pet-hamster-1.png": {"ar": 0.808, "top": 0.0, "hx": 0.498, "hw": 0.893}, "pet-hamster-2.png": {"ar": 0.933, "top": 0.0, "hx": 0.454, "hw": 0.884}, "pet-hamster-3.png": {"ar": 0.842, "top": 0.0, "hx": 0.492, "hw": 0.95}, "pet-hamster-4.png": {"ar": 0.728, "top": 0.0, "hx": 0.534, "hw": 0.916}, "pet-koala-0.png": {"ar": 0.811, "top": 0.0, "hx": 0.503, "hw": 0.889}, "pet-koala-1.png": {"ar": 0.733, "top": 0.0, "hx": 0.502, "hw": 0.898}, "pet-koala-2.png": {"ar": 1.065, "top": 0.0, "hx": 0.501, "hw": 0.981}, "pet-koala-3.png": {"ar": 0.961, "top": 0.0, "hx": 0.494, "hw": 0.977}, "pet-koala-4.png": {"ar": 0.781, "top": 0.0, "hx": 0.491, "hw": 0.982}, "pet-lion-0.png": {"ar": 0.8, "top": 0.0, "hx": 0.498, "hw": 0.892}, "pet-lion-1.png": {"ar": 0.794, "top": 0.0, "hx": 0.503, "hw": 0.916}, "pet-lion-2.png": {"ar": 1.023, "top": 0.0, "hx": 0.41, "hw": 0.808}, "pet-lion-3.png": {"ar": 0.925, "top": 0.0, "hx": 0.428, "hw": 0.832}, "pet-lion-4.png": {"ar": 0.844, "top": 0.0, "hx": 0.451, "hw": 0.862}, "pet-owl-0.png": {"ar": 0.803, "top": 0.0, "hx": 0.498, "hw": 0.9}, "pet-owl-1.png": {"ar": 0.803, "top": 0.0, "hx": 0.503, "hw": 0.903}, "pet-owl-2.png": {"ar": 0.906, "top": 0.0, "hx": 0.471, "hw": 0.917}, "pet-owl-3.png": {"ar": 1.003, "top": 0.0, "hx": 0.522, "hw": 0.767}, "pet-owl-4.png": {"ar": 0.686, "top": 0.0, "hx": 0.51, "hw": 0.939}, "pet-panda-0.png": {"ar": 0.806, "top": 0.0, "hx": 0.498, "hw": 0.9}, "pet-panda-1.png": {"ar": 0.808, "top": 0.0, "hx": 0.503, "hw": 0.897}, "pet-panda-2.png": {"ar": 1.043, "top": 0.0, "hx": 0.443, "hw": 0.864}, "pet-panda-3.png": {"ar": 0.839, "top": 0.0, "hx": 0.498, "hw": 0.997}, "pet-panda-4.png": {"ar": 0.814, "top": 0.0, "hx": 0.517, "hw": 0.952}, "pet-penguin-0.png": {"ar": 0.806, "top": 0.0, "hx": 0.5, "hw": 0.897}, "pet-penguin-1.png": {"ar": 0.825, "top": 0.0, "hx": 0.502, "hw": 0.882}, "pet-penguin-2.png": {"ar": 0.844, "top": 0.0, "hx": 0.472, "hw": 0.885}, "pet-penguin-3.png": {"ar": 0.875, "top": 0.0, "hx": 0.503, "hw": 0.759}, "pet-penguin-4.png": {"ar": 0.686, "top": 0.0, "hx": 0.466, "hw": 0.777}, "pet-sheep-0.png": {"ar": 0.815, "top": 0.0, "hx": 0.5, "hw": 0.897}, "pet-sheep-1.png": {"ar": 0.747, "top": 0.0, "hx": 0.504, "hw": 0.903}, "pet-sheep-2.png": {"ar": 1.023, "top": 0.0, "hx": 0.518, "hw": 0.831}, "pet-sheep-3.png": {"ar": 0.878, "top": 0.0, "hx": 0.437, "hw": 0.873}, "pet-sheep-4.png": {"ar": 0.794, "top": 0.0, "hx": 0.444, "hw": 0.888}, "pet-squirrel-0.png": {"ar": 0.815, "top": 0.0, "hx": 0.498, "hw": 0.893}, "pet-squirrel-1.png": {"ar": 0.75, "top": 0.0, "hx": 0.498, "hw": 0.907}, "pet-squirrel-2.png": {"ar": 1.04, "top": 0.0, "hx": 0.485, "hw": 0.969}, "pet-squirrel-3.png": {"ar": 1.043, "top": 0.0, "hx": 0.489, "hw": 0.967}, "pet-squirrel-4.png": {"ar": 0.942, "top": 0.0, "hx": 0.513, "hw": 0.956}, "pet-tiger-0.png": {"ar": 0.812, "top": 0.0, "hx": 0.502, "hw": 0.893}, "pet-tiger-1.png": {"ar": 0.739, "top": 0.0, "hx": 0.502, "hw": 0.914}, "pet-tiger-2.png": {"ar": 0.981, "top": 0.0, "hx": 0.453, "hw": 0.884}, "pet-tiger-3.png": {"ar": 0.853, "top": 0.0, "hx": 0.474, "hw": 0.896}, "pet-tiger-4.png": {"ar": 0.756, "top": 0.0, "hx": 0.487, "hw": 0.886}};
+const DECO_CATS = [['bg', '🏞️ 배경'], ['head', '👑 머리'], ['body', '🪽 날개'], ['hand', '🎈 들기'], ['fx', '✨ 반짝']];
+const DECO_NAMES = {
+  bg: ['봄 꽃밭','여름 바닷가','우주','숲속','눈 오는 마을','놀이공원','무지개 하늘','사탕 나라','내 방','바닷속','가을 공원','벽난로 거실','노을 언덕','공룡 섬','동화 속 성','밤 캠핑','비 온 뒤 골목','도서관','대나무 숲','벚꽃길','시골 마을','해바라기 밭','북극 오로라','사막 오아시스','무지개 놀이터','생일 파티','수정 동굴','열기구 하늘','크리스마스','시상식 무대'],
+  head: ['보석 왕관','마법사 모자','꽃 화관','빨간 리본','노란 모자','생일 고깔','해적 모자','토끼 귀','산타 모자','공주 티아라'],
+  body: ['천사 날개','히어로 망토','요정 날개','금메달','하트 목걸이','나비넥타이','무지개 목도리','책가방','우비 망토','꽃 앞치마'],
+  hand: ['하트 풍선','별 요술봉','아이스크림','롤리팝','축구공','꽃다발','곰인형','우산','그림책','트로피'],
+  fx: ['반짝 별','하트','비눗방울','음표','꽃잎','무지개','눈송이','나비','반딧불','금빛 가루'],
+};
+const BG_COST = [8,8,12,8,10,10,10,10,8,12, 8,10,8,12,15,10,10,8,8,10, 8,8,15,10,10,12,12,12,15,15];
+const HEAD_COST = [6,5,4,3,3,4,5,4,5,6];
+const BODY_COST = [10,8,10,6,6,5,5,6,6,6];
+const HAND_COST = [4,4,3,3,3,4,4,3,3,4];
+const FX_COST = [3,3,3,2,2,3,2,3,3,3];
+// per-item placement: back = drawn behind pet
+const BODY_SPEC = [
+  { back: true, w: 1.55, y: 'neck', dy: -0.4 }, { back: true, w: 1.25, y: 'neck', dy: -0.42 },
+  { back: true, w: 1.5, y: 'neck', dy: -0.4 }, { w: 0.42, y: 'neck', dy: -0.02 },
+  { w: 0.5, y: 'neck', dy: -0.04 }, { w: 0.34, y: 'neck', dy: 0.0 },
+  { w: 0.62, y: 'neck', dy: -0.04 }, { back: true, w: 0.55, y: 'neck', dy: -0.24, dx: 0.34 },
+  { back: true, w: 1.25, y: 'neck', dy: -0.48 }, { w: 0.48, y: 'neck', dy: 0.02 },
 ];
-function decoOf(child) { child.deco = child.deco || { owned: [], wear: {} }; child.deco.wear = child.deco.wear || {}; return child.deco; }
+const HEAD_SPEC = [0.62, 0.78, 0.8, 0.52, 0.66, 0.42, 0.8, 0.7, 0.72, 0.62];
+const HAND_SPEC = [0.62, 0.42, 0.36, 0.38, 0.3, 0.38, 0.36, 0.5, 0.32, 0.36];
+const DECOS = [];
+DECO_NAMES.bg.forEach((n, i) => DECOS.push({ id: 'bg' + (i + 1), cat: 'bg', name: n, cost: BG_COST[i], img: `img/deco/bg${String(i + 1).padStart(2, '0')}.jpg` }));
+const BODY_KEEP = [0, 2];
+['head', 'body', 'hand', 'fx'].forEach((cat, ci) => DECO_NAMES[cat].forEach((n, i) => {
+  if (cat === 'body' && !BODY_KEEP.includes(i)) return;
+  const num = 31 + ci * 10 + i;
+  DECOS.push({ id: 'it' + num, cat, name: n, idx: i, cost: { head: HEAD_COST, body: BODY_COST, hand: HAND_COST, fx: FX_COST }[cat][i], img: `img/deco/it${num}.png` });
+}));
+const OLD_DECO_COST = { ribbon: 2, cap: 3, crown: 6, party: 4, flower: 2, glasses: 3, star: 2, heart: 2, 'bg-sky': 4, 'bg-forest': 4, 'bg-candy': 4, 'bg-night': 5 };
+
+function decoOf(child) {
+  child.deco = child.deco || { owned: [], wear: {} };
+  child.deco.wear = child.deco.wear || {};
+  const gone = child.deco.owned.filter(id => /^it4\d$/.test(id) && !DECOS.some(x => x.id === id));
+  if (gone.length) {
+    child.points += gone.reduce((a, id) => a + (BODY_COST[+id.slice(2) - 41] || 0), 0);
+    child.deco.owned = child.deco.owned.filter(id => !gone.includes(id));
+    if (gone.includes(child.deco.wear.body)) child.deco.wear.body = null;
+    saveSettings();
+  }
+  const old = child.deco.owned.filter(id => OLD_DECO_COST[id]);
+  if (old.length) {
+    child.points += old.reduce((a, id) => a + OLD_DECO_COST[id], 0);
+    child.deco.owned = child.deco.owned.filter(id => !OLD_DECO_COST[id]);
+    child.deco.wear = {};
+    saveSettings();
+  }
+  return child.deco;
+}
+
+const STAGE_H = [0.46, 0.5, 0.52, 0.58, 0.64];
+const NECK_Y = [0.5, 0.5, 0.56, 0.52, 0.5];
+
+function petSceneLayers(child, wear) {
+  const stage = petStageOf(child);
+  const src = (ANIMALS[child.characterType] || ANIMALS.dog).imgs[stage];
+  const box = PET_BOX[src.split('/').pop()] || { ar: 0.9, top: 0, hx: 0.5, hw: 0.8 };
+  const H = STAGE_H[stage] * 100, W = H * box.ar;
+  const L = (100 - W) / 2, B = 7, T = 100 - B - H;
+  const get = cat => DECOS.find(d => d.id === wear[cat]);
+  const head = get('head'), body = get('body'), hand = get('hand');
+  const neckTop = T + H * NECK_Y[stage];
+  let back = '', front = '';
+  if (body) {
+    const sp = BODY_SPEC[body.idx];
+    const w = W * sp.w * (stage <= 1 ? 0.85 : 1);
+    const st = `left:${L + W * box.hx - w / 2 + (sp.dx || 0) * W}%;top:${neckTop + H * sp.dy}%;width:${w}%;`;
+    const tag = `<img class="ps-item" src="${body.img}" style="${st}">`;
+    if (sp.back) back += tag; else front += tag;
+  }
+  if (head) {
+    const w = W * box.hw * HEAD_SPEC[head.idx];
+    const hb = T + H * box.top + H * 0.07;
+    front += `<img class="ps-item ps-head" src="${head.img}" style="left:${L + W * box.hx - w / 2}%;bottom:${100 - hb}%;width:${w}%;">`;
+  }
+  if (hand) {
+    const w = W * HAND_SPEC[hand.idx];
+    front += `<img class="ps-item ps-hand" src="${hand.img}" style="left:${Math.min(96 - w, L + W * 0.82)}%;bottom:${B + H * (hand.idx === 0 ? 0.25 : 0.06)}%;width:${w}%;">`;
+  }
+  const pet = `<img class="pet-img ps-pet pet-s${stage}" src="${src}" style="left:${L}%;top:${T}%;height:${H}%;" alt="">`;
+  return back + pet + front;
+}
+
+function sceneBg(wear) { const b = DECOS.find(d => d.id === wear.bg); return b ? `url(${b.img})` : ''; }
+function sceneFx(wear) {
+  const f = DECOS.find(d => d.id === wear.fx);
+  return f ? `<img class="ps-fxi a" src="${f.img}"><img class="ps-fxi b" src="${f.img}">` : '';
+}
+
+function renderPetDeco(child) {
+  const wear = decoOf(child).wear;
+  const petEl = document.getElementById('pet-emoji-big');
+  petEl.innerHTML = petSceneLayers(child, wear);
+  const bg = sceneBg(wear);
+  const sc = document.getElementById('pet-scene');
+  document.getElementById('pet-bg').style.backgroundImage = bg;
+  sc.classList.toggle('has-bg', !!bg);
+  document.getElementById('pet-sfx').innerHTML = sceneFx(wear);
+}
+
+// closet (try-on)
+let closetCat = 'bg', tryWear = null;
+function openCloset() { switchTab('shop'); setShopTab('deco'); }
+function setShopTab(t) {
+  document.getElementById('shop-tab-gift').classList.toggle('active', t === 'gift');
+  document.getElementById('shop-tab-deco').classList.toggle('active', t === 'deco');
+  document.getElementById('shop-gift').classList.toggle('hidden', t !== 'gift');
+  document.getElementById('shop-deco').classList.toggle('hidden', t !== 'deco');
+  if (t === 'deco') { tryWear = null; renderDecoShop(getChild()); }
+}
 function renderDecoShop(child) {
   const d = decoOf(child);
-  document.getElementById('deco-grid').innerHTML = DECOS.map(x => {
-    const own = d.owned.includes(x.id), on = d.wear[x.slot] === x.id;
-    return `<button class="deco-card${on ? ' on' : ''}" onclick="decoTap('${x.id}')">
-      <span class="deco-ic">${x.ic}</span><span class="deco-name">${x.name}</span>
-      <span class="deco-cost">${on ? '입는 중 ✓' : own ? '입히기' : `💎 ${x.cost}`}</span></button>`;
+  const wear = tryWear || d.wear;
+  const sc = document.getElementById('closet-scene');
+  const bg = sceneBg(wear);
+  sc.innerHTML = `<div class="ps-bg" style="background-image:${bg}"></div><div class="ps-body">${petSceneLayers(child, wear)}</div><div class="ps-fx">${sceneFx(wear)}</div>`;
+  sc.classList.toggle('has-bg', !!bg);
+  const trying = DECO_CATS.map(([c]) => wear[c]).filter(id => id && !d.owned.includes(id)).map(id => DECOS.find(x => x.id === id));
+  const cost = trying.reduce((a, x) => a + x.cost, 0);
+  document.getElementById('closet-bar').innerHTML = trying.length
+    ? `<div class="closet-try">👀 입어보는 중: ${trying.map(x => `<b>${x.name}</b>`).join(', ')}</div>
+       <div class="flex-row" style="gap:8px;">
+         <button class="focus-done" style="flex:2;font-size:1.15rem;padding:14px;" ${child.points < cost ? 'disabled' : ''} onclick="buyTrying()">💎 ${cost}개로 사기${child.points < cost ? ` (${cost - child.points}개 부족)` : ''}</button>
+         <button class="btn-ghost" style="flex:1;" onclick="tryWear=null;renderDecoShop(getChild())">그만 입어보기</button>
+       </div>`
+    : `<div class="closet-try">${Object.values(d.wear).some(Boolean) ? '✨ 지금 입고 있는 모습이에요. 아이템을 누르면 입어볼 수 있어요!' : '아이템을 눌러서 먼저 입어 봐요! 마음에 들면 살 수 있어요.'}</div>`;
+  document.getElementById('closet-cats').innerHTML = DECO_CATS.map(([c, label]) =>
+    `<button class="slot-tab${c === closetCat ? ' active' : ''}" onclick="closetCat='${c}';renderDecoShop(getChild())">${label}</button>`).join('');
+  document.getElementById('deco-grid').innerHTML = DECOS.filter(x => x.cat === closetCat).map(x => {
+    const own = d.owned.includes(x.id), on = wear[x.cat] === x.id;
+    return `<button class="deco-card${on ? ' on' : ''}${own ? ' own' : ''}" onclick="decoTap('${x.id}')">
+      <span class="deco-thumb${x.cat === 'bg' ? ' bg' : ''}" style="background-image:url(${x.img})"></span>
+      <span class="deco-name">${x.name}</span>
+      <span class="deco-cost">${on ? (own ? '입는 중 ✓' : '입어보는 중') : own ? '내 것 · 입기' : `💎 ${x.cost}`}</span></button>`;
   }).join('');
 }
 function decoTap(id) {
   const child = getChild();
   const d = decoOf(child);
   const x = DECOS.find(z => z.id === id);
-  if (!d.owned.includes(id)) {
-    if (child.points < x.cost) { toast(`보석이 ${x.cost - child.points}개 더 필요해요`); return; }
-    if (!confirm(`${x.name}을(를) 보석 ${x.cost}개로 살까요?`)) return;
-    child.points -= x.cost;
-    d.owned.push(id);
-    d.wear[x.slot] = id;
+  if (d.owned.includes(id) && !tryWear) {
+    d.wear[x.cat] = d.wear[x.cat] === id ? null : id;
+    saveSettings();
   } else {
-    d.wear[x.slot] = d.wear[x.slot] === id ? null : id;
+    tryWear = Object.assign({}, tryWear || d.wear);
+    tryWear[x.cat] = tryWear[x.cat] === id ? (d.wear[x.cat] || null) : id;
+    if (DECO_CATS.every(([c]) => (tryWear[c] || null) === (d.wear[c] || null))) tryWear = null;
   }
+  renderDecoShop(child);
+}
+function buyTrying() {
+  const child = getChild();
+  const d = decoOf(child);
+  const items = DECO_CATS.map(([c]) => tryWear && tryWear[c]).filter(id => id && !d.owned.includes(id)).map(id => DECOS.find(x => x.id === id));
+  const cost = items.reduce((a, x) => a + x.cost, 0);
+  if (!items.length || child.points < cost) return;
+  if (!confirm(`${items.map(x => x.name).join(', ')}을(를) 보석 ${cost}개로 살까요?`)) return;
+  child.points -= cost;
+  items.forEach(x => d.owned.push(x.id));
+  d.wear = Object.assign({}, tryWear);
+  tryWear = null;
   saveSettings();
   renderShopScreen();
-}
-function renderPetDeco(child) {
-  const d = decoOf(child);
-  const get = sl => DECOS.find(z => z.id === d.wear[sl]);
-  const hat = get('hat'), face = get('face'), bg = get('bg');
-  document.getElementById('pet-deco').innerHTML =
-    (hat ? `<span class="deco-hat">${hat.show || hat.ic}</span>` : '') + (face ? `<span class="deco-face">${face.ic}</span>` : '');
-  document.getElementById('pet-card').style.background = bg ? bg.bg : '';
+  setShopTab('deco');
+  spawnConfetti();
+  toast('🎉 새 꾸미기를 샀어요! 홈에서 펫을 확인해 봐요');
+  if (child.speak) speak('와! 펫이 정말 멋져졌어요!');
 }
 
 // ---------- tomorrow preview ----------
@@ -3743,7 +3895,7 @@ function openBrain() {
   document.getElementById('game-title').textContent = `🧠 오늘의 두뇌 게임 · ${names[g]}`;
   document.getElementById('game-body').innerHTML = `
     <div class="calm-say">${how[g]}</div>
-    ${brainDone(child) ? '<div class="text-sm color-muted">오늘 보상은 이미 받았어요. 연습으로 더 해도 좋아요!</div>' : '<div class="text-sm color-muted">끝까지 하면 +15 XP!</div>'}
+    ${brainDone(child) ? '<div class="text-sm color-muted">오늘 XP는 이미 받았어요. 연습으로 더 해도 좋아요!</div>' : '<div class="text-sm color-muted">끝까지 하면 +15 XP!</div>'}
     <button class="focus-done" style="max-width:300px;" onclick="startBrain()">시작! 🧠</button>
     <button class="btn-ghost btn-sm" onclick="closeGame()">닫기</button>`;
   document.getElementById('game-screen').classList.remove('hidden');
@@ -4261,7 +4413,7 @@ function markCoopGiven(wk) {
   settings.coopWins[wk].given = true;
   saveSettings();
   renderParentDashboard();
-  toast('보상 준 것으로 표시했어요!');
+  toast('선물 준 것으로 표시했어요!');
 }
 
 function renderCoopParent() {
@@ -4274,12 +4426,12 @@ function renderCoopParent() {
   const past = Object.entries(wins).filter(([k]) => k !== wk).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 4);
   document.getElementById('coop-parent').innerHTML = `<div class="card" style="display:flex;flex-direction:column;gap:8px;">
     <div class="flex-between"><b>👨‍👧‍👧 이번 주 협동 목표</b><span class="text-sm color-muted">${n} / ${c.target}</span></div>
-    ${win ? (win.given ? `<div class="text-sm">✅ 이번 주 보상(${escText(win.reward)})을 줬어요.</div>`
+    ${win ? (win.given ? `<div class="text-sm">✅ 이번 주 선물(${escText(win.reward)})을 줬어요.</div>`
       : `<div class="text-sm">🎉 아이들이 목표를 채웠어요! <b>${escText(win.reward)}</b>를 해 주세요.</div>
-         <button class="btn-primary btn-sm" onclick="markCoopGiven('${wk}')">보상 줬어요 ✓</button>`)
-      : `<div class="text-sm color-secondary">${c.target - n}개 남았어요. 보상: ${escText(c.reward)}</div>`}
+         <button class="btn-primary btn-sm" onclick="markCoopGiven('${wk}')">선물 줬어요 ✓</button>`)
+      : `<div class="text-sm color-secondary">${c.target - n}개 남았어요. 선물: ${escText(c.reward)}</div>`}
     ${settings.coopNext ? `<div class="text-xs color-muted">다음 주부터 목표: ${settings.coopNext.target}개 · ${escText(settings.coopNext.reward)}</div>` : ''}
-    ${past.length ? `<div class="text-xs color-muted">지난 성공: ${past.map(([, w]) => `${w.target}개${w.given ? ' ✅' : ' (보상 아직)'}`).join(' · ')}</div>` : ''}
+    ${past.length ? `<div class="text-xs color-muted">지난 성공: ${past.map(([, w]) => `${w.target}개${w.given ? ' ✅' : ' (선물 아직)'}`).join(' · ')}</div>` : ''}
   </div>`;
 }
 
@@ -4850,7 +5002,7 @@ function renderShopScreen() {
   const child = getChild();
   if (!child) return;
   document.getElementById('shop-points-display').textContent = `💎 보석 ${child.points}개`;
-  renderDecoShop(child);
+  if (!document.getElementById('shop-deco').classList.contains('hidden')) renderDecoShop(child);
 
   const grid = document.getElementById('shop-grid');
   grid.innerHTML = rewards.filter(r => !r.for || r.for.includes(child.id)).sort((a, b) => a.cost - b.cost).map(r => {
@@ -5512,7 +5664,7 @@ function renderRewardsSettings() {
     </div>`).join('');
 }
 function deleteReward(idx) {
-  if (!confirm('이 보상을 삭제할까요?')) return;
+  if (!confirm('이 선물을 삭제할까요?')) return;
   rewards.splice(idx, 1);
   saveRewards();
   renderRewardsSettings();
