@@ -568,6 +568,41 @@ input, select, textarea { font-family: inherit; outline: none; }
 .pair-card.done { background:#dcfce7; }
 @media (max-width: 600px) { .buddy-grid { grid-template-columns:repeat(2,1fr); } .plan-grid { grid-template-columns:1fr; } .pad-grid { grid-template-columns:repeat(2,110px); } .pad { height:110px; } .stop-target { width:160px; height:160px; font-size:5.5rem; } }
 
+/* ===== BADGES / BOX / DECO / TOMORROW / MONTH ===== */
+.badge-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+@media (min-width: 900px) { .badge-grid { grid-template-columns:repeat(6,1fr); } }
+.badge-card { background:#fffbeb; border:2px solid #fde68a; border-radius:18px; padding:12px 6px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:3px; }
+.badge-card.locked { background:#f1f5f9; border:2px dashed #e2e8f0; }
+.badge-ic { font-size:2.6rem; line-height:1.1; }
+.mystery-btn { margin-top:10px; width:100%; padding:12px; border-radius:16px; background:linear-gradient(135deg,#fde68a,#f9a8d4); color:#7c2d12; font-size:1.1rem; font-weight:900; animation:pulse 1.2s infinite; }
+.box-shake { font-size:8rem; animation:boxShake .5s infinite; }
+@keyframes boxShake { 0%,100%{transform:rotate(0)} 25%{transform:rotate(-10deg) scale(1.05)} 75%{transform:rotate(10deg) scale(1.05)} }
+#pet-deco { position:absolute; inset:0; pointer-events:none; }
+.deco-hat { position:absolute; left:50%; top:-0.32em; transform:translateX(-50%) rotate(-8deg); font-size:2.6rem; }
+.deco-face { position:absolute; left:50%; top:42%; transform:translateX(-50%); font-size:2rem; }
+.deco-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+@media (min-width: 900px) { .deco-grid { grid-template-columns:repeat(6,1fr); } }
+.deco-card { background:#fff; border:2px solid var(--border); border-radius:16px; padding:10px 4px; display:flex; flex-direction:column; align-items:center; gap:2px; }
+.deco-card.on { border-color:#a855f7; background:#faf5ff; }
+.deco-ic { font-size:2.2rem; }
+.deco-name { font-size:0.85rem; }
+.deco-cost { font-size:0.75rem; color:var(--primary); font-weight:800; }
+.tomorrow-card { background:#ecfeff; border:2px solid #a5f3fc; border-radius:20px; padding:14px; margin-top:6px; display:flex; flex-direction:column; gap:6px; }
+.tm-row { font-size:1rem; line-height:1.5; }
+.tm-note { background:#fff; border-radius:10px; padding:6px 10px; }
+.daynote-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:6px; }
+.daynote { display:flex; align-items:center; gap:6px; }
+.daynote span { width:1.4em; font-weight:800; }
+.month-grid { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:4px; }
+.mh { text-align:center; font-size:0.8rem; color:var(--text-muted); }
+.mc { min-height:54px; border-radius:10px; background:#f8fafc; padding:3px 4px; display:flex; flex-direction:column; font-size:0.75rem; }
+.mc.lv1 { background:#dcfce7; } .mc.lv2 { background:#86efac; } .mc.lv3 { background:#4ade80; }
+.mc.today { outline:2px solid #fb923c; }
+.mc.future { opacity:0.45; }
+.md { font-weight:800; color:var(--text-secondary); } .md.off { color:#dc2626; }
+.mn { font-size:1rem; font-weight:900; color:#14532d; text-align:center; }
+.mi { font-size:0.85rem; text-align:center; }
+
 /* ===== FEED ===== */
 .feed-gauge { margin-top:12px; text-align:left; }
 .feed-head { display:flex; justify-content:space-between; font-size:0.9rem; font-weight:800; color:#b45309; gap:8px; }
@@ -1051,7 +1086,8 @@ input, select, textarea { font-family: inherit; outline: none; }
       <div class="home-name" id="pet-owner-label"></div>
       <div id="streak-chip"></div>
       <div class="speech-bubble" id="speech-bubble" style="margin-bottom:14px;">...</div>
-      <div class="pet-stage"><div id="pet-emoji-big" style="font-size:6rem;line-height:1;display:block;cursor:pointer;" onclick="triggerPetPat()"></div><div id="pet-fx"></div></div>
+      <div class="pet-stage" id="pet-stage"><div id="pet-emoji-big" style="font-size:6rem;line-height:1;display:block;cursor:pointer;" onclick="triggerPetPat()"></div><div id="pet-deco"></div><div id="pet-fx"></div></div>
+      <button class="mystery-btn hidden" id="mystery-btn" onclick="openMystery()">🎁 오늘의 깜짝 상자 열기!</button>
       <div style="margin-top:8px;font-size:0.85rem;font-weight:700;color:var(--text-secondary);" id="pet-stage-label"></div>
       <div class="feed-gauge" id="feed-gauge"></div>
       <div class="pet-actions">
@@ -1089,6 +1125,7 @@ input, select, textarea { font-family: inherit; outline: none; }
       <div style="font-size:0.85rem;color:var(--text-secondary);margin-top:6px;">정말 최고예요! 펫이 행복해해요 😊</div>
     </div>
 
+    <div id="tomorrow-card"></div>
     <div id="night-note"></div>
 
     <div id="duty-section" class="hidden" style="display:flex;flex-direction:column;gap:10px;">
@@ -1166,6 +1203,9 @@ input, select, textarea { font-family: inherit; outline: none; }
     <div class="slot-tabs" id="dex-tabs"></div>
     <div class="dex-summary" id="dex-summary"></div>
     <div class="dex-grid" id="dex-grid"></div>
+    <div class="dex-title" style="font-size:1.3rem;margin-top:14px;">🏅 배지</div>
+    <div class="dex-summary" id="badge-summary"></div>
+    <div class="badge-grid" id="badge-grid"></div>
   </div>
   <nav class="bottom-nav" data-tab="dex"></nav>
 </div>
@@ -1194,6 +1234,9 @@ input, select, textarea { font-family: inherit; outline: none; }
     </div>
 
     <div class="reward-grid" id="shop-grid"></div>
+    <div style="font-size:1.2rem;font-weight:800;margin-top:18px;">🎨 펫 꾸미기</div>
+    <div class="text-sm color-muted" style="margin-top:-6px;">한 번 사면 계속 쓸 수 있어요. 누르면 입히고 다시 누르면 벗어요.</div>
+    <div class="deco-grid" id="deco-grid"></div>
   </div>
 
   <nav class="bottom-nav" data-tab="shop"></nav>
@@ -1294,6 +1337,19 @@ input, select, textarea { font-family: inherit; outline: none; }
     <div class="section-label" style="padding-left:4px;margin-top:6px;">📊 이번 주 리포트</div>
     <div class="text-xs color-muted" style="padding-left:4px;margin-top:-6px;">점: 연한 초록 = 그 시간대 절반 이상 · 진한 초록 = 전부 했어요</div>
     <div style="display:flex;flex-direction:column;gap:12px;" id="weekly-report"></div>
+
+    <div class="section-label" style="padding-left:4px;margin-top:6px;">📅 한 달 리포트</div>
+    <div class="card" style="display:flex;flex-direction:column;gap:10px;">
+      <div class="slot-tabs" id="month-tabs"></div>
+      <div class="flex-between">
+        <button class="btn-ghost btn-sm" onclick="monthOffset--;renderMonth()">◀ 이전 달</button>
+        <b id="month-title"></b>
+        <button class="btn-ghost btn-sm" onclick="monthOffset++;renderMonth()">다음 달 ▶</button>
+      </div>
+      <div class="month-grid" id="month-grid"></div>
+      <div class="text-xs color-muted">숫자 = 해낸 할 일 · 색이 진할수록 많이 했어요 · 날씨 = 그날 기분 · 💊 = 약 먹기 체크 · 🔴 = 쉬는 날</div>
+      <div id="month-summary" class="text-sm"></div>
+    </div>
     <button class="btn-ghost" onclick="resetDutyPicks()"><svg class="badge-ico" viewBox="0 0 24 28" aria-hidden="true"><path d="M6.5 1h4.5l2 9H8.5z" fill="#60a5fa"/><path d="M17.5 1H13l-2 9h4.5z" fill="#f472b6"/><circle cx="12" cy="17.5" r="9" fill="#fbbf24" stroke="#f59e0b" stroke-width="1.6"/><circle cx="12" cy="17.5" r="6.4" fill="none" stroke="#fde68a" stroke-width="1"/><path d="M12 12.6l1.6 3.3 3.6.5-2.6 2.5.6 3.6L12 20.8l-3.2 1.7.6-3.6-2.6-2.5 3.6-.5z" fill="#fff"/></svg> 이번 주 반장 다시 고르게 하기</button>
 
     <!-- Photo approvals -->
@@ -1512,6 +1568,11 @@ function getFolder_() {
         <div class="form-group">
           <label class="form-label">🌙 저녁 탭을 먼저 보여줄 시간</label>
           <input class="input-field" id="slot-evening-input" type="time">
+        </div>
+        <div class="form-group">
+          <label class="form-label">📅 요일별 챙길 것 (내일 미리 보기에 나와요)</label>
+          <div class="daynote-grid" id="daynote-grid"></div>
+          <button class="btn-ghost btn-sm" style="margin-top:6px;" onclick="saveDayNotes()">요일별 메모 저장</button>
         </div>
         <div class="form-group">
           <label class="form-label">🗓️ 학교 안 가는 날 (방학·재량휴업일 등)</label>
@@ -2569,6 +2630,10 @@ function flyFood(child) {
   }, 650);
 }
 
+function shownLv(child) {
+  return Math.min(PET_MAX_LEVEL, Math.max(1, petLevel(child)));
+}
+
 function petLevel(child, level = child.level) {
   return level - (child.petStart || 1) + 1;
 }
@@ -2638,7 +2703,7 @@ function renderWelcome() {
       <div class="profile-pet">${getPetEmoji(child)}</div>
       <div style="flex:1;width:100%;">
         <div class="profile-name">${avatarHTML(child)}${child.name}</div>
-        <div class="profile-meta">LV.${child.level} · 오늘 ${done}/${total} 완료${streakInfo(child).days ? ` · 🔥${streakInfo(child).days}일` : ''}</div>
+        <div class="profile-meta">Lv.${shownLv(child)} · 오늘 ${done}/${total} 완료${streakInfo(child).days ? ` · 🔥${streakInfo(child).days}일` : ''}</div>
         <div style="margin-top:10px;"><div class="xp-track"><div class="xp-fill" style="width:${total ? (done / total) * 100 : 0}%"></div></div></div>
         ${badges ? `<div class="duty-badges">${badges}</div>` : ''}
       </div>
@@ -2923,7 +2988,7 @@ function renderHomeScreen() {
   const xp = child.xp;
   const needed = xpNeeded(child.level);
   const pct = Math.min((xp / needed) * 100, 100);
-  document.getElementById('home-level-label').textContent = `LV.${child.level}`;
+  document.getElementById('home-level-label').textContent = `Lv.${shownLv(child)} / ${PET_MAX_LEVEL}`;
   document.getElementById('home-xp-label').textContent = `${xp}/${needed} XP`;
   document.getElementById('home-xp-fill').style.width = pct + '%';
 
@@ -2973,6 +3038,10 @@ function renderHomeScreen() {
   document.getElementById('speech-bubble').textContent = speechText;
   document.getElementById('speech-bubble').classList.remove('praise');
   renderFeedGauge(child);
+  renderPetDeco(child);
+  renderTomorrow(child);
+  document.getElementById('mystery-btn').classList.toggle('hidden', !mysteryReady(child));
+  checkBadges(child);
   renderMoodCard(child, log);
   const bb = document.getElementById('brain-btn');
   if (bb) {
@@ -3161,6 +3230,257 @@ function renderTasks(child, log, slot, slotTasks, doneCount, totalCount) {
       <span class="xp-badge">+${t.xp} XP</span>
     </button>`;
   }).join('');
+}
+
+// ---------- stats & badges ----------
+function allLogs() {
+  const out = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (!k || !k.startsWith('routinepet_log_')) continue;
+    try { out.push([k.slice(15), JSON.parse(localStorage.getItem(k) || '{}')]); } catch (e) {}
+  }
+  return out;
+}
+
+function childStats(child) {
+  const st = { tasks: 0, brain: 0, calm: 0, mood: 0, notes: 0, duty: 0, social: 0, problem: 0, focusDays: 0 };
+  const p = child.id + '_';
+  allLogs().forEach(([, log]) => {
+    Object.entries(log).forEach(([k, e]) => {
+      if (!k.startsWith(p) || !e) return;
+      const id = k.slice(p.length);
+      if (id === 'brain' && e.ok) st.brain++;
+      else if (id === 'calm') st.calm += e.count || 0;
+      else if (id.startsWith('mood_')) st.mood++;
+      else if (id === 'note' && e.text) st.notes++;
+      else if (e.done) {
+        st.tasks++;
+        if (id.startsWith('duty_')) st.duty++;
+        const t = tasks.find(x => x.id === id);
+        if (t && t.type === 'social') st.social++;
+        if (t && t.type === 'problem') st.problem++;
+      }
+    });
+  });
+  st.streak = streakInfo(child).days;
+  st.bestStreak = Math.max(child.bestStreak || 0, st.streak);
+  st.pets = (child.collection || []).length;
+  st.level = child.level;
+  return st;
+}
+
+const BADGES = [
+  ['first', '🌱', '첫 걸음', '할 일 1개 해내기', s => s.tasks >= 1],
+  ['t100', '💯', '백 개 돌파', '할 일 100개 해내기', s => s.tasks >= 100],
+  ['t500', '🚀', '루틴 로켓', '할 일 500개 해내기', s => s.tasks >= 500],
+  ['t1000', '👑', '루틴 왕', '할 일 1000개 해내기', s => s.tasks >= 1000],
+  ['s3', '🔥', '3일 연속', '3일 연속 절반 넘게 하기', s => s.bestStreak >= 3],
+  ['s7', '🌟', '일주일 연속', '7일 연속 절반 넘게 하기', s => s.bestStreak >= 7],
+  ['s14', '🏆', '2주 연속', '14일 연속 절반 넘게 하기', s => s.bestStreak >= 14],
+  ['s30', '💎', '한 달 연속', '30일 연속 절반 넘게 하기', s => s.bestStreak >= 30],
+  ['pet1', '🐣', '첫 펫 졸업', '펫 한 마리 다 키우기', s => s.pets >= 1],
+  ['pet3', '🦁', '펫 박사', '펫 세 마리 다 키우기', s => s.pets >= 3],
+  ['brain10', '🧠', '두뇌 쑥쑥', '두뇌 게임 10번', s => s.brain >= 10],
+  ['calm5', '🫧', '마음 지킴이', '숨 고르기 5번', s => s.calm >= 5],
+  ['mood14', '🌈', '마음 일기', '기분 체크 14번', s => s.mood >= 14],
+  ['note7', '🌙', '잘한 일 수집가', '오늘 잘한 일 7번 쓰기', s => s.notes >= 7],
+  ['duty7', '🏅', '든든한 반장', '반장 임무 7번', s => s.duty >= 7],
+  ['social10', '💬', '마음 공부 박사', '마음 공부 10번', s => s.social >= 10],
+  ['prob10', '🔍', '문제 탐정', '문제 찾기 10번', s => s.problem >= 10],
+];
+
+let badgeQueue = [];
+function checkBadges(child) {
+  if (!child) return;
+  const st = childStats(child);
+  child.bestStreak = st.bestStreak;
+  child.badges = child.badges || {};
+  let changed = false;
+  BADGES.forEach(([id, ic, name, desc, ok]) => {
+    if (!child.badges[id] && ok(st)) {
+      child.badges[id] = ymd(new Date());
+      badgeQueue.push({ child, ic, name, desc });
+      changed = true;
+    }
+  });
+  if (changed) { saveSettings(); setTimeout(flushBadges, 900); }
+}
+function flushBadges() {
+  if (!badgeQueue.length || document.querySelector('.pop-overlay:not(.hidden)') || !document.getElementById('screen-home').classList.contains('active')) {
+    if (badgeQueue.length) setTimeout(flushBadges, 1500);
+    return;
+  }
+  const b = badgeQueue.shift();
+  showPop({ kind: 'right', icon: b.ic, title: `새 배지! "${b.name}"`, text: `${b.desc} 성공! 펫 도감에서 모은 배지를 볼 수 있어요.`, button: '멋지다! 🏅', onClose: () => setTimeout(flushBadges, 300) }, b.child);
+}
+function renderBadges(child) {
+  const got = child.badges || {};
+  const n = BADGES.filter(b => got[b[0]]).length;
+  document.getElementById('badge-summary').textContent = `${child.name}가 모은 배지 ${n} / ${BADGES.length}`;
+  document.getElementById('badge-grid').innerHTML = BADGES.map(([id, ic, name, desc]) => got[id]
+    ? `<div class="badge-card"><div class="badge-ic">${ic}</div><div class="dex-name">${name}</div><div class="dex-sub">${desc}</div><div class="dex-sub">${got[id].slice(5).replace('-', '/')} 받음</div></div>`
+    : `<div class="badge-card locked"><div class="badge-ic">🔒</div><div class="dex-name">???</div><div class="dex-sub">${desc}</div></div>`).join('');
+}
+
+// ---------- mystery box ----------
+function mysteryReady(child) {
+  const d = new Date(); d.setHours(0, 0, 0, 0);
+  const log = readLog(d);
+  return dayRatio(child, d) >= 0.5 && !(log[`${child.id}_box`]);
+}
+function openMystery() {
+  const child = getChild();
+  if (!mysteryReady(child)) return;
+  const unowned = DECOS.filter(x => !((child.deco || {}).owned || []).includes(x.id) && x.cost <= 4);
+  const r = Math.random();
+  let prize;
+  if (r < 0.4) prize = { kind: 'gem', n: 1, ic: '💎', text: '보석 1개' };
+  else if (r < 0.75 || !unowned.length) prize = { kind: 'xp', n: 20, ic: '⭐', text: '경험치 20' };
+  else { const it = unowned[Math.floor(Math.random() * unowned.length)]; prize = { kind: 'deco', id: it.id, ic: it.ic, text: `펫 꾸미기 "${it.name}"` }; }
+  const log = loadLog();
+  log[`${child.id}_box`] = { prize: prize.text, ts: Date.now() };
+  saveLog(log);
+  const wrap = document.getElementById('game-screen');
+  document.getElementById('game-title').textContent = '🎁 오늘의 깜짝 상자';
+  document.getElementById('game-body').innerHTML = `<div class="box-shake">🎁</div><div class="calm-say">두근두근… 무엇이 들어 있을까?</div>`;
+  wrap.classList.remove('hidden');
+  setTimeout(() => {
+    if (prize.kind === 'gem') { child.points += 1; }
+    if (prize.kind === 'deco') { child.deco = child.deco || { owned: [], wear: {} }; child.deco.owned.push(prize.id); }
+    saveSettings();
+    if (child.speak) speak(`와! ${prize.text}을 받았어요!`);
+    document.getElementById('game-body').innerHTML = `
+      <div style="font-size:6rem;animation:popIn .5s;">${prize.ic}</div>
+      <div class="pop-title">${prize.text}!</div>
+      <div class="calm-say">${prize.kind === 'deco' ? '보석 교환상점 아래 "펫 꾸미기"에서 입혀 볼 수 있어요!' : '내일도 절반 넘게 하면 또 열 수 있어요!'}</div>
+      <button class="focus-done" id="box-ok" style="max-width:300px;">야호! 🎉</button>`;
+    spawnConfetti();
+    document.getElementById('box-ok').onclick = () => { closeGame(); if (prize.kind === 'xp') awardXP(child.id, 20, 'box'); else renderHomeScreen(); };
+  }, 1600);
+}
+
+// ---------- pet decorations ----------
+const DECOS = [
+  { id: 'ribbon', ic: '🎀', name: '리본', slot: 'hat', cost: 2 },
+  { id: 'cap', ic: '🧢', name: '모자', slot: 'hat', cost: 3 },
+  { id: 'crown', ic: '👑', name: '왕관', slot: 'hat', cost: 6 },
+  { id: 'party', ic: '🥳', name: '파티 모자', slot: 'hat', cost: 4, show: '🎉' },
+  { id: 'flower', ic: '🌸', name: '꽃핀', slot: 'hat', cost: 2 },
+  { id: 'glasses', ic: '🕶️', name: '선글라스', slot: 'face', cost: 3 },
+  { id: 'star', ic: '⭐', name: '별 스티커', slot: 'face', cost: 2 },
+  { id: 'heart', ic: '💖', name: '하트 볼터치', slot: 'face', cost: 2 },
+  { id: 'bg-sky', ic: '🌤️', name: '하늘 배경', slot: 'bg', cost: 4, bg: 'linear-gradient(180deg,#bae6fd,#f0f9ff)' },
+  { id: 'bg-forest', ic: '🌳', name: '숲 배경', slot: 'bg', cost: 4, bg: 'linear-gradient(180deg,#bbf7d0,#f0fdf4)' },
+  { id: 'bg-candy', ic: '🍭', name: '사탕 배경', slot: 'bg', cost: 4, bg: 'linear-gradient(180deg,#fbcfe8,#fdf2f8)' },
+  { id: 'bg-night', ic: '🌙', name: '밤하늘 배경', slot: 'bg', cost: 5, bg: 'linear-gradient(180deg,#c7d2fe,#eef2ff)' },
+];
+function decoOf(child) { child.deco = child.deco || { owned: [], wear: {} }; child.deco.wear = child.deco.wear || {}; return child.deco; }
+function renderDecoShop(child) {
+  const d = decoOf(child);
+  document.getElementById('deco-grid').innerHTML = DECOS.map(x => {
+    const own = d.owned.includes(x.id), on = d.wear[x.slot] === x.id;
+    return `<button class="deco-card${on ? ' on' : ''}" onclick="decoTap('${x.id}')">
+      <span class="deco-ic">${x.ic}</span><span class="deco-name">${x.name}</span>
+      <span class="deco-cost">${on ? '입는 중 ✓' : own ? '입히기' : `💎 ${x.cost}`}</span></button>`;
+  }).join('');
+}
+function decoTap(id) {
+  const child = getChild();
+  const d = decoOf(child);
+  const x = DECOS.find(z => z.id === id);
+  if (!d.owned.includes(id)) {
+    if (child.points < x.cost) { toast(`보석이 ${x.cost - child.points}개 더 필요해요`); return; }
+    if (!confirm(`${x.name}을(를) 보석 ${x.cost}개로 살까요?`)) return;
+    child.points -= x.cost;
+    d.owned.push(id);
+    d.wear[x.slot] = id;
+  } else {
+    d.wear[x.slot] = d.wear[x.slot] === id ? null : id;
+  }
+  saveSettings();
+  renderShopScreen();
+}
+function renderPetDeco(child) {
+  const d = decoOf(child);
+  const get = sl => DECOS.find(z => z.id === d.wear[sl]);
+  const hat = get('hat'), face = get('face'), bg = get('bg');
+  document.getElementById('pet-deco').innerHTML =
+    (hat ? `<span class="deco-hat">${hat.show || hat.ic}</span>` : '') + (face ? `<span class="deco-face">${face.ic}</span>` : '');
+  document.getElementById('pet-card').style.background = bg ? bg.bg : '';
+}
+
+// ---------- tomorrow preview ----------
+function renderTomorrow(child) {
+  const el = document.getElementById('tomorrow-card');
+  const slot = viewSlot || getActiveSlot();
+  if (slot !== 'evening') { el.innerHTML = ''; return; }
+  const t = new Date(); t.setDate(t.getDate() + 1); t.setHours(0, 0, 0, 0);
+  const off = isWeekend(t);
+  const offName = offDayName(t);
+  const wd = '일월화수목금토'[t.getDay()];
+  const list = tasksForChild(child.id, t);
+  const morning = list.filter(x => x.slot === 'morning');
+  const special = list.filter(x => (x.for && x.for.length) || x.days).filter(x => !['m1', 'm4', 'm5', 'e5', 'e6'].includes(x.id));
+  const note = (settings.dayNotes || {})[t.getDay()];
+  const duty = dutiesFor(child.id)[0];
+  el.innerHTML = `<div class="tomorrow-card">
+    <div class="note-q">📅 내일 미리 보기 · <b>${t.getMonth() + 1}월 ${t.getDate()}일 ${wd}요일</b></div>
+    <div class="tm-row">${off ? `🏡 <b>${offName || '쉬는 날'}</b> · 학교 안 가는 날이에요!` : `🏫 학교 가는 날 · 🚌 <b>${settings.departTime || '07:55'}</b>에 집에서 나가요`}</div>
+    <div class="tm-row">🌅 아침 할 일 <b>${morning.length}개</b>${special.length ? ` · 내일 할 것: ${[...new Set(special.map(x => x.name))].slice(0, 4).join(', ')}` : ''}</div>
+    ${duty ? `<div class="tm-row">🏅 ${duty.name} 잊지 말기</div>` : ''}
+    ${note ? `<div class="tm-row tm-note">🎒 ${escText(note)}</div>` : ''}
+  </div>`;
+}
+function renderDayNotes() {
+  const n = settings.dayNotes || {};
+  document.getElementById('daynote-grid').innerHTML = [1, 2, 3, 4, 5, 6, 0].map(w =>
+    `<label class="daynote"><span>${'일월화수목금토'[w]}</span><input class="input-field" id="dn-${w}" value="${escText(n[w] || '')}" placeholder="예: 체육복"></label>`).join('');
+}
+function saveDayNotes() {
+  settings.dayNotes = {};
+  [0, 1, 2, 3, 4, 5, 6].forEach(w => { const v = document.getElementById('dn-' + w).value.trim(); if (v) settings.dayNotes[w] = v; });
+  saveSettings();
+  toast('요일별 메모를 저장했어요!');
+}
+
+// ---------- month report ----------
+let monthOffset = 0, monthChildId = null;
+function renderMonth() {
+  const kids = settings.children;
+  if (!kids.find(c => c.id === monthChildId)) monthChildId = kids[0].id;
+  const child = kids.find(c => c.id === monthChildId);
+  document.getElementById('month-tabs').innerHTML = kids.map(c =>
+    `<button class="slot-tab${c.id === child.id ? ' active' : ''}" onclick="monthChildId='${c.id}';renderMonth()">${c.name}</button>`).join('');
+  const now = new Date();
+  const first = new Date(now.getFullYear(), now.getMonth() + monthOffset, 1);
+  const days = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
+  document.getElementById('month-title').textContent = `${first.getFullYear()}년 ${first.getMonth() + 1}월`;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const medIds = tasks.filter(t => t.name.includes('약')).map(t => t.id);
+  let cells = [...'일월화수목금토'].map(w => `<div class="mh">${w}</div>`).join('');
+  for (let i = 0; i < first.getDay(); i++) cells += '<div></div>';
+  let sum = 0, active = 0, best = [0, 0], moods = {};
+  for (let d = 1; d <= days; d++) {
+    const dt = new Date(first.getFullYear(), first.getMonth(), d);
+    const future = dt > today;
+    const log = future ? {} : readLog(dt);
+    const n = Object.keys(log).filter(k => k.startsWith(child.id + '_') && log[k] && log[k].done).length;
+    const mood = log[`${child.id}_mood_pm`] || log[`${child.id}_mood_am`];
+    const m = mood && MOODS.find(x => x[0] === mood.mood);
+    if (m) moods[m[1]] = (moods[m[1]] || 0) + 1;
+    const med = medIds.some(id => log[`${child.id}_${id}`] && log[`${child.id}_${id}`].done);
+    if (n) { sum += n; active++; if (n > best[0]) best = [n, d]; }
+    const lv = n === 0 ? 0 : n < 8 ? 1 : n < 15 ? 2 : 3;
+    cells += `<div class="mc lv${lv}${dt.getTime() === today.getTime() ? ' today' : ''}${future ? ' future' : ''}">
+      <span class="md${isWeekend(dt) && !future ? ' off' : ''}">${d}</span>
+      ${n ? `<span class="mn">${n}</span>` : ''}
+      <span class="mi">${m ? m[1] : ''}${med ? '💊' : ''}</span></div>`;
+  }
+  document.getElementById('month-grid').innerHTML = cells;
+  document.getElementById('month-summary').innerHTML = active
+    ? `이 달에 <b>${active}일</b> 동안 할 일 <b>${sum}개</b> (하루 평균 ${Math.round(sum / active)}개) · 가장 열심히 한 날 ${first.getMonth() + 1}/${best[1]} (${best[0]}개)${Object.keys(moods).length ? ` · 기분 ${Object.entries(moods).map(([k, v]) => k + v).join(' ')}` : ''}`
+    : '이 달에는 아직 기록이 없어요.';
 }
 
 // ---------- task buddy (coupling) ----------
@@ -4245,7 +4565,7 @@ function showLevelUpScreen(child, oldLevel, evolved, graduated) {
 
   const bonus = 1;
   document.getElementById('levelup-reward-text').textContent = `+${bonus} 💎 보석 획득!`;
-  document.getElementById('levelup-level-text').textContent = `LV.${child.level} 달성!`;
+  document.getElementById('levelup-level-text').textContent = `Lv.${shownLv(child)} 달성!`;
 
   spawnConfetti();
   showScreen('screen-levelup');
@@ -4413,6 +4733,7 @@ let dexChildId = null;
 function renderDex() {
   const child = settings.children.find(c => c.id === dexChildId) || getChild() || settings.children[0];
   dexChildId = child.id;
+  renderBadges(child);
   document.getElementById('dex-tabs').innerHTML = settings.children.map(c =>
     `<button class="slot-tab${c.id === child.id ? ' active' : ''}" onclick="dexChildId='${c.id}';renderDex()">${c.name}</button>`).join('');
   const collected = child.collection || [];
@@ -4469,6 +4790,7 @@ function renderShopScreen() {
   const child = getChild();
   if (!child) return;
   document.getElementById('shop-points-display').textContent = `💎 보석 ${child.points}개`;
+  renderDecoShop(child);
 
   const grid = document.getElementById('shop-grid');
   grid.innerHTML = rewards.filter(r => !r.for || r.for.includes(child.id)).sort((a, b) => a.cost - b.cost).map(r => {
@@ -4701,6 +5023,7 @@ function parentUndo(childId, key, xp) {
 
 function renderParentDashboard() {
   renderUndo();
+  renderMonth();
   document.getElementById('holiday-notice').innerHTML = holidayNotice();
   renderCoopParent();
   document.getElementById('parent-calm-btns').innerHTML = settings.children.map(c => `<button class="btn-ghost btn-sm" onclick="openCalm('${c.id}')">${c.name}와 숨 고르기</button>`).join('');
@@ -4719,7 +5042,7 @@ function renderParentDashboard() {
     return `<div class="child-summary">
       <div style="font-size:2.2rem;">${petEmoji}</div>
       <div style="flex:1;">
-        <div class="flex-between"><span style="font-weight:700;">${child.name}</span><span class="text-sm color-muted">LV.${child.level} · 💎${child.points}</span></div>
+        <div class="flex-between"><span style="font-weight:700;">${child.name}</span><span class="text-sm color-muted">Lv.${shownLv(child)} · 💎${child.points}</span></div>
         <div style="margin-top:6px;"><div class="xp-track"><div class="xp-fill" style="width:${pct}%"></div></div></div>
         <div class="text-xs color-muted" style="margin-top:3px;">${done}/${total} 완료 (오늘 전체)</div>
       </div>
@@ -4852,7 +5175,7 @@ function renderChildrenSettings() {
         <div style="font-size:1.8rem;">${getPetEmoji(child)}</div>
         <div style="text-align:right;">
           <div style="font-weight:700;">${child.name}</div>
-          <div class="text-xs color-muted">LV.${child.level} · 💎 보석 ${child.points}개</div>
+          <div class="text-xs color-muted">${animalName(child.characterType)} Lv.${shownLv(child)} · 💎 보석 ${child.points}개 · 다 키운 펫 ${(child.collection || []).length}마리</div>
         </div>
       </div>
       <div class="form-group">
@@ -5167,6 +5490,7 @@ function adjustPoints(idx) {
 
 function renderMiscSettings() {
   renderOffDays();
+  renderDayNotes();
   renderBackupInfo();
   renderCloudInfo();
   const c = coopSettings();
