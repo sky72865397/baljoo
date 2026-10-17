@@ -621,6 +621,18 @@ input, select, textarea { font-family: inherit; outline: none; }
 .wp-day em { font-style:normal; font-size:0.7rem; background:#fb923c; color:#fff; border-radius:99px; padding:0 6px; }
 .wp-body { flex:1; display:flex; flex-direction:column; gap:3px; font-size:1rem; }
 .wp-plan { font-weight:800; color:#7c2d12; }
+.wp-sub { font-size:0.85rem; color:var(--text-muted); }
+.wp-items { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+.wp-item { display:inline-flex; align-items:center; gap:4px; background:#fff7ed; color:#7c2d12; border-radius:99px; padding:4px 6px 4px 10px; font-weight:800; font-size:0.95rem; }
+.wp-item.rep { background:#ede9fe; color:#5b21b6; }
+.wp-item button { background:rgba(0,0,0,.08); border-radius:50%; width:22px; height:22px; font-size:0.9rem; line-height:1; }
+.wp-add { background:var(--primary-bg); color:var(--primary); border-radius:99px; padding:5px 12px; font-size:0.9rem; font-weight:800; }
+.wp-form { display:flex; flex-direction:column; gap:8px; margin-top:6px; background:#f8fafc; border-radius:14px; padding:10px; }
+.wp-chips { display:flex; flex-wrap:wrap; gap:5px; }
+.wp-chips button { background:#fff; border:1px solid var(--border); border-radius:99px; padding:3px 10px; font-size:0.85rem; }
+.wp-rep { display:flex; gap:8px; }
+.wp-repbtn { flex:1; padding:12px 6px; border-radius:14px; background:#fff7ed; color:#9a3412; font-weight:900; font-size:0.95rem; border:2px solid #fed7aa; }
+.wp-repbtn.rep { background:#ede9fe; color:#5b21b6; border-color:#c4b5fd; }
 .wp-note { color:var(--text-secondary); font-size:0.9rem; }
 .week-edit summary { cursor:pointer; font-weight:800; color:var(--primary); padding:6px 0; }
 .tm-row { font-size:1rem; line-height:1.5; }
@@ -3606,7 +3618,7 @@ function dayInfo(child, t) {
   const special = [...new Set(list.filter(x => (x.for && x.for.length) || x.days).filter(x => !['m1', 'm4', 'm5', 'e5', 'e6'].includes(x.id)).map(x => x.name))];
   return {
     off, offName: offDayName(t), wd: '일월화수목금토'[t.getDay()],
-    plan: ((child.week || {})[t.getDay()] || '').trim(),
+    plan: planItems(child, t).map(x => x.text).join(', '),
     note: ((settings.dayNotes || {})[t.getDay()] || '').trim(),
     morning: list.filter(x => x.slot === 'morning').length, special,
   };
@@ -3632,39 +3644,101 @@ function renderTomorrow(child) {
   </div>`;
 }
 
+function planStore(child) {
+  if (!child.weekly) {
+    child.weekly = {};
+    Object.entries(child.week || {}).forEach(([w, v]) => { child.weekly[w] = String(v).split(',').map(x => x.trim()).filter(Boolean); });
+    delete child.week;
+  }
+  child.dated = child.dated || {};
+  return child;
+}
+
+function planItems(child, t) {
+  planStore(child);
+  return [
+    ...(child.weekly[t.getDay()] || []).map((text, i) => ({ text, rep: true, i })),
+    ...(child.dated[ymd(t)] || []).map((text, i) => ({ text, rep: false, i })),
+  ];
+}
+
+let planAddDay = null;
+const PLAN_SUGGEST = ['구몬', '온리원', '바이올린', '풍물놀이', '올라운더', '친구랑 놀기', '도서관', '병원', '체육복 챙기기', '준비물 챙기기'];
+
 function openWeekPlan() {
-  const child = getChild();
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const days = weekDays();
-  document.getElementById('game-title').textContent = `📅 ${child.name}의 일주일 계획표`;
-  document.getElementById('game-body').innerHTML = `
-    <div class="week-plan">${days.map(dt => {
-      const d = dayInfo(child, dt);
-      const isToday = dt.getTime() === today.getTime();
-      return `<div class="wp-row${isToday ? ' today' : ''}${d.off ? ' off' : ''}">
-        <div class="wp-day"><b>${d.wd}</b><span>${dt.getMonth() + 1}/${dt.getDate()}</span>${isToday ? '<em>오늘</em>' : ''}</div>
-        <div class="wp-body">
-          <div>${d.off ? `🏡 ${d.offName || '쉬는 날'}` : '🏫 학교 가는 날'}</div>
-          ${d.plan ? `<div class="wp-plan">⭐ ${escText(d.plan)}</div>` : ''}
-          ${d.note ? `<div class="wp-note">🎒 ${escText(d.note)}</div>` : ''}
-        </div></div>`;
-    }).join('')}</div>
-    ${Object.keys(child.week || {}).length ? '' : '<div class="text-sm color-muted">엄마가 부모 모드 → 설정 → 아이 탭에서 요일별 계획을 적을 수 있어요.</div>'}
-    <button class="focus-done" style="max-width:300px;" onclick="closeGame()">닫기</button>`;
+  planAddDay = null;
+  drawWeekPlan();
   document.getElementById('game-screen').classList.remove('hidden');
+  const child = getChild();
   if (child.speak) {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
     const d = dayInfo(child, today);
     speak(`오늘은 ${d.wd}요일${d.plan ? ', ' + d.plan : ''}`);
   }
 }
 
-function saveWeek(idx) {
-  const c = settings.children[idx];
-  c.week = {};
-  [0, 1, 2, 3, 4, 5, 6].forEach(w => { const v = document.getElementById(`wk-${idx}-${w}`).value.trim(); if (v) c.week[w] = v; });
-  saveSettings();
-  toast(`${c.name} 일주일 계획표를 저장했어요!`);
+function drawWeekPlan() {
+  const child = getChild();
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  document.getElementById('game-title').textContent = `📅 ${child.name}의 일주일 계획표`;
+  document.getElementById('game-body').innerHTML = `
+    <div class="text-sm color-muted">요일마다 할 일을 적어요. 🔁는 매주 같은 요일에 하는 일이에요.</div>
+    <div class="week-plan">${weekDays().map(dt => {
+      const d = dayInfo(child, dt);
+      const key = ymd(dt);
+      const isToday = dt.getTime() === today.getTime();
+      const items = planItems(child, dt);
+      return `<div class="wp-row${isToday ? ' today' : ''}${d.off ? ' off' : ''}">
+        <div class="wp-day"><b>${d.wd}</b><span>${dt.getMonth() + 1}/${dt.getDate()}</span>${isToday ? '<em>오늘</em>' : ''}</div>
+        <div class="wp-body">
+          <div class="wp-sub">${d.off ? `🏡 ${d.offName || '쉬는 날'}` : '🏫 학교 가는 날'}</div>
+          <div class="wp-items">${items.map(it => `<span class="wp-item${it.rep ? ' rep' : ''}">${it.rep ? '🔁 ' : '⭐ '}${escText(it.text)}<button onclick="removePlan('${key}',${it.rep},${it.i})" aria-label="지우기">×</button></span>`).join('')}
+            ${planAddDay === key ? '' : `<button class="wp-add" onclick="planAddDay='${key}';drawWeekPlan()">+ 적기</button>`}</div>
+          ${planAddDay === key ? `<div class="wp-form">
+            <input class="input-field" id="plan-input" placeholder="무엇을 해요? (예: 구몬)" maxlength="20">
+            <div class="wp-chips">${PLAN_SUGGEST.map(x => `<button onclick="document.getElementById('plan-input').value='${x}'">${x}</button>`).join('')}</div>
+            <div class="wp-rep">
+              <button class="wp-repbtn" onclick="addPlan('${key}',false)">⭐ 이번 ${d.wd}요일만</button>
+              <button class="wp-repbtn rep" onclick="addPlan('${key}',true)">🔁 매주 ${d.wd}요일마다</button>
+            </div>
+            <button class="btn-ghost btn-sm" onclick="planAddDay=null;drawWeekPlan()">취소</button>
+          </div>` : ''}
+          ${d.note ? `<div class="wp-note">🎒 ${escText(d.note)}</div>` : ''}
+        </div></div>`;
+    }).join('')}</div>
+    <button class="focus-done" style="max-width:300px;" onclick="closeGame();renderHomeScreen()">다 했어요</button>`;
+  const inp = document.getElementById('plan-input');
+  if (inp) inp.focus();
 }
+
+function addPlan(key, rep) {
+  const child = planStore(getChild());
+  const text = (document.getElementById('plan-input').value || '').trim();
+  if (!text) { toast('무엇을 하는지 적어 주세요 ✏️'); return; }
+  const [y, m, d] = key.split('-').map(Number);
+  const w = new Date(y, m - 1, d).getDay();
+  if (rep) (child.weekly[w] = child.weekly[w] || []).push(text);
+  else (child.dated[key] = child.dated[key] || []).push(text);
+  Object.keys(child.dated).forEach(k => { if (k < ymd(weekDays(-4)[0])) delete child.dated[k]; });
+  saveSettings();
+  planAddDay = null;
+  drawWeekPlan();
+  if (child.speak) speak(`${text}, 적었어요!`);
+}
+
+function removePlan(key, rep, i) {
+  const child = planStore(getChild());
+  const [y, m, d] = key.split('-').map(Number);
+  const w = new Date(y, m - 1, d).getDay();
+  const list = rep ? child.weekly[w] : child.dated[key];
+  if (!list) return;
+  const name = list[i];
+  if (rep && !confirm(`"${name}"은(는) 매주 ${'일월화수목금토'[w]}요일 일정이에요. 매주 일정에서 지울까요?`)) return;
+  list.splice(i, 1);
+  saveSettings();
+  drawWeekPlan();
+}
+
 
 function renderDayNotes() {
   const n = settings.dayNotes || {};
@@ -5437,11 +5511,6 @@ function renderChildrenSettings() {
         </label>
         ${child.photo ? `<button class="btn-ghost btn-sm" onclick="updateChild(${i},'photo','')">사진 빼기</button>` : ''}
       </div>
-      <details class="week-edit">
-        <summary>📅 ${child.name} 일주일 계획표 적기</summary>
-        <div class="daynote-grid" style="margin-top:8px;">${[1, 2, 3, 4, 5, 6, 0].map(w => `<label class="daynote"><span>${'일월화수목금토'[w]}</span><input class="input-field" id="wk-${i}-${w}" value="${escText((child.week || {})[w] || '')}" placeholder="예: 구몬, 피아노"></label>`).join('')}</div>
-        <button class="btn-primary btn-sm" style="margin-top:8px;" onclick="saveWeek(${i})">계획표 저장</button>
-      </details>
       <button class="btn-danger btn-sm w-full" style="margin-top:8px;" onclick="resetChild(${i})">↺ ${child.name} 기록 처음으로 되돌리기</button>
     </div>`).join('');
 }
