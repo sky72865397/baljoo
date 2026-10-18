@@ -4263,6 +4263,7 @@ function drawTimer() {
       <div class="timer-face"><div class="timer-pet">${getPetEmoji(child)}<span class="timer-book">📖</span></div><div class="timer-num">${mm}:${String(ss).padStart(2, '0')}</div></div>
     </div>
     <div class="calm-say">${timerState.paused ? '잠깐 쉬는 중이에요' : pct < 0.5 ? '펫이 옆에서 같이 공부하고 있어요 ✏️' : '거의 다 왔어! 조금만 더! 💪'}</div>
+    <button class="focus-done" style="max-width:360px;" onclick="timerEarlyDone()">✓ 다 했어요! 보너스 받기</button>
     <div class="flex-row" style="justify-content:center;gap:10px;">
       <button class="btn-ghost" style="max-width:180px;" onclick="pauseTimer()">${timerState.paused ? '▶ 다시 시작' : '⏸ 잠깐 쉬기'}</button>
       <button class="btn-ghost" style="max-width:180px;" onclick="closeTimer()">그만하기</button>
@@ -4272,6 +4273,21 @@ function pauseTimer() {
   if (timerState.paused) { timerState.end = Date.now() + timerState.paused; timerState.paused = 0; }
   else timerState.paused = Math.max(1, timerState.end - Date.now());
   drawTimer();
+}
+function timerEarlyDone() {
+  clearInterval(timerTick);
+  const { childId, mins } = timerState;
+  const child = settings.children.find(c => c.id === childId);
+  const left = timerState.paused || Math.max(0, timerState.end - Date.now());
+  const spent = Math.max(1, Math.round((mins * 60000 - left) / 60000));
+  const bonus = Math.min(20, Math.max(5, spent));
+  if (child.speak) speak('다 했구나! 정말 대단해!');
+  document.getElementById('timer-body').innerHTML = `
+    <div style="font-size:5rem;">🏆</div>
+    <div class="pop-title">${spent}분 만에 다 했어요!</div>
+    <div class="calm-say">집중해서 끝낸 ${child.name} 정말 멋져! 보너스 <b>+${bonus} XP</b></div>
+    <button class="focus-done" onclick="finishTimer(${bonus})">확인 ✓</button>`;
+  spawnConfetti();
 }
 function timerDone() {
   const { taskId, childId, mins } = timerState;
