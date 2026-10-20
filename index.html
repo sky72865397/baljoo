@@ -521,6 +521,7 @@ input, select, textarea { font-family: inherit; outline: none; }
 .temp-week { display:flex; gap:4px; align-items:flex-end; height:56px; margin:6px 0 2px; }
 .temp-week div { flex:1; text-align:center; font-size:.7rem; color:var(--text-secondary); }
 .temp-week i { display:block; border-radius:6px; margin-bottom:2px; }
+.subject-tag { display:inline-block; margin-left:8px; background:#e0f2fe; color:#0369a1; border-radius:99px; padding:2px 10px; font-size:.85rem; font-weight:800; vertical-align:middle; }
 .note-card { background:#eef2ff; border-radius:20px; padding:14px; margin-top:6px; }
 .note-card.saved { display:flex; flex-direction:column; gap:6px; }
 .note-q { font-size:1.1rem; margin-bottom:8px; }
@@ -1231,6 +1232,8 @@ input, select, textarea { font-family: inherit; outline: none; }
   </div>
 </div>
 
+<div id="subject-overlay" class="pop-overlay hidden"><div class="pop-card" id="subject-card"></div></div>
+
 <div id="emo-overlay" class="pop-overlay hidden"><div class="pop-card emo-card" id="emo-card"></div></div>
 
 <div id="praise-overlay" class="pop-overlay hidden">
@@ -1722,6 +1725,7 @@ const DEFAULT_TASKS = [
   { id:'a12', name:'문제 찾기',         emoji:'🔍', xp:20, slot:'afterschool', type:'problem' },
   { id:'a8',  name:'책 읽기',           emoji:'📖', xp:30, slot:'afterschool' },
   { id:'a9',  name:'마음 공부',         emoji:'💬', xp:40, slot:'afterschool', for:['c1','c2'], type:'social' },
+  { id:'a15', name:'비상 문제집 2장 풀기', emoji:'📗', xp:40, slot:'afterschool', for:['c1'], askSubject:true },
   { id:'a13', name:'말로 해요',         emoji:'🗣️', xp:20, slot:'afterschool', for:['c1','c2'], type:'talk' },
   { id:'a14', name:'학교 마음 온도 체크', emoji:'🌡️', xp:15, slot:'afterschool', for:['c1','c2'], days:'weekday', type:'tempcheck' },
   { id:'e9',  name:'약 먹기',           emoji:'💊', xp:15, slot:'evening',     for:['c2'] },
@@ -2724,6 +2728,13 @@ function init() {
     settings.children.forEach(c => { if (!c.talkFocus && focus[c.id]) c.talkFocus = focus[c.id]; });
     settings.dataVersion = 31;
   }
+  if (settings.dataVersion === 31) {
+    if (!tasks.some(t => t.id === 'a15')) {
+      const at = tasks.findIndex(t => t.id === 'a6');
+      tasks.splice(at >= 0 ? at + 1 : tasks.length, 0, JSON.parse(JSON.stringify(DEFAULT_TASKS.find(t => t.id === 'a15'))));
+    }
+    settings.dataVersion = 32;
+  }
 
   saveSettings();
   saveTasks();
@@ -3408,7 +3419,7 @@ function renderTasks(child, log, slot, slotTasks, doneCount, totalCount) {
     return `<button class="check-item${done?' done':''}" onclick="toggleCheck('${child.id}','${t.id}')">
       <div class="check-box">${done?'✓':''}</div>
       ${taskIcon(t)}
-      <span class="check-name">${t.name}${buddyLine(child, t)}</span>
+      <span class="check-name">${t.name}${buddyLine(child, t)}${done && e.subject ? `<span class="subject-tag">📘 ${escText(e.subject)}</span>` : ''}</span>
       ${speakerBtn(child, t.name)}
       ${!done && isStudy(t) ? `<span class="timer-chip" onclick="event.stopPropagation();openTimer('${t.id}')">⏱️ 집중</span>` : ''}
       ${!done && !isStudy(t) && !QUIZ_TYPES.includes(t.type) ? `<span class="race-chip" onclick="event.stopPropagation();openRace('${t.id}')">🏁 시합</span>` : ''}
@@ -5117,11 +5128,59 @@ function showStreakPop(child, { days, bonus }) {
     button: '야호! 🎉' }, child);
 }
 
-function completeTask(childId, taskId, xp) {
+// ---------- 과목 직접 쓰기 (비상 문제집 등) ----------
+const SUBJECTS = ['국어', '수학', '사회', '과학', '영어'];
+let subjectState = null;
+function openSubject(childId, taskId, xp) {
+  subjectState = { childId, taskId, xp, picks: [] };
+  renderSubject();
+  document.getElementById('subject-overlay').classList.remove('hidden');
+  const child = settings.children.find(c => c.id === childId);
+  if (child && child.speak) speak('어떤 과목 했어?');
+}
+function renderSubject() {
+  const t = tasks.find(x => x.id === subjectState.taskId);
+  document.getElementById('subject-card').innerHTML = `
+    <div class="pop-icon">${t.emoji}</div>
+    <div class="emo-q" style="text-align:center;">어떤 과목 했어?</div>
+    <div class="text-sm color-muted" style="text-align:center;margin-bottom:10px;">두 장이 다른 과목이면 둘 다 눌러요</div>
+    <div class="praise-chips" style="justify-content:center;">${SUBJECTS.map(sb => `<button class="praise-chip${subjectState.picks.includes(sb) ? ' on' : ''}" style="font-size:1.1rem;padding:10px 18px;" onclick="toggleSubject('${sb}')">${sb}</button>`).join('')}</div>
+    <input class="input-field" id="subject-custom" placeholder="직접 쓰기 (예: 수학 3단원, 국어 받아쓰기)" style="margin-top:12px;">
+    <div style="display:flex;gap:8px;margin-top:16px;">
+      <button class="btn-ghost" style="flex:1;" onclick="closeSubject()">취소</button>
+      <button class="focus-done" style="flex:2;max-width:none;" onclick="saveSubject()">다 했어요 ✓</button>
+    </div>`;
+}
+function toggleSubject(sb) {
+  const custom = document.getElementById('subject-custom').value;
+  const p = subjectState.picks;
+  subjectState.picks = p.includes(sb) ? p.filter(x => x !== sb) : p.concat(sb);
+  renderSubject();
+  document.getElementById('subject-custom').value = custom;
+}
+function closeSubject() {
+  subjectState = null;
+  document.getElementById('subject-overlay').classList.add('hidden');
+  renderHomeScreen();
+}
+function saveSubject() {
+  const custom = document.getElementById('subject-custom').value.trim();
+  const subject = subjectState.picks.concat(custom ? [custom] : []).join(', ');
+  if (!subject) { toast('어떤 과목 했는지 골라 줘요 📘'); return; }
+  const { childId, taskId, xp } = subjectState;
+  subjectState = null;
+  document.getElementById('subject-overlay').classList.add('hidden');
+  completeTask(childId, taskId, xp, subject);
+}
+
+function completeTask(childId, taskId, xp, subject) {
+  const tk = tasks.find(t => t.id === taskId);
+  if (tk && tk.askSubject && !subject) { openSubject(childId, taskId, xp); return; }
   const ch = settings.children.find(c => c.id === childId);
   if (ch) { const d = new Date(); d.setHours(0, 0, 0, 0); ch._wasOk = dayRatio(ch, d) >= 0.5; }
   const log = loadLog();
   log[`${childId}_${taskId}`] = { done: true, approved: true, ts: Date.now(), xp };
+  if (subject) log[`${childId}_${taskId}`].subject = subject;
   saveLog(log);
   awardXP(childId, xp, taskId);
 }
@@ -5677,6 +5736,10 @@ function weeklyReport(child) {
     if (topWhy) t += `<br>자주 뜨거워진 이유: <b>${escText(topWhy[0])}</b> (${topWhy[1]}번)`;
     if (Object.keys(bad).length) t += `<br>⚠️ ${Object.entries(bad).map(([d, n]) => `${d.replace('어요', '음')} ${n}번`).join(', ')}`;
     notes.push([Object.keys(bad).length || hot >= 3 ? 'warn' : 'good', t]);
+  });
+  tasks.filter(t => t.askSubject && (!t.for || t.for.includes(child.id))).forEach(t => {
+    const subs = logs.map((log, di) => log && log[`${child.id}_${t.id}`] && log[`${child.id}_${t.id}`].subject ? `${'월화수목금토일'[di]} ${escText(log[`${child.id}_${t.id}`].subject)}` : '').filter(Boolean);
+    if (subs.length) notes.push(['good', `${t.emoji} ${t.name}: ${subs.join(' · ')}`]);
   });
   const wk = days.map(ymd);
   const mus = (child.muscleLog || []).filter(m => wk.includes(m.date));
