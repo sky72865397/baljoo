@@ -2050,7 +2050,7 @@ function renderSocial() {
       <div class="social-left">
       <div class="card social-card">
         <div class="social-kind">🗣️ 말로 해요</div>
-        <div class="problem-img" style="display:flex;align-items:center;justify-content:center;font-size:4.5rem;background:#fff7ed;aspect-ratio:3/2;">${q.scene}</div>
+        ${q.img ? `<img class="scene-img" src="${q.img}" alt="">` : `<div class="problem-img" style="display:flex;align-items:center;justify-content:center;font-size:4.5rem;background:#fff7ed;aspect-ratio:3/2;">${q.scene}</div>`}
         <div class="social-situation problem-sit">${q.situation} ${speakerBtn(child, q.situation)}</div>
       </div>
       </div>
@@ -4670,6 +4670,8 @@ const TALKS = [
   ['t24', 'both', '🛝 😠', '놀이터에서 그네를 오래 기다렸는데 안 비켜 줘요.', '"10번만 타고 바꿔 줄래?"', '다른 놀이 하다가 다시 오기', '그네 줄을 잡아당긴다', '그네를 잡아당기면 타던 친구가 떨어질 수 있어요. 말로 부탁해요.'],
 ].map(([id, who, scene, situation, g1, g2, bad, explain]) => ({ id, who, scene, situation, g1, g2, bad, explain }));
 
+const TALK_IMG = ['t1', 't2', 't3', 't4', 't5', 't6', 't7', 't8', 't9', 't10', 't11', 't12', 't13', 't14', 't15', 't16', 't17', 't18', 't19', 't20', 't21', 't22', 't23', 't24']; // img/talk-NN.jpg 있는 상황 // img/talk-NN.jpg 있는 상황
+
 function talkPool(childId) {
   const child = settings.children.find(c => c.id === childId);
   const focus = (child && child.talkFocus) || 'both';
@@ -4687,6 +4689,7 @@ function talkSetForToday(childId) {
   const questions = picks.map((t, k) => ({
     q: '이럴 때 나는?', choices: [`💬 ${t.g1}`, `💬 ${t.g2}`, `✋ ${t.bad}`], goods: [0, 1],
     explain: t.explain, situation: t.situation, scene: t.scene, num: k + 1, total: picks.length,
+    img: TALK_IMG.includes(t.id) ? `img/talk-${t.id.slice(1).padStart(2, '0')}.jpg` : '',
   }));
   return { id: 'tset', type: 'talk', questions, tids: picks.map(t => t.id) };
 }
