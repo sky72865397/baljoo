@@ -339,6 +339,15 @@ input, select, textarea { font-family: inherit; outline: none; }
 .speech-bubble.praise { background:#fef9c3; border-color:#fde047; font-size:1.05rem; font-weight:900; animation:popIn .4s cubic-bezier(.2,1.4,.4,1); }
 .focus-toggle { background:var(--primary-bg); color:var(--primary); border-radius:99px; padding:6px 12px; font-size:0.85rem; font-weight:800; }
 .focus-card { background:#fff; border:3px solid var(--border); border-radius:28px; padding:22px 20px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:10px; animation:slideUp .3s; }
+.focus-wrap { display:flex; align-items:center; gap:8px; }
+.focus-wrap .focus-card { flex:1; min-width:0; }
+.focus-arrow { flex:0 0 52px; height:96px; border-radius:18px; background:var(--primary-bg); color:var(--primary); font-size:2.6rem; font-weight:900; line-height:1; }
+.focus-arrow:disabled { opacity:.25; }
+.focus-card.slide-l { animation:slideL .25s ease-out; }
+.focus-card.slide-r { animation:slideR .25s ease-out; }
+@keyframes slideL { from { transform:translateX(40px); opacity:.4; } to { transform:none; opacity:1; } }
+@keyframes slideR { from { transform:translateX(-40px); opacity:.4; } to { transform:none; opacity:1; } }
+@media (max-width: 600px) { .focus-arrow { flex-basis:36px; height:72px; font-size:2rem; } }
 .focus-dots { display:flex; gap:6px; flex-wrap:wrap; justify-content:center; }
 .fdot { width:14px; height:14px; border-radius:50%; background:#e2e8f0; }
 .fdot.on { background:var(--success); }
@@ -3394,14 +3403,19 @@ function renderTasks(child, log, slot, slotTasks, doneCount, totalCount) {
   document.getElementById('focus-toggle').textContent = child.focus ? '📋 전체 보기' : '👆 하나씩 보기';
   if (child.focus) {
     const isDone = t => log[`${child.id}_${t.id}`] && log[`${child.id}_${t.id}`].done;
-    const cur = slotTasks.find(t => !isDone(t));
-    if (!cur) { list.innerHTML = ''; return; }
-    const next = slotTasks.filter(t => !isDone(t))[1];
+    const left = slotTasks.filter(t => !isDone(t));
+    if (!left.length) { list.innerHTML = ''; return; }
+    let at = left.findIndex(t => t.id === focusPick);
+    if (at < 0) at = 0;
+    const cur = left[at];
+    focusPick = cur.id;
+    const next = left[at + 1];
     const dots = slotTasks.map(t => `<i class="fdot${isDone(t) ? ' on' : t === cur ? ' now' : ''}"></i>`).join('');
     const pic = TASK_ICON_IDS.includes(TASK_ICON_ALIAS[cur.id] || cur.id) || cur.pic
       ? taskIcon(cur).replace('class="check-pic"', 'class="focus-pic"')
       : `<div class="focus-emoji">${cur.emoji}</div>`;
-    list.innerHTML = `<div class="focus-card">
+    const arrow = (d, on) => `<button class="focus-arrow" ${on ? `onclick="moveFocus(${d})"` : 'disabled'}>${d < 0 ? '‹' : '›'}</button>`;
+    list.innerHTML = `<div class="focus-wrap">${arrow(-1, at > 0)}<div class="focus-card" id="focus-card">
       <div class="focus-dots">${dots}</div>
       <div class="focus-label">지금 할 일</div>
       ${pic}
@@ -3409,8 +3423,9 @@ function renderTasks(child, log, slot, slotTasks, doneCount, totalCount) {
       ${buddyLine(child, cur, true)}
       ${isStudy(cur) ? `<button class="timer-big" onclick="openTimer('${cur.id}')">⏱️ 집중 타이머로 하기</button>` : !QUIZ_TYPES.includes(cur.type) ? `<button class="timer-big race" onclick="openRace('${cur.id}')">🏁 펫이랑 시합하기</button>` : ''}
       <button class="focus-done" onclick="toggleCheck('${child.id}','${cur.id}')">✓ 다 했어요!</button>
-      <div class="focus-next">${next ? `다음: ${next.name}` : '이게 마지막이에요! 💪'}</div>
-    </div>`;
+      <div class="focus-next">${left.length > 1 ? `👈 👉 옆으로 넘겨서 다른 할 일 보기 (${at + 1} / ${left.length})` : '이게 마지막이에요! 💪'}</div>
+    </div>${arrow(1, at < left.length - 1)}</div>`;
+    swipeFocus(document.getElementById('focus-card'));
     return;
   }
   list.innerHTML = slotTasks.map(t => {
@@ -3942,6 +3957,33 @@ const BUDDIES = [
   ['🧸', '인형이랑 같이'], ['🕵️', '비밀요원처럼'], ['🦸', '슈퍼히어로처럼'], ['⏱️', '타이머 맞추고'],
 ];
 let buddyTaskId = null;
+
+// 하나씩 보기: 옆으로 넘겨서 다른 할 일 고르기
+let focusPick = null;
+function moveFocus(d) {
+  const child = getChild();
+  const log = loadLog();
+  const slot = viewSlot || getActiveSlot();
+  const left = getTasksForSlot(slot).filter(t => !(log[`${child.id}_${t.id}`] && log[`${child.id}_${t.id}`].done));
+  const at = Math.max(0, left.findIndex(t => t.id === focusPick));
+  const n = left[at + d];
+  if (!n) return;
+  focusPick = n.id;
+  renderHomeScreen();
+  const card = document.getElementById('focus-card');
+  if (card) { card.classList.remove('slide-l', 'slide-r'); void card.offsetWidth; card.classList.add(d > 0 ? 'slide-l' : 'slide-r'); }
+}
+function swipeFocus(el) {
+  if (!el) return;
+  let x0 = null, y0 = null;
+  el.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; }, { passive: true });
+  el.addEventListener('touchend', e => {
+    if (x0 === null) return;
+    const dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0;
+    x0 = null;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) moveFocus(dx < 0 ? 1 : -1);
+  });
+}
 
 function buddyLine(child, t, big) {
   const b = child.buddies && child.buddies[t.id];
