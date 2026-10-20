@@ -3945,9 +3945,10 @@ let buddyTaskId = null;
 
 function buddyLine(child, t, big) {
   const b = child.buddies && child.buddies[t.id];
-  if (b) return `<span class="buddy-line${big ? ' big' : ''}" onclick="event.stopPropagation();openBuddy('${t.id}')">🤝 ${escText(b)}</span>`;
-  return big ? `<button class="buddy-add" onclick="openBuddy('${t.id}')">🤝 같이 하면 좋은 짝꿍 정하기</button>`
-    : `<span class="buddy-add small" onclick="event.stopPropagation();openBuddy('${t.id}')">+ 짝꿍</span>`;
+  // 목록에서는 짝꿍을 보여주기만 하고, 정하기·바꾸기는 "하나씩 보기" 화면에서만 (체크하다 잘못 눌리지 않게)
+  if (!big) return b ? `<span class="buddy-line">🤝 ${escText(b)}</span>` : '';
+  if (b) return `<span class="buddy-line big" onclick="event.stopPropagation();openBuddy('${t.id}')">🤝 ${escText(b)} · 바꾸기</span>`;
+  return `<button class="buddy-add" onclick="openBuddy('${t.id}')">🤝 같이 하면 좋은 짝꿍 정하기</button>`;
 }
 
 function openBuddy(taskId) {
