@@ -601,6 +601,40 @@ input, select, textarea { font-family: inherit; outline: none; }
 .stop-target { width:200px; height:200px; border-radius:40px; font-size:7rem; line-height:1; background:#dcfce7; }
 .stop-target.no { background:#fee2e2; }
 .stop-target.blank { background:transparent; }
+.brain-picks { display:flex; gap:14px; width:100%; max-width:640px; }
+.brain-pick { flex:1; display:flex; flex-direction:column; align-items:center; gap:6px; background:#fff; border:3px solid #c7d2fe; border-radius:24px; padding:18px 10px; color:var(--text); }
+.brain-pick:active { transform:scale(.97); }
+.bp-name { font-size:1.25rem; font-weight:900; }
+.bp-skill { background:#eef2ff; color:#4338ca; border-radius:99px; padding:3px 12px; font-size:.85rem; font-weight:800; }
+.bp-lv { font-weight:800; }
+.bp-stars { color:#f59e0b; letter-spacing:1px; }
+.bp-best { font-size:.85rem; color:var(--text-secondary); }
+.brec { width:100%; max-width:560px; display:flex; flex-direction:column; gap:10px; }
+.brec-skill { background:#fff; border-radius:16px; padding:10px 14px; text-align:left; }
+.brec-skill > b { display:block; color:#4338ca; margin-bottom:4px; }
+.brec-row { display:flex; justify-content:space-between; gap:8px; font-size:.95rem; padding:2px 0; }
+.stroop-word { font-size:5rem; font-weight:900; line-height:1.1; }
+.ink-row { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
+.ink-btn { min-width:110px; padding:16px 12px; border-radius:18px; color:#fff; font-size:1.3rem; font-weight:900; }
+.ink-btn.plain { background:#fff; border:3px solid #c7d2fe; color:var(--text); min-width:140px; }
+.time-bar { width:100%; max-width:420px; height:8px; background:#e5e7eb; border-radius:99px; overflow:hidden; }
+.time-bar i { display:block; height:100%; background:#818cf8; animation:timeShrink linear forwards; }
+@keyframes timeShrink { from { width:100%; } to { width:0; } }
+.rule-banner { border-radius:16px; padding:10px 18px; font-size:1.3rem; font-weight:900; background:#e0e7ff; color:#3730a3; }
+.rule-banner.color { background:#fce7f3; color:#be185d; }
+.rule-banner.changed { animation:popIn .4s; outline:3px solid #f59e0b; }
+.switch-card { font-size:6rem; line-height:1; }
+.listen-ear { font-size:5rem; animation:pulse 1.2s infinite; }
+.listen-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; width:100%; max-width:480px; }
+.listen-opt { background:#fff; border:3px solid #c7d2fe; border-radius:18px; padding:10px; font-weight:800; display:flex; flex-direction:column; align-items:center; color:var(--text); }
+.listen-opt span { font-size:2.2rem; }
+.listen-opt.on { opacity:.35; }
+.odd-grid { display:grid; gap:6px; width:100%; max-width:440px; }
+.odd-cell { aspect-ratio:1; background:#fff; border-radius:12px; font-size:clamp(1.3rem,5vw,2.2rem); }
+.odd-cell.miss { background:#fee2e2; }
+.odd-cell.hit { background:#bbf7d0; outline:3px solid #16a34a; }
+.trace-cv { background:#fff; border-radius:20px; touch-action:none; max-width:100%; }
+@media (max-width: 600px) { .brain-picks { flex-direction:column; } .ink-btn { min-width:80px; } }
 .pair-grid { display:grid; gap:10px; width:100%; max-width:440px; }
 .pair-card { aspect-ratio:1; border-radius:18px; background:#c7d2fe; font-size:2.6rem; }
 .pair-card.open { background:#fff; }
@@ -4307,11 +4341,34 @@ function savePlan() {
 
 // ---------- brain games ----------
 let brainTimer = null, brain = null;
-const BRAIN_GAMES = ['seq', 'stop', 'pair'];
-function brainToday(child) {
+const BRAIN_INFO = {
+  seq:    { name: '🔢 순서 기억하기', skill: '기억력', how: '펫이 반짝이는 순서를 잘 보고 똑같이 눌러요!' },
+  listen: { name: '👂 듣고 기억하기', skill: '기억력', how: '들려주는 낱말을 잘 듣고, 들은 순서대로 눌러요!' },
+  pair:   { name: '🃏 짝 맞추기', skill: '기억력', how: '카드를 두 장씩 뒤집어 같은 그림 짝을 찾아요!' },
+  stop:   { name: '🛑 멈춰! 게임', skill: '참기', how: '초록 친구가 나오면 빨리 누르고, 🛑 빨간 멈춤이 나오면 꾹 참아요!' },
+  color:  { name: '🎨 색깔 말하기', skill: '참기', how: '글자를 읽지 말고, 글자의 <b>색깔</b>을 골라요! "빨강"이 파란색이면 → 파랑!' },
+  switch: { name: '🔄 규칙 바꾸기', skill: '생각 전환', how: '위에 나온 규칙대로 골라요. <b>모양</b>일 땐 모양, <b>색깔</b>일 땐 색깔! 규칙이 갑자기 바뀌어요.' },
+  odd:    { name: '🎯 다른 하나 찾기', skill: '집중', how: '똑같아 보이는 그림 중에 <b>하나만 다른 것</b>을 찾아 눌러요!' },
+  trace:  { name: '🐢 천천히 길 따라가기', skill: '속도 조절', how: '손가락으로 🐢를 끌어서 길 밖으로 나가지 않게 <b>천천히</b> 깃발까지 가요!' },
+};
+const BRAIN_GAMES = Object.keys(BRAIN_INFO);
+const BRAIN_SKILLS = ['기억력', '참기', '생각 전환', '집중', '속도 조절'];
+function brainDayNum() {
   const d = new Date();
-  const days = Math.floor((d.getTime() - d.getTimezoneOffset() * 60000) / 86400000);
-  return BRAIN_GAMES[(days + settings.children.indexOf(child)) % BRAIN_GAMES.length];
+  return Math.floor((d.getTime() - d.getTimezoneOffset() * 60000) / 86400000);
+}
+// 오늘 고를 수 있는 게임 2개 (아이마다, 날마다 다르게 · 서로 다른 능력)
+function brainChoices(child) {
+  const n = BRAIN_GAMES.length;
+  const a = (brainDayNum() * 3 + settings.children.indexOf(child) * 5) % n;
+  let b = (a + 1 + (brainDayNum() % (n - 1))) % n;
+  let guard = 0;
+  while ((b === a || BRAIN_INFO[BRAIN_GAMES[b]].skill === BRAIN_INFO[BRAIN_GAMES[a]].skill) && guard++ < n) b = (b + 1) % n;
+  return [BRAIN_GAMES[a], BRAIN_GAMES[b]];
+}
+function brainRec(child, g) {
+  child.brainRec = child.brainRec || {};
+  return child.brainRec[g] || (child.brainRec[g] = { lv: child.brainLv || 1, best: 0, plays: 0, hist: [] });
 }
 function brainDone(child) {
   const log = loadLog();
@@ -4322,49 +4379,315 @@ function brainLocked() {
   const now = d.getHours() * 60 + d.getMinutes();
   return now >= 4 * 60 && now < toMin(unlockTime());
 }
+function stars(lv) { return '★'.repeat(lv) + '☆'.repeat(5 - lv); }
 
 function openBrain() {
   if (brainLocked()) { toast(`🧠 두뇌 게임은 ${unlockTime()}부터 할 수 있어요!`); return; }
   const child = getChild();
-  const g = brainToday(child);
-  const names = { seq: '🔢 순서 기억하기', stop: '🛑 멈춰! 게임', pair: '🃏 짝 맞추기' };
-  const how = {
-    seq: '펫이 반짝이는 순서를 잘 보고 똑같이 눌러요!',
-    stop: '초록 친구가 나오면 빨리 누르고, 🛑 빨간 멈춤이 나오면 꾹 참아요!',
-    pair: '카드를 두 장씩 뒤집어 같은 그림 짝을 찾아요!',
+  const [g1, g2] = brainChoices(child);
+  const card = g => {
+    const r = brainRec(child, g), info = BRAIN_INFO[g];
+    return `<button class="brain-pick" onclick="pickBrain('${g}')">
+      <span class="bp-name">${info.name}</span>
+      <span class="bp-skill">${info.skill} 키우기</span>
+      <span class="bp-lv">Lv.${r.lv} <span class="bp-stars">${stars(r.lv)}</span></span>
+      <span class="bp-best">${r.plays ? `최고 ${Math.round(r.best * 100)}점 · ${r.plays}번 함` : '처음 해 봐요! ✨'}</span>
+    </button>`;
   };
-  brain = { g, child, lv: child.brainLv || 1 };
-  document.getElementById('game-title').textContent = `🧠 오늘의 두뇌 게임 · ${names[g]}`;
+  brain = { child };
+  document.getElementById('game-title').textContent = '🧠 오늘의 두뇌 게임';
   document.getElementById('game-body').innerHTML = `
-    <div class="calm-say">${how[g]}</div>
-    ${brainDone(child) ? '<div class="text-sm color-muted">오늘 XP는 이미 받았어요. 연습으로 더 해도 좋아요!</div>' : '<div class="text-sm color-muted">끝까지 하면 +15 XP!</div>'}
-    <button class="focus-done" style="max-width:300px;" onclick="startBrain()">시작! 🧠</button>
+    <div class="calm-say">오늘은 둘 중에 <b>하고 싶은 걸</b> 골라요!</div>
+    <div class="brain-picks">${card(g1)}${card(g2)}</div>
+    ${brainDone(child) ? '<div class="text-sm color-muted">오늘 XP는 이미 받았어요. 다른 것도 연습으로 해 봐요!</div>' : '<div class="text-sm color-muted">하나 끝까지 하면 +15 XP!</div>'}
+    <button class="btn-ghost btn-sm" onclick="showBrainRecords()">📊 내 두뇌 기록</button>
     <button class="btn-ghost btn-sm" onclick="closeGame()">닫기</button>`;
   document.getElementById('game-screen').classList.remove('hidden');
 }
+function showBrainRecords() {
+  const child = brain.child;
+  const rows = BRAIN_SKILLS.map(sk => {
+    const gs = BRAIN_GAMES.filter(g => BRAIN_INFO[g].skill === sk);
+    return `<div class="brec-skill"><b>${sk}</b>${gs.map(g => { const r = brainRec(child, g); return `<div class="brec-row"><span>${BRAIN_INFO[g].name}</span><span class="bp-stars">${stars(r.lv)}</span><span class="color-muted">${r.plays ? `최고 ${Math.round(r.best * 100)}점` : '아직 안 함'}</span></div>`; }).join('')}</div>`;
+  }).join('');
+  document.getElementById('game-body').innerHTML = `
+    <div class="calm-say">📊 ${escText(child.name)}의 두뇌 기록</div>
+    <div class="brec">${rows}</div>
+    <button class="btn-ghost btn-sm" onclick="openBrain()">← 게임 고르기</button>`;
+}
+function pickBrain(g) {
+  const child = brain.child;
+  brain = { g, child, lv: brainRec(child, g).lv };
+  document.getElementById('game-title').textContent = `🧠 ${BRAIN_INFO[g].name}`;
+  document.getElementById('game-body').innerHTML = `
+    <div class="calm-say">${BRAIN_INFO[g].how}</div>
+    <div class="text-sm color-muted">Lv.${brain.lv} ${stars(brain.lv)}</div>
+    <button class="focus-done" style="max-width:300px;" onclick="startBrain()">시작! 🧠</button>
+    <button class="btn-ghost btn-sm" onclick="openBrain()">← 다른 게임 고르기</button>`;
+  if (child.speak) speak(BRAIN_INFO[g].how.replace(/<[^>]+>/g, ''));
+}
 function startBrain() {
-  if (brain.g === 'seq') seqStart();
-  if (brain.g === 'stop') stopStart();
-  if (brain.g === 'pair') pairStart();
+  ({ seq: seqStart, stop: stopStart, pair: pairStart, color: colorStart, switch: switchStart, listen: listenStart, odd: oddStart, trace: traceStart })[brain.g]();
 }
 function brainFinish(score, msg) {
   const child = brain.child;
   const first = !brainDone(child);
   const log = loadLog();
-  log[`${child.id}_brain`] = { ok: true, score };
+  log[`${child.id}_brain`] = { ok: true, score, g: brain.g, games: ((log[`${child.id}_brain`] || {}).games || []).concat(brain.g) };
   saveLog(log);
-  if (score >= 0.7) child.brainLv = Math.min(5, (child.brainLv || 1) + 1);
-  else if (score < 0.4) child.brainLv = Math.max(1, (child.brainLv || 1) - 1);
+  const r = brainRec(child, brain.g);
+  const before = r.lv;
+  if (score >= 0.7) r.lv = Math.min(5, r.lv + 1);
+  else if (score < 0.4) r.lv = Math.max(1, r.lv - 1);
+  const newBest = score > r.best && r.plays > 0;
+  r.best = Math.max(r.best, score);
+  r.plays++;
+  r.hist = (r.hist || []).concat([{ d: ymd(new Date()), lv: r.lv, s: Math.round(score * 100) }]).slice(-60);
   saveSettings();
   if (child.speak) speak('두뇌 게임 끝! 머리가 반짝반짝해졌어!');
+  const extra = (r.lv > before ? `<br>🎉 <b>Lv.${r.lv}</b>로 올라갔어요! ${stars(r.lv)}` : '') + (newBest ? '<br>🏆 <b>최고 기록</b>을 깼어요!' : '');
   document.getElementById('game-body').innerHTML = `
     <div style="font-size:5rem;">🧠✨</div>
     <div class="pop-title">두뇌 게임 끝!</div>
-    <div class="calm-say">${msg}${first ? '<br>보너스 <b>+15 XP</b>' : ''}</div>
+    <div class="calm-say">${msg}${extra}${first ? '<br>보너스 <b>+15 XP</b>' : ''}</div>
     <button class="focus-done" id="brain-ok" style="max-width:300px;">확인 ✓</button>`;
   spawnConfetti();
   document.getElementById('brain-ok').onclick = () => { closeGame(); if (first) awardXP(child.id, 15, 'brain'); else renderHomeScreen(); };
 }
+
+// 4) 색깔 말하기 (Stroop)
+const INKS = [['빨강', '#ef4444'], ['파랑', '#3b82f6'], ['초록', '#16a34a'], ['노랑', '#eab308']];
+function colorStart() {
+  brain.n = 0; brain.total = 10; brain.correct = 0;
+  brain.time = Math.max(2200, 5000 - brain.lv * 550);
+  colorNext();
+}
+function colorNext() {
+  if (brain.n >= brain.total) { brainFinish(brain.correct / brain.total, `${brain.total}번 중 <b>${brain.correct}번</b> 색깔을 맞혔어요! 글자에 안 속았어요!`); return; }
+  brain.n++;
+  const w = Math.floor(Math.random() * 4);
+  let ink = Math.floor(Math.random() * 4);
+  if (Math.random() < 0.75) while (ink === w) ink = Math.floor(Math.random() * 4);
+  brain.ink = ink; brain.answered = false;
+  document.getElementById('game-body').innerHTML = `
+    <div class="text-sm color-muted">${brain.n} / ${brain.total} · 글자의 <b>색깔</b>은?</div>
+    <div class="stroop-word" style="color:${INKS[ink][1]}">${INKS[w][0]}</div>
+    <div class="ink-row">${INKS.map(([nm, c], i) => `<button class="ink-btn" style="background:${c}" onclick="colorTap(${i})">${nm}</button>`).join('')}</div>
+    <div class="time-bar"><i style="animation-duration:${brain.time}ms"></i></div>`;
+  brainTimer = setTimeout(() => colorFeedback('⏰ 시간이 지났어요!'), brain.time);
+}
+function colorTap(i) {
+  if (brain.answered) return;
+  clearTimeout(brainTimer);
+  if (i === brain.ink) brain.correct++;
+  colorFeedback(i === brain.ink ? '딩동댕! 🎉' : `앗, 색깔은 <b style="color:${INKS[brain.ink][1]}">${INKS[brain.ink][0]}</b>이었어요!`);
+}
+function colorFeedback(msg) {
+  brain.answered = true;
+  document.getElementById('game-body').innerHTML = `<div class="text-sm color-muted">${brain.n} / ${brain.total}</div><div class="stroop-word" style="opacity:.15">·</div><div class="calm-say">${msg}</div>`;
+  brainTimer = setTimeout(colorNext, 800);
+}
+
+// 5) 규칙 바꾸기 (모양 ↔ 색깔)
+function switchStart() {
+  brain.n = 0; brain.total = 12; brain.correct = 0;
+  brain.rule = Math.random() < 0.5 ? 'shape' : 'color';
+  brain.runLeft = 3 + Math.floor(Math.random() * Math.max(1, 5 - brain.lv));
+  brain.time = Math.max(2500, 5500 - brain.lv * 550);
+  switchNext();
+}
+function switchNext() {
+  if (brain.n >= brain.total) { brainFinish(brain.correct / brain.total, `${brain.total}번 중 <b>${brain.correct}번</b> 맞혔어요! 규칙이 바뀌어도 척척!`); return; }
+  brain.n++;
+  let changed = false;
+  if (--brain.runLeft < 0) { brain.rule = brain.rule === 'shape' ? 'color' : 'shape'; brain.runLeft = 2 + Math.floor(Math.random() * Math.max(1, 5 - brain.lv)); changed = true; }
+  brain.shape = Math.random() < 0.5 ? 0 : 1;
+  brain.col = Math.random() < 0.5 ? 0 : 1;
+  brain.answered = false;
+  const SH = ['●', '▲'], CO = [['빨강', '#ef4444'], ['파랑', '#3b82f6']];
+  const opts = brain.rule === 'shape' ? SH.map(s => `<span style="font-size:2.4rem">${s}</span>`) : CO.map(([nm, c]) => `<span style="color:${c}">${nm}</span>`);
+  document.getElementById('game-body').innerHTML = `
+    <div class="text-sm color-muted">${brain.n} / ${brain.total}</div>
+    <div class="rule-banner ${brain.rule}${changed ? ' changed' : ''}">${changed ? '🔄 규칙이 바뀌었어요! ' : ''}${brain.rule === 'shape' ? '🔷 모양으로 골라요' : '🎨 색깔로 골라요'}</div>
+    <div class="switch-card" style="color:${CO[brain.col][1]}">${SH[brain.shape]}</div>
+    <div class="ink-row">${opts.map((o, i) => `<button class="ink-btn plain" onclick="switchTap(${i})">${o}</button>`).join('')}</div>
+    <div class="time-bar"><i style="animation-duration:${brain.time}ms"></i></div>`;
+  if (changed && brain.child.speak) speak(brain.rule === 'shape' ? '이제 모양으로!' : '이제 색깔로!');
+  brainTimer = setTimeout(() => switchFeedback(false, '⏰ 시간이 지났어요!'), brain.time);
+}
+function switchTap(i) {
+  if (brain.answered) return;
+  clearTimeout(brainTimer);
+  const ok = i === (brain.rule === 'shape' ? brain.shape : brain.col);
+  switchFeedback(ok, ok ? '딩동댕! 🎉' : `앗, 지금은 <b>${brain.rule === 'shape' ? '모양' : '색깔'}</b> 규칙이에요!`);
+}
+function switchFeedback(ok, msg) {
+  brain.answered = true;
+  if (ok) brain.correct++;
+  document.getElementById('game-body').innerHTML = `<div class="text-sm color-muted">${brain.n} / ${brain.total}</div><div class="switch-card" style="opacity:.15">·</div><div class="calm-say">${msg}</div>`;
+  brainTimer = setTimeout(switchNext, 800);
+}
+
+// 6) 듣고 기억하기
+const LISTEN_WORDS = [['🍎', '사과'], ['🐶', '강아지'], ['🚗', '자동차'], ['⭐', '별'], ['🌙', '달'], ['🐟', '물고기'], ['🎈', '풍선'], ['🌸', '꽃'], ['🍌', '바나나'], ['🐱', '고양이'], ['🚌', '버스'], ['☂️', '우산']];
+function listenStart() {
+  brain.round = 0; brain.ok = 0; brain.len = Math.min(6, 1 + brain.lv);
+  listenRound();
+}
+function listenRound() {
+  if (brain.round >= 3) { brainFinish(brain.ok / 3, `3번 중 <b>${brain.ok}번</b> 들은 순서대로 맞혔어요! 귀가 쫑긋!`); return; }
+  const pool = LISTEN_WORDS.slice().sort(() => Math.random() - 0.5);
+  brain.seq = pool.slice(0, brain.len);
+  brain.opts = pool.slice(0, Math.min(pool.length, brain.len + 3)).sort(() => Math.random() - 0.5);
+  brain.input = [];
+  const canSpeak = !!window.speechSynthesis;
+  document.getElementById('game-body').innerHTML = `
+    <div class="text-sm color-muted">${brain.round + 1} / 3 · ${brain.len}개 기억하기</div>
+    <div class="listen-ear">👂</div>
+    <div class="calm-say" id="listen-say">잘 들어요…</div>`;
+  let i = 0;
+  const next = () => {
+    if (i >= brain.seq.length) { brainTimer = setTimeout(listenDraw, 700); return; }
+    const [e, w] = brain.seq[i];
+    const el = document.getElementById('listen-say');
+    if (el) el.innerHTML = canSpeak ? `🔊 ${i + 1}번째` : `${e} ${w}`;
+    if (canSpeak) speak(w);
+    i++;
+    brainTimer = setTimeout(next, 1400);
+  };
+  brainTimer = setTimeout(next, 600);
+}
+function listenDraw(msg) {
+  document.getElementById('game-body').innerHTML = `
+    <div class="text-sm color-muted">${brain.round + 1} / 3 · 들은 순서대로 눌러요</div>
+    <div class="calm-say">${msg || '어떤 순서였지?'}</div>
+    <div class="listen-grid">${brain.opts.map(([e, w], k) => `<button class="listen-opt${brain.input.includes(k) ? ' on' : ''}" onclick="listenTap(${k})" ${msg ? 'disabled' : ''}><span>${e}</span>${w}</button>`).join('')}</div>
+    <div class="text-sm">${brain.input.map(k => brain.opts[k][0]).join(' → ')}</div>`;
+}
+function listenTap(k) {
+  if (brain.input.includes(k)) return;
+  brain.input.push(k);
+  const i = brain.input.length - 1;
+  if (brain.opts[k][1] !== brain.seq[i][1]) {
+    brain.round++;
+    listenDraw(`아쉬워! 정답은 ${brain.seq.map(x => x[0]).join(' → ')} 💪`);
+    brainTimer = setTimeout(listenRound, 2200);
+    return;
+  }
+  if (brain.input.length === brain.seq.length) { brain.ok++; brain.round++; listenDraw('딩동댕! 🎉'); brainTimer = setTimeout(listenRound, 1200); return; }
+  listenDraw();
+}
+
+// 7) 다른 하나 찾기
+const ODD_PAIRS = [['🐱', '🐯'], ['⭐', '🌟'], ['🌸', '🌺'], ['🍎', '🍅'], ['🐥', '🐤'], ['😊', '🙂'], ['🍊', '🍑'], ['🔵', '🟣'], ['🐶', '🐕'], ['🌕', '🌝'], ['🍀', '☘️'], ['🚗', '🚙']];
+function oddStart() {
+  brain.n = 0; brain.total = 6; brain.correct = 0;
+  brain.size = [9, 16, 20, 25, 30][brain.lv - 1];
+  brain.time = Math.max(6000, 12000 - brain.lv * 1000);
+  oddNext();
+}
+function oddNext() {
+  if (brain.n >= brain.total) { brainFinish(brain.correct / brain.total, `${brain.total}번 중 <b>${brain.correct}번</b> 다른 하나를 찾았어요! 눈이 반짝!`); return; }
+  brain.n++;
+  const [a, b] = ODD_PAIRS[Math.floor(Math.random() * ODD_PAIRS.length)].slice().sort(() => Math.random() - 0.5);
+  brain.oddAt = Math.floor(Math.random() * brain.size);
+  brain.answered = false;
+  const cols = Math.ceil(Math.sqrt(brain.size));
+  document.getElementById('game-body').innerHTML = `
+    <div class="text-sm color-muted">${brain.n} / ${brain.total} · 하나만 다른 걸 찾아요</div>
+    <div class="odd-grid" style="grid-template-columns:repeat(${cols},1fr)">${Array.from({ length: brain.size }, (_, i) => `<button class="odd-cell" onclick="oddTap(${i})">${i === brain.oddAt ? b : a}</button>`).join('')}</div>
+    <div class="time-bar"><i style="animation-duration:${brain.time}ms"></i></div>`;
+  brainTimer = setTimeout(() => oddFeedback('⏰ 시간이 지났어요!'), brain.time);
+}
+function oddTap(i) {
+  if (brain.answered) return;
+  if (i !== brain.oddAt) { const c = document.querySelectorAll('.odd-cell')[i]; c.classList.add('miss'); return; }
+  clearTimeout(brainTimer);
+  brain.correct++;
+  oddFeedback('찾았다! 🎯');
+}
+function oddFeedback(msg) {
+  brain.answered = true;
+  const c = document.querySelectorAll('.odd-cell')[brain.oddAt];
+  if (c) c.classList.add('hit');
+  const say = document.createElement('div'); say.className = 'calm-say'; say.innerHTML = msg;
+  document.getElementById('game-body').appendChild(say);
+  brainTimer = setTimeout(oddNext, 1000);
+}
+
+// 8) 천천히 길 따라가기
+function traceStart() {
+  brain.round = 0; brain.scores = [];
+  brain.band = [34, 30, 26, 22, 18][brain.lv - 1];
+  brain.maxSpeed = 0.9 - brain.lv * 0.08; // px/ms
+  traceRound();
+}
+function tracePath(x, W, H, phase) {
+  return H / 2 + Math.sin((x / W) * Math.PI * 2.2 + phase) * (H * 0.3);
+}
+function traceRound() {
+  if (brain.round >= 2) {
+    const sc = brain.scores.reduce((a, b) => a + b, 0) / brain.scores.length;
+    brainFinish(sc, `길 따라가기 점수 <b>${Math.round(sc * 100)}점</b>! 천천히 조심조심 잘했어요 🐢`);
+    return;
+  }
+  brain.phase = Math.random() * Math.PI;
+  brain.exits = 0; brain.fast = 0; brain.prog = 0; brain.drag = false; brain.out = false;
+  document.getElementById('game-body').innerHTML = `
+    <div class="text-sm color-muted">${brain.round + 1} / 2 · 🐢를 눌러서 🏁까지 천천히!</div>
+    <canvas id="trace-cv" class="trace-cv"></canvas>
+    <div class="calm-say" id="trace-say">🐢를 손가락으로 꾹 눌러서 출발해요</div>`;
+  const cv = document.getElementById('trace-cv');
+  const W = cv.width = Math.min(640, cv.parentElement.clientWidth - 20);
+  const H = cv.height = 240;
+  brain.W = W; brain.H = H; brain.x = 24; brain.y = tracePath(24, W, H, brain.phase);
+  traceDraw();
+  const pos = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) * W / r.width, (e.clientY - r.top) * H / r.height]; };
+  cv.onpointerdown = e => {
+    const [x, y] = pos(e);
+    if (Math.hypot(x - brain.x, y - brain.y) < 40) { brain.drag = true; brain.last = [x, y, performance.now()]; cv.setPointerCapture(e.pointerId); }
+  };
+  cv.onpointermove = e => {
+    if (!brain.drag) return;
+    const [x, y] = pos(e);
+    const [lx, ly, lt] = brain.last; const now = performance.now();
+    const sp = Math.hypot(x - lx, y - ly) / Math.max(1, now - lt);
+    brain.last = [x, y, now];
+    if (x < brain.x - 30) return;
+    brain.x = Math.max(brain.x, Math.min(W - 20, x)); brain.y = y;
+    const off = Math.abs(y - tracePath(brain.x, W, H, brain.phase)) > brain.band;
+    const say = document.getElementById('trace-say');
+    if (off && !brain.out) { brain.exits++; brain.out = true; if (say) say.textContent = '앗, 길 밖이에요! 길로 돌아와요'; }
+    if (!off) brain.out = false;
+    if (sp > brain.maxSpeed && !off) { brain.fast++; if (say) say.textContent = '🐇 너무 빨라요! 거북이처럼 천천히~'; }
+    else if (!off && say) say.textContent = '좋아요, 천천히~ 🐢';
+    traceDraw();
+    if (brain.x >= W - 30) { brain.drag = false; traceDone(); }
+  };
+  cv.onpointerup = cv.onpointercancel = () => { brain.drag = false; };
+}
+function traceDraw() {
+  const cv = document.getElementById('trace-cv'); if (!cv) return;
+  const g = cv.getContext('2d'), { W, H, phase, band } = brain;
+  g.clearRect(0, 0, W, H);
+  g.lineCap = 'round'; g.lineJoin = 'round';
+  const line = (w, col, to) => { g.beginPath(); for (let x = 20; x <= to; x += 4) { const y = tracePath(x, W, H, phase); x === 20 ? g.moveTo(x, y) : g.lineTo(x, y); } g.strokeStyle = col; g.lineWidth = w; g.stroke(); };
+  line(band * 2, '#e0e7ff', W - 20);
+  line(band * 2, '#bbf7d0', brain.x);
+  line(2, '#a5b4fc', W - 20);
+  g.font = '30px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText('🏁', W - 20, tracePath(W - 20, W, H, phase) - 4);
+  g.fillText('🐢', brain.x, brain.y);
+}
+function traceDone() {
+  const sc = Math.max(0, 1 - brain.exits * 0.15 - Math.min(10, brain.fast) * 0.04);
+  brain.scores.push(sc);
+  brain.round++;
+  const say = document.getElementById('trace-say');
+  if (say) say.innerHTML = `🏁 도착! 길 밖 ${brain.exits}번 · 너무 빠름 ${Math.min(10, brain.fast)}번`;
+  brainTimer = setTimeout(traceRound, 1600);
+}
+
 // 1) sequence memory
 const PADS = ['#f87171', '#fbbf24', '#34d399', '#60a5fa'];
 function seqStart() {
@@ -5964,6 +6287,18 @@ function weeklyReport(child) {
     const subs = logs.map((log, di) => log && log[`${child.id}_${t.id}`] && log[`${child.id}_${t.id}`].subject ? `${'월화수목금토일'[di]} ${escText(log[`${child.id}_${t.id}`].subject)}` : '').filter(Boolean);
     if (subs.length) notes.push(['good', `${t.emoji} ${t.name}: ${subs.join(' · ')}`]);
   });
+  const bl = logs.map(log => log && log[`${child.id}_brain`]).filter(e => e && e.ok);
+  if (bl.length) {
+    const wkSet = days.map(ymd);
+    const skills = BRAIN_SKILLS.map(sk => {
+      const gs = BRAIN_GAMES.filter(g => BRAIN_INFO[g].skill === sk && (child.brainRec || {})[g] && child.brainRec[g].plays);
+      if (!gs.length) return '';
+      const now = Math.max(...gs.map(g => child.brainRec[g].lv));
+      const old = Math.max(...gs.map(g => { const h = (child.brainRec[g].hist || []).filter(x => !wkSet.includes(x.d)); return h.length ? h[h.length - 1].lv : (child.brainRec[g].hist || [{ lv: now }])[0].lv; }));
+      return `${sk} Lv.${now}${now > old ? ' ↑' : now < old ? ' ↓' : ''}`;
+    }).filter(Boolean);
+    notes.push(['good', `🧠 두뇌 게임 ${bl.length}일 · ${skills.join(' · ')}`]);
+  }
   const wk = days.map(ymd);
   const mus = (child.muscleLog || []).filter(m => wk.includes(m.date));
   if (mus.length) notes.push(['good', `💪 이번 주 마음 근육 <b>${mus.length}번</b>: ${mus.map(m => escText(m.reason)).join(', ')}`]);
