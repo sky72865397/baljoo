@@ -1725,6 +1725,7 @@ const DEFAULT_TASKS = [
   { id:'m2',  name:'세수하기',          emoji:'🧼', xp:20, slot:'morning' },
   { id:'m3',  name:'양치하기',          emoji:'🦷', xp:20, slot:'morning' },
   { id:'m4',  name:'옷 입기',           emoji:'👕', xp:15, slot:'morning' },
+  { id:'m11', name:'벗은 잠옷 정리하기', emoji:'👚', xp:10, slot:'morning' },
   { id:'m5',  name:'양말 신기',         emoji:'🧦', xp:10, slot:'morning' },
   { id:'m6',  name:'밥 먹기',           emoji:'🍚', xp:20, slot:'morning' },
   { id:'m10', name:'약 먹기',           emoji:'💊', xp:15, slot:'morning',     for:['c2'] },
@@ -2830,6 +2831,13 @@ function init() {
     const c2 = settings.children.find(c => c.id === 'c2');
     if (c2 && !c2.clueN) c2.clueN = 2;
     settings.dataVersion = 33;
+  }
+  if (settings.dataVersion === 33) {
+    if (!tasks.some(t => t.id === 'm11')) {
+      const at = tasks.findIndex(t => t.id === 'm4');
+      tasks.splice(at >= 0 ? at + 1 : tasks.length, 0, JSON.parse(JSON.stringify(DEFAULT_TASKS.find(t => t.id === 'm11'))));
+    }
+    settings.dataVersion = 34;
   }
 
   saveSettings();
