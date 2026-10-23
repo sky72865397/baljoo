@@ -3026,6 +3026,31 @@ function init() {
   saveRewards();
 
   renderWelcome();
+  importPlanFromLink();
+}
+
+// 일정 링크로 계획표 채우기: #plan=<base64(JSON {아이id: {YYYY-MM-DD: [할 일...]}})>
+// 일정 내용은 링크에만 있고 사이트에는 올라가지 않아요.
+function importPlanFromLink() {
+  const m = location.hash.match(/^#plan=(.+)$/);
+  if (!m) return;
+  history.replaceState(null, '', location.pathname + location.search);
+  let data;
+  try { data = JSON.parse(decodeURIComponent(escape(atob(decodeURIComponent(m[1]))))); } catch (e) { alert('일정 링크를 읽지 못했어요.'); return; }
+  const added = [];
+  Object.entries(data).forEach(([cid, days]) => {
+    const child = settings.children.find(c => c.id === cid);
+    if (!child) return;
+    planStore(child);
+    let n = 0;
+    Object.entries(days).forEach(([d, items]) => {
+      const list = child.dated[d] = child.dated[d] || [];
+      items.forEach(t => { if (!list.includes(t)) { list.push(t); n++; } });
+    });
+    if (n) added.push(`${child.name} ${n}개`);
+  });
+  saveSettings();
+  alert(added.length ? `📅 계획표에 일정을 넣었어요: ${added.join(', ')}` : '📅 이미 들어 있는 일정이에요.');
 }
 
 // =====================================================================
