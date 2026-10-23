@@ -2023,8 +2023,9 @@ function exploreForToday() {
   saveSettings();
   return next || null;
 }
+const EXPLORE_IMG = ['ts1', 'ts2', 'ts3', 'ts4', 'ts5', 'ts6', 'ts7', 'ts8', 'x10', 'x11', 'x12', 'x13', 'x14', 'x15', 'x9']; // img/explore-<id>.jpg 있는 사건
 function buildExplore(e) {
-  return { type: 'explore', id: e.id, title: e.title, tag: e.tag, scene: e.scene, know: e.know, event: e.event, img: e.img,
+  return { type: 'explore', id: e.id, title: e.title, tag: e.tag, scene: e.scene, know: e.know, event: e.event, img: e.img || (EXPLORE_IMG.includes(e.id) ? `img/explore-${e.id}.jpg` : ''),
     questions: e.qs.map((q, i) => Object.assign({ num: i + 1 }, q)) };
 }
 
