@@ -5345,7 +5345,8 @@ function finishEmo() {
   const xp = EMO_XP[where][lv === 1 ? 'calm' : kept];
   const log = loadLog();
   const key = `${child.id}_temp_${where}`;
-  const first = !(log[key] && log[key].lv);
+  // 학교 체크는 할 일(a14)이 체크 안 돼 있으면 언제든 다시 체크 (취소했다 다시 해도 됨)
+  const first = where === 'school' ? !(log[`${child.id}_a14`] && log[`${child.id}_a14`].done) : !(log[key] && log[key].lv);
   const think = emo.guess ? { seen: emo.seen || '', guess: emo.guess, asked: emo.asked === '🙋 물어봤어요' } : null;
   log[key] = { lv, why: why || '', kept: kept || '', did: did || [], ts: Date.now() };
   if (think) log[key].think = think;
