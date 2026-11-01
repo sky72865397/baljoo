@@ -402,6 +402,7 @@ input, select, textarea { font-family: inherit; outline: none; }
 .pop-text { font-size:1.35rem; line-height:1.6; color:var(--text); margin-top:10px; word-break:keep-all; }
 .pop-btn { margin-top:22px; width:100%; padding:18px; border-radius:18px; font-size:1.3rem; font-weight:900; color:#fff; background:#16a34a; }
 .pop-card.try .pop-btn { background:#f59e0b; }
+.pop-btn.reading { background:#cbd5e1 !important; color:#475569; }
 @keyframes popIn { 0%{transform:scale(.6);opacity:0} 100%{transform:scale(1);opacity:1} }
 @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
 
@@ -2494,7 +2495,26 @@ function showPop({ kind, icon, title, text, button, action, onClose }, child) {
       <div class="pop-text">${text}</div>
       <button class="pop-btn">${button}</button>
     </div>`;
-  wrap.querySelector('.pop-btn').onclick = () => {
+  // 아이들이 읽지 않고 바로 누르지 않게: 글 길이만큼 잠깐 기다렸다가 버튼이 켜짐
+  const btn = wrap.querySelector('.pop-btn');
+  const plain = String(text).replace(/<[^>]+>/g, '');
+  const wait = plain.length < 12 ? 0 : Math.min(4, Math.max(2, Math.round(plain.length / 18)));
+  if (wait) {
+    let n = wait;
+    btn.disabled = true;
+    btn.classList.add('reading');
+    btn.innerHTML = `👀 읽어 봐요… ${n}`;
+    const t = setInterval(() => {
+      n--;
+      if (n > 0) { btn.innerHTML = `👀 읽어 봐요… ${n}`; return; }
+      clearInterval(t);
+      btn.disabled = false;
+      btn.classList.remove('reading');
+      btn.innerHTML = button;
+    }, 1000);
+  }
+  btn.onclick = () => {
+    if (btn.disabled) return;
     wrap.remove();
     document.querySelectorAll('.confetti-piece').forEach(el => el.remove());
     if (action) new Function(action)();
@@ -2721,55 +2741,78 @@ function weekPicks(w = weekIndex()) {
   return settings.dutyPicks['w' + w] || {};
 }
 
+// 한 주에 고르는 반장 수 (dutyTwoFrom 주부터 2개)
+function dutyCount(w = weekIndex()) { return settings.dutyTwoFrom && w >= settings.dutyTwoFrom ? 2 : 1; }
+function pickIds(w, childId) { const v = weekPicks(w)[childId]; return Array.isArray(v) ? v : v ? [v] : []; }
 function dutiesFor(childId) {
-  const id = weekPicks()[childId];
-  return settings.duties.filter(d => d.id === id);
+  const ids = pickIds(weekIndex(), childId);
+  return settings.duties.filter(d => ids.includes(d.id));
 }
 
 function dutyTakenBy(dutyId) {
-  const picks = weekPicks();
-  return settings.children.find(c => picks[c.id] === dutyId);
+  return settings.children.find(c => pickIds(weekIndex(), c.id).includes(dutyId));
 }
 
-let pickingDutyId = null;
+
+function checkDutyTwoIntro(child) {
+  if (dutyCount() < 2) return false;
+  settings.dutyTwoIntro = settings.dutyTwoIntro || {};
+  if (settings.dutyTwoIntro[child.id]) return false;
+  settings.dutyTwoIntro[child.id] = true;
+  saveSettings();
+  const have = dutiesFor(child.id).length;
+  showPop({ kind: 'right', icon: '🏅🏅', title: '반장 승진!', text: `${escText(child.name)}, 그동안 반장을 정말 잘해서<br><b>이번 주부터는 반장을 2개</b> 맡아요!<br>${have ? '하나 더 골라 볼까?' : '어떤 반장 할지 2개 골라 봐요!'}`,
+    button: '반장 고르러 가기 🏅', onClose: () => openDutyPick() }, child);
+  return true;
+}
 
 function openDutyPick() {
-  pickingDutyId = null;
+  pickingDuties = [];
   renderDutyPick();
   showScreen('screen-dutypick');
 }
 
 function renderDutyPick() {
   const child = getChild();
-  const lastWeek = weekPicks(weekIndex() - 1)[child.id];
-  document.getElementById('dutypick-title').textContent = `${child.name}, 이번 주에 무슨 반장 할래?`;
+  const lastWeek = pickIds(weekIndex() - 1, child.id);
+  const need = dutyCount() - dutiesFor(child.id).length;
+  document.getElementById('dutypick-title').textContent = dutyCount() > 1
+    ? `${child.name}, 이번 주 반장 ${need === 1 && dutiesFor(child.id).length ? '하나 더' : '2개'} 골라 볼까?`
+    : `${child.name}, 이번 주에 무슨 반장 할래?`;
   document.getElementById('dutypick-list').innerHTML = settings.duties.map(d => {
     const taken = dutyTakenBy(d.id);
-    const wasMine = lastWeek === d.id;
-    const blocked = (taken && taken.id !== child.id) || wasMine;
-    const note = taken && taken.id !== child.id ? `${taken.name}가 골랐어요` : wasMine ? '지난주에 했어요' : '';
-    return `<button class="duty-pick${pickingDutyId === d.id ? ' selected' : ''}${blocked ? ' blocked' : ''}" ${blocked ? 'disabled' : `onclick="selectDuty('${d.id}')"`}>
+    const wasMine = lastWeek.includes(d.id);
+    const blocked = !!taken || wasMine;
+    const note = taken ? (taken.id === child.id ? '✓ 내 반장이에요' : `${withGa(taken.name)} 골랐어요`) : wasMine ? '지난주에 했어요' : '';
+    return `<button class="duty-pick${pickingDuties.includes(d.id) ? ' selected' : ''}${blocked ? ' blocked' : ''}" ${blocked ? 'disabled' : `onclick="selectDuty('${d.id}')"`}>
       <div class="duty-pick-head"><span class="duty-pick-emoji">${d.emoji}</span><span class="duty-pick-name">${d.name}</span></div>
       <ul class="duty-pick-tips">${d.tips.map(t => `<li>${t}</li>`).join('')}</ul>
       ${note ? `<div class="duty-pick-note">${note}</div>` : ''}
     </button>`;
   }).join('');
   const btn = document.getElementById('dutypick-confirm');
-  const sel = settings.duties.find(d => d.id === pickingDutyId);
-  btn.disabled = !sel;
-  btn.innerHTML = sel ? `${BADGE_SVG} 이번 주 ${sel.name} 할래요!` : '하고 싶은 반장을 골라요';
+  const sel = settings.duties.filter(d => pickingDuties.includes(d.id));
+  btn.disabled = sel.length < need;
+  btn.innerHTML = sel.length >= need ? `${BADGE_SVG} 이번 주 ${sel.map(d => d.name).join(' + ')} 할래요!`
+    : need > 1 ? `하고 싶은 반장을 ${need}개 골라요 (${sel.length}/${need})` : '하고 싶은 반장을 골라요';
 }
 
+let pickingDuties = [];
 function selectDuty(id) {
-  pickingDutyId = id;
+  const need = dutyCount() - dutiesFor(getChild().id).length;
+  if (pickingDuties.includes(id)) pickingDuties = pickingDuties.filter(x => x !== id);
+  else pickingDuties = pickingDuties.concat(id).slice(-need);
   renderDutyPick();
 }
 
 function confirmDutyPick() {
-  if (!pickingDutyId) return;
+  const child = getChild();
+  const need = dutyCount() - dutiesFor(child.id).length;
+  if (pickingDuties.length < need) return;
   const w = 'w' + weekIndex();
   settings.dutyPicks = settings.dutyPicks || {};
-  settings.dutyPicks[w] = { ...weekPicks(), [currentChildId]: pickingDutyId };
+  settings.dutyPicks[w] = { ...weekPicks(), [currentChildId]: pickIds(weekIndex(), child.id).concat(pickingDuties) };
+  pickingDuties = [];
   saveSettings();
   renderHomeScreen();
   showScreen('screen-home');
@@ -3086,6 +3129,11 @@ function init() {
     ['a6', 'a15'].forEach(id => { const t = tasks.find(x => x.id === id); if (t && t.must === undefined) t.must = true; });
     settings.dataVersion = 35;
   }
+  if (settings.dataVersion === 35) {
+    // 이번 주부터 반장 2개씩 (이미 1개 고른 아이는 하나 더 고르기)
+    settings.dutyTwoFrom = weekIndex();
+    settings.dataVersion = 36;
+  }
 
   saveSettings();
   saveTasks();
@@ -3285,7 +3333,7 @@ function renderWelcome() {
     }).length;
     const total = allEnabled.length;
     const myDuty = dutiesFor(child.id)[0];
-    const badges = myDuty ? `<span class="duty-badge">${BADGE_SVG} ${myDuty.name}</span>` : `<span class="duty-badge" style="background:#f1f5f9;color:var(--text-muted);">${BADGE_SVG} 반장 고르기 전</span>`;
+    const badges = myDuty ? dutiesFor(child.id).map(d => `<span class="duty-badge">${BADGE_SVG} ${d.name}</span>`).join('') : `<span class="duty-badge" style="background:#f1f5f9;color:var(--text-muted);">${BADGE_SVG} 반장 고르기 전</span>`;
     return `<button class="profile-card" onclick="enterChild('${child.id}')">
       <div class="profile-pet">${getPetEmoji(child)}</div>
       <div style="flex:1;width:100%;">
@@ -3415,7 +3463,7 @@ function enterChild(childId) {
   renderNavs();
   renderHomeScreen();
   showScreen('screen-home');
-  if (!checkMonthAward(getChild())) showPraiseQueue(getChild());
+  if (!checkMonthAward(getChild()) && !checkDutyTwoIntro(getChild())) showPraiseQueue(getChild());
   mustSnooze[childId] = 0;
   setTimeout(() => checkMustReminder(true), 900);
 }
@@ -3707,10 +3755,11 @@ function renderHomeScreen() {
   document.getElementById('duty-section').classList.remove('hidden');
   if (myDuties.length === 0) {
     document.getElementById('duty-list').innerHTML =
-      `<button class="duty-cta" onclick="openDutyPick()">${BADGE_SVG} 이번 주 반장을 골라요!</button>`;
+      `<button class="duty-cta" onclick="openDutyPick()">${BADGE_SVG} 이번 주 반장${dutyCount() > 1 ? ' 2개를' : '을'} 골라요!</button>`;
     return;
   }
-  document.getElementById('duty-list').innerHTML = myDuties.map(d => {
+  const more = myDuties.length < dutyCount() ? `<button class="duty-cta" onclick="openDutyPick()">${BADGE_SVG} 반장 하나 더 골라요!</button>` : '';
+  document.getElementById('duty-list').innerHTML = more + myDuties.map(d => {
     const e = log[`${child.id}_duty_${d.id}`];
     const done = !!(e && e.done);
     return `<button class="check-item duty${done ? ' done' : ''}" onclick="toggleDuty('${child.id}','${d.id}')">
@@ -4545,7 +4594,7 @@ function renderTomorrow(child) {
   const t = new Date(); t.setHours(0, 0, 0, 0);
   if (isEve) t.setDate(t.getDate() + 1);
   const d = dayInfo(child, t);
-  const duty = dutiesFor(child.id)[0];
+  const duty = dutiesFor(child.id).length ? { name: dutiesFor(child.id).map(d => d.name).join(' · ') } : null;
   el.innerHTML = `<div class="tomorrow-card${isEve ? ' eve' : ''}">
     <div class="flex-between" style="gap:8px;">
       <div class="note-q" style="margin:0;">${isEve ? '🌙 내일 미리 보기' : '☀️ 오늘 일정'} · <b>${t.getMonth() + 1}/${t.getDate()} ${d.wd}요일</b></div>
@@ -5848,7 +5897,8 @@ function talkSetForToday(childId) {
 function renderNightNote(child, log) {
   const el = document.getElementById('night-note');
   const slot = viewSlot || getActiveSlot();
-  if (slot !== 'evening' || !emoKids().includes(child.id)) { el.innerHTML = ''; return; }
+  // 저녁 마음 돌아보기는 엄마 요청으로 숨김 (기록 코드는 남겨 둠)
+  if (true || slot !== 'evening' || !emoKids().includes(child.id)) { el.innerHTML = ''; return; }
   const e = log[`${child.id}_temp_home`];
   el.innerHTML = e && e.lv
     ? `<div class="note-card saved"><div class="note-q">🌙 오늘 집 마음 온도</div><div class="note-text">${emoSummary(e)}</div><button class="mood-change" onclick="openEmo('${child.id}','home')">고치기</button></div>`
@@ -6842,11 +6892,10 @@ function weeklyReport(child) {
   const strong = perTask.filter(([, k, m]) => k === m && m >= 2).map(([t]) => t.name);
   if (strong.length) notes.push(['good', `매일 빠짐없이 한 일: ${strong.slice(0, 4).map(x => `<b>${x}</b>`).join(', ')}${strong.length > 4 ? ` 외 ${strong.length - 4}개` : ''}`]);
 
-  const duty = dutiesFor(child.id)[0];
-  if (duty) {
+  dutiesFor(child.id).forEach(duty => {
     const k = logs.filter(log => isDone(log, 'duty_' + duty.id)).length;
     notes.push([k * 2 >= n ? 'good' : 'warn', `${duty.name}: ${n}일 중 <b>${k}일</b> 했어요.`]);
-  }
+  });
   const moods = logs.flatMap((log, di) => log ? ['am', 'pm'].map(p => log[`${child.id}_mood_${p}`] && [log[`${child.id}_mood_${p}`].mood, di]).filter(Boolean) : []);
   if (moods.length) {
     const cnt = id => moods.filter(([m]) => m === id).length;
