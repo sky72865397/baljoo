@@ -555,6 +555,27 @@ input, select, textarea { font-family: inherit; outline: none; }
 .share-kid { display:flex; flex-direction:column; align-items:center; gap:4px; background:#fff; border:3px solid var(--border); border-radius:20px; padding:12px 18px; font-weight:800; font-size:1.1rem; color:var(--text); }
 .share-kid.on { border-color:#ec4899; background:#fdf2f8; }
 .share-empty { text-align:center; padding:24px 8px; font-size:1.1rem; line-height:1.7; }
+.focus-done:disabled { background:#cbd5e1; box-shadow:none; }
+.jar-card { text-align:center; }
+.jar-title { font-weight:900; font-size:1.15rem; }
+.jar-goal { margin:4px 0 8px; }
+.jar-track { height:14px; background:#e0e7ff; border-radius:99px; overflow:hidden; }
+.jar-track i { display:block; height:100%; background:linear-gradient(90deg,#f472b6,#f59e0b); border-radius:99px; transition:width .4s; }
+.jar-num { font-weight:800; margin:6px 0 2px; }
+.praise-photo img { width:100%; max-height:220px; object-fit:contain; border-radius:14px; margin-top:8px; }
+.praise-pop-photo { display:block; width:100%; max-height:46vh; object-fit:contain; border-radius:18px; margin:0 auto 10px; }
+.eve-start { width:100%; background:linear-gradient(135deg,#312e81,#6d28d9); color:#fff; border-radius:20px; padding:14px; font-size:1.2rem; font-weight:900; display:flex; flex-direction:column; gap:2px; margin-top:6px; }
+.eve-start small { font-size:.85rem; font-weight:600; opacity:.85; }
+.eve-box { background:#eef2ff; border-radius:16px; padding:12px 14px; margin-top:6px; font-weight:700; }
+.eve-box.run { background:#ede9fe; color:#4c1d95; }
+.eve-box.won { background:#dcfce7; color:#166534; }
+.award-card { background:linear-gradient(180deg,#fffbeb,#fff); border:4px double #f59e0b; border-radius:22px; padding:18px 14px; text-align:center; margin-bottom:10px; color:#1e1b4b; }
+.award-top { font-size:.9rem; font-weight:800; color:#b45309; }
+.award-ic { font-size:4rem; line-height:1.2; }
+.award-title { font-size:1.7rem; font-weight:900; color:#b45309; }
+.award-name { font-size:1.3rem; font-weight:900; margin:2px 0 6px; }
+.award-text { line-height:1.6; }
+.award-from { margin-top:8px; font-size:.9rem; color:#6b7280; }
 .subject-tag { display:inline-block; margin-left:8px; background:#e0f2fe; color:#0369a1; border-radius:99px; padding:2px 10px; font-size:.85rem; font-weight:800; vertical-align:middle; }
 .note-card { background:#eef2ff; border-radius:20px; padding:14px; margin-top:6px; }
 .note-card.saved { display:flex; flex-direction:column; gap:6px; }
@@ -1270,6 +1291,7 @@ input, select, textarea { font-family: inherit; outline: none; }
       <div style="font-size:0.85rem;color:var(--text-secondary);margin-top:6px;">정말 최고예요! 펫이 행복해해요 😊</div>
     </div>
 
+    <div id="eve-mission"></div>
     <div id="night-note"></div>
 
     <div id="duty-section" class="hidden" style="display:flex;flex-direction:column;gap:10px;">
@@ -1321,6 +1343,10 @@ input, select, textarea { font-family: inherit; outline: none; }
     <div class="form-label" style="margin-top:14px;" id="praise-ask">어떤 행동을 칭찬할까요?</div>
     <div class="praise-chips" id="praise-reasons"></div>
     <input class="input-field" id="praise-custom" placeholder="직접 쓰기 (예: 시루 물을 스스로 챙겨줬어요)" style="margin-top:8px;">
+    <label class="btn-ghost btn-sm" style="position:relative;overflow:hidden;margin-top:8px;display:block;text-align:center;">📸 사진도 같이 보내기 (선택)
+      <input type="file" accept="image/*" style="position:absolute;width:0;height:0;opacity:0;" onchange="pickPraisePhoto(event)">
+    </label>
+    <div id="praise-photo-preview" class="praise-photo"></div>
     <div class="form-label" style="margin-top:14px;">보석</div>
     <div class="praise-gem-row">
       <button class="praise-step" onclick="stepPraiseGems(-1)">−</button>
@@ -1387,7 +1413,7 @@ input, select, textarea { font-family: inherit; outline: none; }
     </div>
 
     <div id="shop-gift"><div class="reward-grid" id="shop-grid"></div></div>
-    <div id="shop-share" class="hidden"><div class="card" id="share-box"></div></div>
+    <div id="shop-share" class="hidden"><div class="card" id="share-jar" style="margin-bottom:12px;"></div><div class="card" id="share-box"></div></div>
     <div id="shop-deco" class="hidden">
       <div class="closet-top">
         <div class="pet-scene big" id="closet-scene"></div>
@@ -1520,6 +1546,7 @@ input, select, textarea { font-family: inherit; outline: none; }
       <div class="month-grid" id="month-grid"></div>
       <div class="text-xs color-muted">숫자 = 해낸 할 일 · 색이 진할수록 많이 했어요 · 날씨 = 그날 기분 · 💊 = 약 먹기 체크 · 🔴 = 쉬는 날</div>
       <div id="month-summary" class="text-sm"></div>
+      <button class="btn-ghost btn-sm" onclick="showAwardsParent()">🏆 지난달 시상식 보기</button>
     </div>
     <button class="btn-ghost" onclick="resetDutyPicks()"><svg class="badge-ico" viewBox="0 0 24 28" aria-hidden="true"><path d="M6.5 1h4.5l2 9H8.5z" fill="#60a5fa"/><path d="M17.5 1H13l-2 9h4.5z" fill="#f472b6"/><circle cx="12" cy="17.5" r="9" fill="#fbbf24" stroke="#f59e0b" stroke-width="1.6"/><circle cx="12" cy="17.5" r="6.4" fill="none" stroke="#fde68a" stroke-width="1"/><path d="M12 12.6l1.6 3.3 3.6.5-2.6 2.5.6 3.6L12 20.8l-3.2 1.7.6-3.6-2.6-2.5 3.6-.5z" fill="#fff"/></svg> 이번 주 반장 다시 고르게 하기</button>
 
@@ -1529,6 +1556,11 @@ input, select, textarea { font-family: inherit; outline: none; }
       <div id="photo-approval-list"></div>
     </div>
 
+    <div class="card" style="display:flex;flex-direction:column;gap:8px;" id="jar-parent"></div>
+    <div class="card flex-between" style="gap:10px;">
+      <div><b>🌙 잠들기 미션 시간</b><div class="text-xs color-muted">저녁 할 일을 이 시간 안에 다 하면 +15 XP</div></div>
+      <select class="input-field" style="width:auto;" id="eve-mins" onchange="settings.eveMins=+this.value;saveSettings();toast('잠들기 미션 시간을 바꿨어요')">${''}</select>
+    </div>
     <div class="card" style="display:flex;flex-direction:column;gap:6px;">
       <div style="font-weight:800;">🤝 이번 주 보석 나누기</div>
       <div class="text-sm color-secondary">아이들끼리 나눈 보석이에요. 억지로 준 것 같으면 되돌릴 수 있어요. (한 아이가 하루 ${'5'}개까지)</div>
@@ -2521,6 +2553,8 @@ let praiseChildId = null, praiseGems = 1, praiseReason = '', praiseMode = 'prais
 
 function openPraise(childId, mode) {
   praiseMode = mode || 'praise';
+  praisePhoto = null;
+  document.getElementById('praise-photo-preview').innerHTML = '';
   praiseChildId = childId; praiseGems = praiseMode === 'muscle' ? 3 : 1; praiseReason = (praiseMode === 'muscle' ? MUSCLE_REASONS : PRAISE_REASONS)[0];
   renderPraise();
   document.getElementById('praise-overlay').classList.remove('hidden');
@@ -2554,12 +2588,14 @@ function confirmPraise() {
   const d = new Date();
   if (praiseMode === 'muscle') {
     c.muscleLog = (c.muscleLog || []).concat([{ date: ymd(d), reason, gems: praiseGems }]);
-    c.praiseQueue = (c.praiseQueue || []).concat([{ reason, gems: praiseGems, kind: 'muscle', n: c.muscleLog.length }]);
+    c.praiseQueue = (c.praiseQueue || []).concat([{ reason, gems: praiseGems, kind: 'muscle', n: c.muscleLog.length, photo: praisePhoto || undefined }]);
   } else {
-    c.praiseQueue = (c.praiseQueue || []).concat([{ reason, gems: praiseGems }]);
+    c.praiseQueue = (c.praiseQueue || []).concat([{ reason, gems: praiseGems, photo: praisePhoto || undefined }]);
     c.praiseLog = (c.praiseLog || []).concat([{ date: dateKey(d), reason, gems: praiseGems }]);
   }
-  saveSettings();
+  try { saveSettings(); } catch (e) { alert('사진이 너무 커서 저장하지 못했어요. 사진 없이 다시 보내 주세요.'); return; }
+  praisePhoto = null;
+  document.getElementById('praise-photo-preview').innerHTML = '';
   document.getElementById('praise-custom').value = '';
   document.getElementById('praise-overlay').classList.add('hidden');
   renderParentDashboard();
@@ -2571,6 +2607,11 @@ function showPraiseQueue(child) {
   if (!q.length) return;
   const item = q.shift();
   saveSettings();
+  const photo = item.photo ? `<img class="praise-pop-photo" src="${item.photo}" alt="">` : '';
+  if (item.kind === 'eve') {
+    showPop({ kind: 'right', icon: '🌙', title: '잠들기 미션 성공!', text: `저녁 할 일을 <b>${item.took}분</b> 만에 다 끝냈어요!<br><b style="color:#059669">보너스 +15 XP</b><br>푹 자요 💤`, button: '잘 자요 💤', onClose: () => { renderHomeScreen(); showPraiseQueue(child); } }, child);
+    return;
+  }
   if (item.kind === 'gemgift') {
     showPop({ kind: 'right', icon: '💝', title: `${escText(item.from)}의 선물!`, text: `${withGa(item.from)} 보석 <b style="color:#0284c7">💎 ${item.gems}개</b>를 줬어요!<br>${escText(item.reason)}<br><br>"고마워!"라고 말해 줘요 😊`, button: '고마워! 💕', onClose: () => { renderHomeScreen(); showPraiseQueue(child); } }, child);
     return;
@@ -2582,10 +2623,10 @@ function showPraiseQueue(child) {
     return;
   }
   if (item.kind === 'muscle') {
-    showPop({ kind: 'right', icon: '💪', title: '마음 근육이 자랐어!', text: `${escText(item.reason)}<br>그건 정말 어려운 일인데 해냈어!<br><b style="color:#0284c7">💎 보석 ${item.gems}개</b><br><span style="color:#6b7280">마음 근육 ${item.n}번째${item.n < 10 ? ` · 10번이면 🏅 배지!` : ''}</span>`, button: '고마워요! 😊', onClose: () => showPraiseQueue(child) }, child);
+    showPop({ kind: 'right', icon: '💪', title: '마음 근육이 자랐어!', text: `${photo}${escText(item.reason)}<br>그건 정말 어려운 일인데 해냈어!<br><b style="color:#0284c7">💎 보석 ${item.gems}개</b><br><span style="color:#6b7280">마음 근육 ${item.n}번째${item.n < 10 ? ` · 10번이면 🏅 배지!` : ''}</span>`, button: '고마워요! 😊', onClose: () => showPraiseQueue(child) }, child);
     return;
   }
-  showPop({ kind: 'right', icon: '👏', title: '엄마 아빠의 칭찬!', text: `${escText(item.reason)}<br><b style="color:#0284c7">💎 보석 ${item.gems}개</b>를 받았어요!`, button: '고마워요! 😊', onClose: () => { renderHomeScreen(); showPraiseQueue(child); } }, child);
+  showPop({ kind: 'right', icon: '👏', title: '엄마 아빠의 칭찬!', text: `${photo}${escText(item.reason)}<br><b style="color:#0284c7">💎 보석 ${item.gems}개</b>를 받았어요!`, button: '고마워요! 😊', onClose: () => { renderHomeScreen(); showPraiseQueue(child); } }, child);
 }
 
 // ---------- bus timer ----------
@@ -3374,7 +3415,7 @@ function enterChild(childId) {
   renderNavs();
   renderHomeScreen();
   showScreen('screen-home');
-  showPraiseQueue(getChild());
+  if (!checkMonthAward(getChild())) showPraiseQueue(getChild());
   mustSnooze[childId] = 0;
   setTimeout(() => checkMustReminder(true), 900);
 }
@@ -3647,6 +3688,7 @@ function renderHomeScreen() {
     bb.textContent = locked ? `🔒 두뇌 게임 (${unlockTime()}부터)` : brainDone(child) ? '🧠 두뇌 게임 ✓' : '🧠 오늘의 두뇌 게임';
     bb.classList.toggle('locked', locked);
   }
+  renderEveMission(child, log);
   renderNightNote(child, log);
   document.getElementById('plan-btn').classList.toggle('hidden', !emoKids().includes(child.id));
   const sk = streakInfo(child);
@@ -4099,6 +4141,249 @@ function renderPetDeco(child) {
 // closet (try-on)
 let closetCat = 'bg', tryWear = null;
 function openCloset() { switchTab('shop'); setShopTab('deco'); }
+// ---------- 가족 보석 저금통 (셋이 같이 모아서 큰 선물) ----------
+function jar() {
+  settings.jar = Object.assign({ name: '치킨 파티 🍗', target: 30, saved: 0, contrib: {}, history: [] }, settings.jar || {});
+  return settings.jar;
+}
+function jarHTML(child) {
+  const j = jar();
+  const pct = Math.min(100, Math.round(j.saved / j.target * 100));
+  const who = settings.children.map(c => `${escText(c.name)} ${j.contrib[c.id] || 0}`).join(' · ');
+  return `<div class="jar-card">
+    <div class="jar-title">🏺 가족 보석 저금통</div>
+    <div class="jar-goal">셋이 같이 모아서 <b>${escText(j.name)}</b>!</div>
+    <div class="jar-track"><i style="width:${pct}%"></i></div>
+    <div class="jar-num">💎 ${j.saved} / ${j.target}${j.done ? ' · 🎉 다 모았어요! 엄마 아빠한테 말해요' : ''}</div>
+    <div class="text-xs color-muted">넣은 보석: ${who}</div>
+    ${j.done ? '' : `<div class="flex-row" style="gap:8px;justify-content:center;margin-top:8px;flex-wrap:wrap;">
+      ${[1, 2, 3, 5].map(n => `<button class="btn-ghost btn-sm" ${child.points < n ? 'disabled' : ''} onclick="putJar(${n})">💎 ${n}개 넣기</button>`).join('')}
+    </div>`}
+  </div>`;
+}
+function putJar(n) {
+  const child = getChild();
+  const j = jar();
+  if (j.done || child.points < n) return;
+  if (!confirm(`가족 저금통에 보석 ${n}개를 넣을까요?\n넣은 보석은 다시 못 꺼내요.`)) return;
+  child.points -= n;
+  j.saved += n;
+  j.contrib[child.id] = (j.contrib[child.id] || 0) + n;
+  const reached = j.saved >= j.target;
+  if (reached) j.done = ymd(new Date());
+  saveSettings();
+  renderShopScreen();
+  renderShare();
+  showPop(reached
+    ? { kind: 'right', icon: '🎉', title: '저금통을 다 채웠어요!', text: `셋이 힘을 합쳐 <b>${escText(j.name)}</b> 선물을 받을 수 있어요!<br>엄마 아빠한테 자랑해요 💕`, button: '야호! 🎉' }
+    : { kind: 'right', icon: '🏺', title: '저금통에 쏙!', text: `보석 ${n}개를 넣었어요. 이제 <b>${j.target - j.saved}개</b> 남았어요!`, button: '좋아요 😊' }, child);
+}
+function renderJarParent() {
+  const el = document.getElementById('jar-parent');
+  if (!el) return;
+  const j = jar();
+  el.innerHTML = `<div class="flex-between"><b>🏺 가족 보석 저금통</b><span class="text-sm color-muted">💎 ${j.saved} / ${j.target}</span></div>
+    ${j.done ? `<div class="text-sm">🎉 아이들이 다 모았어요! <b>${escText(j.name)}</b>를 해 주세요.</div>
+      <button class="btn-primary btn-sm" onclick="jarGiven()">선물 줬어요 ✓ (저금통 비우기)</button>`
+      : `<div class="text-sm color-secondary">${escText(j.name)} · ${j.target - j.saved}개 남았어요</div>`}
+    <div class="flex-row" style="gap:6px;">
+      <input class="input-field" id="jar-name" value="${escText(j.name)}" placeholder="선물 이름" style="flex:2;">
+      <input class="input-field" id="jar-target" type="number" min="5" max="500" value="${j.target}" style="flex:1;">
+      <button class="btn-ghost btn-sm" onclick="saveJar()">저장</button>
+    </div>
+    ${j.history.length ? `<div class="text-xs color-muted">지난 성공: ${j.history.slice(-4).map(h => `${escText(h.name)} (${h.date.slice(5).replace('-', '/')})`).join(' · ')}</div>` : ''}`;
+}
+function saveJar() {
+  const j = jar();
+  const name = document.getElementById('jar-name').value.trim();
+  const t = parseInt(document.getElementById('jar-target').value);
+  if (name) j.name = name;
+  if (t >= 5 && t <= 500) j.target = t;
+  if (!j.done && j.saved >= j.target) j.done = ymd(new Date());
+  saveSettings();
+  renderJarParent();
+  document.getElementById('eve-mins').innerHTML = [20, 30, 40, 50, 60].map(m => `<option value="${m}" ${(settings.eveMins || 30) === m ? 'selected' : ''}>${m}분</option>`).join('');
+  toast('저금통 목표를 저장했어요');
+}
+function jarGiven() {
+  const j = jar();
+  j.history.push({ name: j.name, target: j.target, date: j.done || ymd(new Date()), contrib: j.contrib });
+  j.saved = Math.max(0, j.saved - j.target);
+  j.contrib = {};
+  delete j.done;
+  saveSettings();
+  renderJarParent();
+  toast('저금통을 비웠어요. 다음 선물 이름을 정해 주세요!');
+}
+
+// ---------- 사진 칭찬 카드 ----------
+let praisePhoto = null;
+function pickPraisePhoto(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const k = Math.min(1, 640 / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      praisePhoto = c.toDataURL('image/jpeg', 0.75);
+      document.getElementById('praise-photo-preview').innerHTML = `<img src="${praisePhoto}"><button class="btn-ghost btn-sm" onclick="praisePhoto=null;document.getElementById('praise-photo-preview').innerHTML=''">사진 빼기</button>`;
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+  event.target.value = '';
+}
+
+// ---------- 잠들기 전 미션 (저녁 할 일 시간 안에 끝내기) ----------
+function eveTasks(child) { return tasksForChild(child.id).filter(t => t.slot === 'evening'); }
+function eveLeft(child, log) { return eveTasks(child).filter(t => !(log[`${child.id}_${t.id}`] && log[`${child.id}_${t.id}`].done)); }
+function renderEveMission(child, log) {
+  const el = document.getElementById('eve-mission');
+  const slot = viewSlot || getActiveSlot();
+  const left = eveLeft(child, log);
+  const m = log[`${child.id}_evemission`];
+  if (slot !== 'evening' || slotLocked('evening') || (!m && !left.length)) { el.innerHTML = ''; return; }
+  const mins = settings.eveMins || 30;
+  if (!m) {
+    el.innerHTML = `<button class="eve-start" onclick="startEveMission()">🌙 ${mins}분 미션 시작!<small>저녁 할 일 ${left.length}개를 ${mins}분 안에 끝내면 보너스 +15 XP</small></button>`;
+    return;
+  }
+  if (m.won) { el.innerHTML = `<div class="eve-box won">🏆 오늘 잠들기 미션 성공! (${m.took}분 만에)</div>`; return; }
+  const remain = m.end - Date.now();
+  if (remain <= 0) { el.innerHTML = `<div class="eve-box">⏰ 오늘 미션 시간이 끝났어요. 남은 일도 천천히 끝내요. 내일 또 도전!</div>`; return; }
+  const mm = Math.floor(remain / 60000), ss = Math.floor(remain % 60000 / 1000);
+  el.innerHTML = `<div class="eve-box run">🌙 미션 중! <b>${mm}:${String(ss).padStart(2, '0')}</b> 남음 · 할 일 ${left.length}개 남음
+    <div class="jar-track" style="margin-top:6px;"><i style="width:${Math.max(0, Math.min(100, remain / (mins * 600)))}%"></i></div></div>`;
+}
+function startEveMission() {
+  const child = getChild();
+  const log = loadLog();
+  const mins = settings.eveMins || 30;
+  log[`${child.id}_evemission`] = { start: Date.now(), end: Date.now() + mins * 60000 };
+  saveLog(log);
+  if (child.speak) speak(`${mins}분 미션 시작! 하나씩 끝내 보자!`);
+  renderHomeScreen();
+}
+// 저녁 할 일을 다 끝낸 순간 한 번: 시간 안이면 보너스 XP를 돌려줌
+function checkEveMission(childId) {
+  const child = settings.children.find(c => c.id === childId);
+  const log = loadLog();
+  const k = `${childId}_evemission`;
+  const m = log[k];
+  if (!child || !m || m.won || Date.now() > m.end || eveLeft(child, log).length) return 0;
+  m.won = true;
+  m.took = Math.max(1, Math.round((Date.now() - m.start) / 60000));
+  saveLog(log);
+  child.praiseQueue = (child.praiseQueue || []).concat([{ kind: 'eve', took: m.took }]);
+  saveSettings();
+  setTimeout(() => { if (currentChildId === childId && document.getElementById('screen-home').classList.contains('active') && !document.querySelector('.pop-overlay:not(.hidden)')) showPraiseQueue(child); }, 2400);
+  return 15;
+}
+setInterval(() => {
+  const el = document.getElementById('eve-mission');
+  if (el && el.querySelector('.run') && getChild()) renderEveMission(getChild(), loadLog());
+}, 1000);
+
+// ---------- 월말 시상식 ----------
+const AWARD_CATS = [
+  ['tasks', '🏃', '루틴 챔피언상', n => `한 달 동안 할 일을 ${n}개나 해냈어요!`],
+  ['must', '⭐', '꼭 할 일 지킴이상', n => `꼭 할 일을 ${n}일 동안 다 해냈어요!`],
+  ['muscle', '💪', '마음 근육왕', n => `화나고 속상할 때 마음을 ${n}번이나 다스렸어요!`],
+  ['kept', '🌡️', '약속 지킴이상', n => `마음 온도 약속을 ${n}번 지켰어요!`],
+  ['learn', '📚', '척척 탐구왕', n => `마음 공부·말로 해요·탐구를 ${n}번 했어요!`],
+  ['brain', '🧠', '반짝 두뇌상', n => `두뇌 게임을 ${n}일 동안 했어요!`],
+  ['gift', '💝', '따뜻한 나눔상', n => `형제에게 보석을 ${n}개 나눠 줬어요!`],
+  ['mood', '🌈', '마음 일기상', n => `내 기분을 ${n}번 솔직하게 말했어요!`],
+];
+function ymOf(d) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; }
+function monthStats(child, ym) {
+  const st = { tasks: 0, must: 0, kept: 0, learn: 0, brain: 0, mood: 0 };
+  const learnIds = tasks.filter(t => ['social', 'talk', 'problem', 'explore'].includes(t.type)).map(t => t.id);
+  const p = child.id + '_';
+  allLogs().forEach(([day, log]) => {
+    if (!day.startsWith(ym)) return;
+    Object.entries(log).forEach(([k, e]) => {
+      if (!k.startsWith(p) || !e) return;
+      const id = k.slice(p.length);
+      if (id === 'mustbonus' && e.ok) st.must++;
+      else if (id === 'brain' && e.ok) st.brain++;
+      else if (id.startsWith('mood_')) st.mood++;
+      else if (id.startsWith('temp_') && e.kept === 'yes') st.kept++;
+      else if (e.done) { st.tasks++; if (learnIds.includes(id)) st.learn++; }
+    });
+  });
+  st.muscle = (child.muscleLog || []).filter(m => (m.date || '').startsWith(ym)).length;
+  st.gift = (settings.gemGifts || []).filter(g => g.from === child.id && !g.undone && g.date.startsWith(ym)).reduce((a, g) => a + g.n, 0);
+  return st;
+}
+// 아이마다 서로 다른 상 하나씩: 형제 중 가장 앞선 분야를 먼저 고르고, 겹치면 다음 분야
+function monthAwards(ym) {
+  const kids = settings.children;
+  const stats = Object.fromEntries(kids.map(c => [c.id, monthStats(c, ym)]));
+  const max = Object.fromEntries(AWARD_CATS.map(([k]) => [k, Math.max(1, ...kids.map(c => stats[c.id][k]))]));
+  const taken = new Set(), out = {};
+  const order = kids.slice().sort((a, b) => stats[a.id].tasks - stats[b.id].tasks);
+  order.forEach(c => {
+    const ranked = AWARD_CATS.filter(([k]) => stats[c.id][k] > 0)
+      .sort((a, b) => stats[c.id][b[0]] / max[b[0]] - stats[c.id][a[0]] / max[a[0]] || stats[c.id][b[0]] - stats[c.id][a[0]]);
+    const pick = ranked.find(([k]) => !taken.has(k)) || ranked[0];
+    if (pick) { taken.add(pick[0]); out[c.id] = { cat: pick[0], ic: pick[1], title: pick[2], text: pick[3](stats[c.id][pick[0]]) }; }
+    else out[c.id] = { cat: 'grow', ic: '🌱', title: '쑥쑥 자람상', text: '이번 달도 한 뼘 더 자랐어요! 다음 달엔 더 신나게 해 봐요.' };
+  });
+  return out;
+}
+function lastMonthYM() { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1); return ymOf(d); }
+function awardCardHTML(child, a, ym) {
+  const [y, m] = ym.split('-');
+  return `<div class="award-card">
+    <div class="award-top">🏆 ${y}년 ${+m}월 시상식</div>
+    <div class="award-ic">${a.ic}</div>
+    <div class="award-title">${a.title}</div>
+    <div class="award-name">${escText(child.name)}</div>
+    <div class="award-text">${a.text}</div>
+    <div class="award-from">엄마 아빠가 정말 자랑스러워 💕</div>
+  </div>`;
+}
+function checkMonthAward(child) {
+  const ym = lastMonthYM();
+  settings.awardsShown = settings.awardsShown || {};
+  const shown = settings.awardsShown[ym] = settings.awardsShown[ym] || {};
+  if (shown[child.id]) return false;
+  const st = monthStats(child, ym);
+  if (!st.tasks) { shown[child.id] = true; saveSettings(); return false; }
+  const a = monthAwards(ym)[child.id];
+  shown[child.id] = true;
+  child.points += 2;
+  saveSettings();
+  const wrap = document.createElement('div');
+  wrap.className = 'pop-overlay';
+  wrap.innerHTML = `<div class="pop-card" style="border-color:#fbbf24;">${awardCardHTML(child, a, ym)}
+    <div style="margin-top:10px;font-weight:800;color:#0284c7;">💎 축하 보석 2개!</div>
+    <button class="pop-btn">고마워요! 🎉</button></div>`;
+  wrap.querySelector('.pop-btn').onclick = () => { wrap.remove(); document.querySelectorAll('.confetti-piece').forEach(e => e.remove()); renderHomeScreen(); showPraiseQueue(child); };
+  document.body.appendChild(wrap);
+  spawnConfetti();
+  if (child.speak) speak(`${child.name}, ${a.title}! 축하해!`);
+  return true;
+}
+function showAwardsParent() {
+  const ym = lastMonthYM();
+  const aw = monthAwards(ym);
+  const wrap = document.createElement('div');
+  wrap.className = 'pop-overlay';
+  wrap.innerHTML = `<div class="pop-card" style="border-color:#fbbf24;max-height:92vh;overflow-y:auto;">
+    <div class="pop-title" style="font-size:1.6rem;">🏆 지난달 시상식</div>
+    <div class="award-list">${settings.children.map(c => awardCardHTML(c, aw[c.id], ym)).join('')}</div>
+    <div class="text-xs color-muted" style="margin-top:8px;">아이들은 이번 달 처음 화면을 열 때 자기 상장을 받아요 (축하 보석 2개).</div>
+    <button class="pop-btn">닫기</button></div>`;
+  wrap.querySelector('.pop-btn').onclick = () => wrap.remove();
+  document.body.appendChild(wrap);
+}
+
 // ---------- 보석 나누기 (형제끼리 선물) ----------
 const GEM_WHY = ['그냥 주고 싶어서 💝', '고마워서 🙏', '미안해서 🤝', '도와줘서 💪', '축하해서 🎉', '빌린 거 갚기 🔁'];
 const GEM_DAY_MAX = 5;
@@ -4111,6 +4396,7 @@ function renderShare() {
   const others = settings.children.filter(c => c.id !== child.id);
   const st = shareState;
   st.n = Math.max(1, Math.min(st.n, Math.max(1, left)));
+  document.getElementById('share-jar').innerHTML = jarHTML(child);
   document.getElementById('share-box').innerHTML = left <= 0
     ? `<div class="share-empty">${child.points <= 0 ? '💎 보석이 없어서 지금은 나눌 수 없어요.' : `오늘은 보석을 ${GEM_DAY_MAX}개까지 나눌 수 있어요.<br>오늘 몫을 다 나눴어요! 내일 또 나눠요 💝`}</div>`
     : `<div class="share-q">누구에게 줄까요?</div>
@@ -6036,7 +6322,8 @@ function completeTask(childId, taskId, xp, subject) {
   if (subject) log[`${childId}_${taskId}`].subject = subject;
   saveLog(log);
   const mustExtra = checkMustBonus(childId);
-  awardXP(childId, xp + mustExtra, taskId);
+  const eveExtra = checkEveMission(childId);
+  awardXP(childId, xp + mustExtra + eveExtra, taskId);
 }
 
 function revokeXP(child, xp) {
@@ -6678,6 +6965,7 @@ function renderParentDashboard() {
   document.getElementById('parent-calm-btns').innerHTML = settings.children.map(c => `<button class="btn-ghost btn-sm" onclick="openCalm('${c.id}')">${c.name}와 숨 고르기</button>`).join('');
   renderWeeklyReport();
   renderGemGifts();
+  renderJarParent();
   const log = loadLog();
   const overview = document.getElementById('parent-child-overview');
   overview.innerHTML = settings.children.map(child => {
