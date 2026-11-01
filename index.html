@@ -550,6 +550,11 @@ input, select, textarea { font-family: inherit; outline: none; }
 .say-card.no b { color:#b91c1c; }
 .must-tag { display:inline-block; background:#fee2e2; color:#b91c1c; border-radius:99px; padding:2px 9px; font-size:.8rem; font-weight:900; margin-right:6px; vertical-align:middle; }
 .check-item.must-left { border-color:#fca5a5; }
+.share-q { font-weight:800; font-size:1.1rem; margin:14px 0 8px; text-align:center; }
+.share-kids { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
+.share-kid { display:flex; flex-direction:column; align-items:center; gap:4px; background:#fff; border:3px solid var(--border); border-radius:20px; padding:12px 18px; font-weight:800; font-size:1.1rem; color:var(--text); }
+.share-kid.on { border-color:#ec4899; background:#fdf2f8; }
+.share-empty { text-align:center; padding:24px 8px; font-size:1.1rem; line-height:1.7; }
 .subject-tag { display:inline-block; margin-left:8px; background:#e0f2fe; color:#0369a1; border-radius:99px; padding:2px 10px; font-size:.85rem; font-weight:800; vertical-align:middle; }
 .note-card { background:#eef2ff; border-radius:20px; padding:14px; margin-top:6px; }
 .note-card.saved { display:flex; flex-direction:column; gap:6px; }
@@ -1378,9 +1383,11 @@ input, select, textarea { font-family: inherit; outline: none; }
     <div class="slot-tabs" id="shop-tabs">
       <button class="slot-tab active" id="shop-tab-gift" onclick="setShopTab('gift')">🎁 선물 교환</button>
       <button class="slot-tab" id="shop-tab-deco" onclick="setShopTab('deco')">🎨 펫 꾸미기</button>
+      <button class="slot-tab" id="shop-tab-share" onclick="setShopTab('share')">🤝 보석 나누기</button>
     </div>
 
     <div id="shop-gift"><div class="reward-grid" id="shop-grid"></div></div>
+    <div id="shop-share" class="hidden"><div class="card" id="share-box"></div></div>
     <div id="shop-deco" class="hidden">
       <div class="closet-top">
         <div class="pet-scene big" id="closet-scene"></div>
@@ -1522,6 +1529,11 @@ input, select, textarea { font-family: inherit; outline: none; }
       <div id="photo-approval-list"></div>
     </div>
 
+    <div class="card" style="display:flex;flex-direction:column;gap:6px;">
+      <div style="font-weight:800;">🤝 이번 주 보석 나누기</div>
+      <div class="text-sm color-secondary">아이들끼리 나눈 보석이에요. 억지로 준 것 같으면 되돌릴 수 있어요. (한 아이가 하루 ${'5'}개까지)</div>
+      <div id="gemgift-list"></div>
+    </div>
     <!-- Redeem requests -->
     <div id="redeem-section">
       <div class="section-label" style="padding-left:4px;">💎 교환 요청</div>
@@ -2559,6 +2571,10 @@ function showPraiseQueue(child) {
   if (!q.length) return;
   const item = q.shift();
   saveSettings();
+  if (item.kind === 'gemgift') {
+    showPop({ kind: 'right', icon: '💝', title: `${escText(item.from)}의 선물!`, text: `${withGa(item.from)} 보석 <b style="color:#0284c7">💎 ${item.gems}개</b>를 줬어요!<br>${escText(item.reason)}<br><br>"고마워!"라고 말해 줘요 😊`, button: '고마워! 💕', onClose: () => { renderHomeScreen(); showPraiseQueue(child); } }, child);
+    return;
+  }
   if (item.kind === 'must') {
     const reward = item.xp ? `<b style="color:#059669">⚡ 경험치 2배! +${item.xp} XP</b>` : `<b style="color:#0284c7">💎 보석 ${item.gems}개</b> 보너스!`;
     const streak = item.streak > 1 ? `<br>🔥 <b>${item.streak}일 연속</b> 꼭 할 일 성공!` : '';
@@ -4083,13 +4099,87 @@ function renderPetDeco(child) {
 // closet (try-on)
 let closetCat = 'bg', tryWear = null;
 function openCloset() { switchTab('shop'); setShopTab('deco'); }
+// ---------- 보석 나누기 (형제끼리 선물) ----------
+const GEM_WHY = ['그냥 주고 싶어서 💝', '고마워서 🙏', '미안해서 🤝', '도와줘서 💪', '축하해서 🎉', '빌린 거 갚기 🔁'];
+const GEM_DAY_MAX = 5;
+let shareState = null;
+function gemLog() { settings.gemGifts = settings.gemGifts || []; return settings.gemGifts; }
+function givenToday(childId) { const d = ymd(new Date()); return gemLog().filter(g => g.from === childId && g.date === d && !g.undone).reduce((a, g) => a + g.n, 0); }
+function renderShare() {
+  const child = getChild();
+  const left = Math.min(GEM_DAY_MAX - givenToday(child.id), child.points);
+  const others = settings.children.filter(c => c.id !== child.id);
+  const st = shareState;
+  st.n = Math.max(1, Math.min(st.n, Math.max(1, left)));
+  document.getElementById('share-box').innerHTML = left <= 0
+    ? `<div class="share-empty">${child.points <= 0 ? '💎 보석이 없어서 지금은 나눌 수 없어요.' : `오늘은 보석을 ${GEM_DAY_MAX}개까지 나눌 수 있어요.<br>오늘 몫을 다 나눴어요! 내일 또 나눠요 💝`}</div>`
+    : `<div class="share-q">누구에게 줄까요?</div>
+      <div class="share-kids">${others.map(c => `<button class="share-kid${st.to === c.id ? ' on' : ''}" onclick="shareState.to='${c.id}';renderShare()">${avatarHTML(c)}<span>${escText(c.name)}</span></button>`).join('')}</div>
+      <div class="share-q">몇 개 줄까요? <span class="text-sm color-muted">(오늘 ${left}개까지)</span></div>
+      <div class="praise-gem-row" style="justify-content:center;">
+        <button class="praise-step" onclick="shareState.n=Math.max(1,shareState.n-1);renderShare()">−</button>
+        <span style="font-size:1.6rem;font-weight:900;min-width:70px;text-align:center;">💎 ${st.n}</span>
+        <button class="praise-step" onclick="shareState.n=Math.min(${left},shareState.n+1);renderShare()">+</button>
+      </div>
+      <div class="share-q">왜 주나요?</div>
+      <div class="praise-chips" style="justify-content:center;">${GEM_WHY.map(w => `<button class="praise-chip${st.why === w ? ' on' : ''}" onclick="shareState.why=this.textContent;renderShare()">${w}</button>`).join('')}</div>
+      <button class="focus-done" style="margin-top:16px;max-width:none;" ${st.to ? '' : 'disabled'} onclick="sendGems()">${st.to ? `💝 ${escText(settings.children.find(c => c.id === st.to).name)}에게 보석 ${st.n}개 주기` : '먼저 누구에게 줄지 골라요'}</button>
+      <div class="text-xs color-muted" style="margin-top:8px;text-align:center;">준 보석은 돌려받을 수 없어요. 엄마 아빠도 볼 수 있어요.</div>`;
+}
+function sendGems() {
+  const child = getChild();
+  const st = shareState;
+  const to = settings.children.find(c => c.id === st.to);
+  const left = Math.min(GEM_DAY_MAX - givenToday(child.id), child.points);
+  if (!to || st.n < 1 || st.n > left) return;
+  if (!confirm(`${to.name}에게 보석 ${st.n}개를 줄까요?\n준 보석은 돌려받을 수 없어요.`)) return;
+  child.points -= st.n;
+  to.points += st.n;
+  gemLog().push({ from: child.id, to: to.id, n: st.n, why: st.why, date: ymd(new Date()), ts: Date.now() });
+  to.praiseQueue = (to.praiseQueue || []).concat([{ kind: 'gemgift', from: child.name, gems: st.n, reason: st.why }]);
+  settings.gemGifts = gemLog().slice(-200);
+  saveSettings();
+  const n = st.n;
+  shareState = { to: null, n: 1, why: GEM_WHY[0] };
+  renderShopScreen();
+  renderShare();
+  showPop({ kind: 'right', icon: '💝', title: '나누는 마음 최고!', text: `${escText(to.name)}에게 <b style="color:#0284c7">💎 보석 ${n}개</b>를 선물했어요.<br>${escText(to.name)} 화면을 열면 선물 메시지가 떠요!`, button: '좋아요 😊' }, child);
+}
+function undoGemGift(i) {
+  const g = gemLog()[i];
+  if (!g || g.undone) return;
+  const from = settings.children.find(c => c.id === g.from), to = settings.children.find(c => c.id === g.to);
+  if (!confirm(`${from.name} → ${to.name} 보석 ${g.n}개를 되돌릴까요?`)) return;
+  const back = Math.min(g.n, to.points);
+  to.points -= back; from.points += back; g.undone = true;
+  saveSettings();
+  renderParentDashboard();
+}
+function renderGemGifts() {
+  const el = document.getElementById('gemgift-list');
+  if (!el) return;
+  const wk = weekDays().map(ymd);
+  const list = gemLog().map((g, i) => [g, i]).filter(([g]) => wk.includes(g.date)).reverse();
+  const nm = id => (settings.children.find(c => c.id === id) || {}).name || '';
+  el.innerHTML = list.length ? list.map(([g, i]) => `<div class="card-sm flex-between" style="margin-bottom:6px;">
+      <div><b>${escText(nm(g.from))} → ${escText(nm(g.to))}</b> 💎${g.n} <span class="text-xs color-muted">· ${escText(g.why)} · ${g.date.slice(5).replace('-', '/')}</span>${g.undone ? ' <span class="text-xs" style="color:#b91c1c">되돌림</span>' : ''}</div>
+      ${g.undone ? '' : `<button class="btn-ghost btn-sm" onclick="undoGemGift(${i})">되돌리기</button>`}</div>`).join('')
+    : '<div class="text-sm color-muted">이번 주에는 보석을 나눈 기록이 없어요.</div>';
+}
+
 function setShopTab(t) {
   document.getElementById('shop-tab-gift').classList.toggle('active', t === 'gift');
   document.getElementById('shop-tab-deco').classList.toggle('active', t === 'deco');
   document.getElementById('shop-gift').classList.toggle('hidden', t !== 'gift');
   document.getElementById('shop-deco').classList.toggle('hidden', t !== 'deco');
+  document.getElementById('shop-tab-share').classList.toggle('active', t === 'share');
+  document.getElementById('shop-share').classList.toggle('hidden', t !== 'share');
+  if (t === 'share') { shareState = { to: null, n: 1, why: GEM_WHY[0] }; renderShare(); }
   if (t === 'deco') { tryWear = null; renderDecoShop(getChild()); }
 }
+// 아이별 펫 꾸미기 가격 (치유는 기본 반값, 부모 모드 > 아이 설정에서 바꿀 수 있어요)
+function decoRate(child) { return child.decoRate || (child.id === 'c3' ? 0.5 : 1); }
+function decoPrice(child, x) { return Math.max(1, Math.ceil(x.cost * decoRate(child))); }
 function renderDecoShop(child) {
   const d = decoOf(child);
   const wear = tryWear || d.wear;
@@ -4098,7 +4188,7 @@ function renderDecoShop(child) {
   sc.innerHTML = `<div class="ps-bg" style="background-image:${bg}"></div><div class="ps-body">${petSceneLayers(child, wear)}</div><div class="ps-fx">${sceneFx(wear)}</div>`;
   sc.classList.toggle('has-bg', !!bg);
   const trying = DECO_CATS.map(([c]) => wear[c]).filter(id => id && !d.owned.includes(id)).map(id => DECOS.find(x => x.id === id));
-  const cost = trying.reduce((a, x) => a + x.cost, 0);
+  const cost = trying.reduce((a, x) => a + decoPrice(child, x), 0);
   document.getElementById('closet-bar').innerHTML = trying.length
     ? `<div class="closet-try">👀 입어보는 중: ${trying.map(x => `<b>${x.name}</b>`).join(', ')}</div>
        <div class="flex-row" style="gap:8px;">
@@ -4113,7 +4203,7 @@ function renderDecoShop(child) {
     return `<button class="deco-card${on ? ' on' : ''}${own ? ' own' : ''}" onclick="decoTap('${x.id}')">
       <span class="deco-thumb${x.cat === 'bg' ? ' bg' : ''}" style="background-image:url(${x.img})"></span>
       <span class="deco-name">${x.name}</span>
-      <span class="deco-cost">${on ? (own ? '입는 중 ✓' : '입어보는 중') : own ? '내 것 · 입기' : `💎 ${x.cost}`}</span></button>`;
+      <span class="deco-cost">${on ? (own ? '입는 중 ✓' : '입어보는 중') : own ? '내 것 · 입기' : decoRate(child) < 1 ? `<s style="color:#9ca3af;font-weight:600">${x.cost}</s> 💎 ${decoPrice(child, x)}` : `💎 ${x.cost}`}</span></button>`;
   }).join('');
 }
 function decoTap(id) {
@@ -4134,7 +4224,7 @@ function buyTrying() {
   const child = getChild();
   const d = decoOf(child);
   const items = DECO_CATS.map(([c]) => tryWear && tryWear[c]).filter(id => id && !d.owned.includes(id)).map(id => DECOS.find(x => x.id === id));
-  const cost = items.reduce((a, x) => a + x.cost, 0);
+  const cost = items.reduce((a, x) => a + decoPrice(child, x), 0);
   if (!items.length || child.points < cost) return;
   if (!confirm(`${items.map(x => x.name).join(', ')}을(를) 보석 ${cost}개로 살까요?`)) return;
   child.points -= cost;
@@ -6587,6 +6677,7 @@ function renderParentDashboard() {
   renderCoopParent();
   document.getElementById('parent-calm-btns').innerHTML = settings.children.map(c => `<button class="btn-ghost btn-sm" onclick="openCalm('${c.id}')">${c.name}와 숨 고르기</button>`).join('');
   renderWeeklyReport();
+  renderGemGifts();
   const log = loadLog();
   const overview = document.getElementById('parent-child-overview');
   overview.innerHTML = settings.children.map(child => {
@@ -6745,6 +6836,12 @@ function renderChildrenSettings() {
         <label class="form-label">캐릭터</label>
         <select class="input-field" id="cchar-${i}" onchange="updateChild(${i},'characterType',this.value)">
           ${Object.entries(ANIMALS).map(([k,v]) => `<option value="${k}" ${child.characterType===k?'selected':''}>${v.name}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group" style="margin-top:10px;">
+        <label class="form-label">🎨 펫 꾸미기 가격</label>
+        <select class="input-field" onchange="updateChild(${i},'decoRate',parseFloat(this.value))">
+          ${[[1,'보통'],[0.5,'반값 (½)'],[0.34,'3분의 1 (⅓)']].map(([v,t]) => `<option value="${v}" ${decoRate(child)===v?'selected':''}>${t}</option>`).join('')}
         </select>
       </div>
       <div class="toggle-wrap" style="margin-top:10px;">
