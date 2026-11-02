@@ -2747,7 +2747,13 @@ function weekPicks(w = weekIndex()) {
 }
 
 // 한 주에 고르는 반장 수 (dutyTwoFrom 주부터 2개)
-function dutyCount(w = weekIndex()) { return settings.dutyTwoFrom && w >= settings.dutyTwoFrom ? 2 : 1; }
+// 2026-11-02 주부터 반장 2개 (아이별로 부모 모드에서 1~2개 바꿀 수 있음)
+const DUTY_TWO_FROM = weekIndex(new Date(2026, 10, 2, 12));
+function dutyCount(childId = currentChildId, w = weekIndex()) {
+  if (w < Math.min(DUTY_TWO_FROM, settings.dutyTwoFrom || DUTY_TWO_FROM)) return 1;
+  const c = settings.children.find(x => x.id === childId);
+  return (c && c.dutyN) || 2;
+}
 function pickIds(w, childId) { const v = weekPicks(w)[childId]; return Array.isArray(v) ? v : v ? [v] : []; }
 function dutiesFor(childId) {
   const ids = pickIds(weekIndex(), childId);
@@ -2760,12 +2766,18 @@ function dutyTakenBy(dutyId) {
 
 
 function checkDutyTwoIntro(child) {
-  if (dutyCount() < 2) return false;
+  // 반장을 덜 고른 아이에게 하루 한 번 알려줌
+  if (dutiesFor(child.id).length >= dutyCount(child.id)) return false;
   settings.dutyTwoIntro = settings.dutyTwoIntro || {};
-  if (settings.dutyTwoIntro[child.id]) return false;
-  settings.dutyTwoIntro[child.id] = true;
+  const today = ymd(new Date());
+  if (settings.dutyTwoIntro[child.id] === today) return false;
+  settings.dutyTwoIntro[child.id] = today;
   saveSettings();
   const have = dutiesFor(child.id).length;
+  if (dutyCount(child.id) < 2) {
+    showPop({ kind: 'right', icon: '🏅', title: '이번 주 반장 고르기', text: '이번 주에 무슨 반장 할지 골라 볼까?', button: '반장 고르러 가기 🏅', onClose: () => openDutyPick() }, child);
+    return true;
+  }
   showPop({ kind: 'right', icon: '🏅🏅', title: '반장 승진!', text: `${escText(child.name)}, 그동안 반장을 정말 잘해서<br><b>이번 주부터는 반장을 2개</b> 맡아요!<br>${have ? '하나 더 골라 볼까?' : '어떤 반장 할지 2개 골라 봐요!'}`,
     button: '반장 고르러 가기 🏅', onClose: () => openDutyPick() }, child);
   return true;
@@ -2780,8 +2792,8 @@ function openDutyPick() {
 function renderDutyPick() {
   const child = getChild();
   const lastWeek = pickIds(weekIndex() - 1, child.id);
-  const need = dutyCount() - dutiesFor(child.id).length;
-  document.getElementById('dutypick-title').textContent = dutyCount() > 1
+  const need = dutyCount(child.id) - dutiesFor(child.id).length;
+  document.getElementById('dutypick-title').textContent = dutyCount(child.id) > 1
     ? `${child.name}, 이번 주 반장 ${need === 1 && dutiesFor(child.id).length ? '하나 더' : '2개'} 골라 볼까?`
     : `${child.name}, 이번 주에 무슨 반장 할래?`;
   document.getElementById('dutypick-list').innerHTML = settings.duties.map(d => {
@@ -2804,7 +2816,7 @@ function renderDutyPick() {
 
 let pickingDuties = [];
 function selectDuty(id) {
-  const need = dutyCount() - dutiesFor(getChild().id).length;
+  const need = dutyCount(getChild().id) - dutiesFor(getChild().id).length;
   if (pickingDuties.includes(id)) pickingDuties = pickingDuties.filter(x => x !== id);
   else pickingDuties = pickingDuties.concat(id).slice(-need);
   renderDutyPick();
@@ -2812,7 +2824,7 @@ function selectDuty(id) {
 
 function confirmDutyPick() {
   const child = getChild();
-  const need = dutyCount() - dutiesFor(child.id).length;
+  const need = dutyCount(child.id) - dutiesFor(child.id).length;
   if (pickingDuties.length < need) return;
   const w = 'w' + weekIndex();
   settings.dutyPicks = settings.dutyPicks || {};
@@ -3760,10 +3772,10 @@ function renderHomeScreen() {
   document.getElementById('duty-section').classList.remove('hidden');
   if (myDuties.length === 0) {
     document.getElementById('duty-list').innerHTML =
-      `<button class="duty-cta" onclick="openDutyPick()">${BADGE_SVG} 이번 주 반장${dutyCount() > 1 ? ' 2개를' : '을'} 골라요!</button>`;
+      `<button class="duty-cta" onclick="openDutyPick()">${BADGE_SVG} 이번 주 반장${dutyCount(child.id) > 1 ? ' 2개를' : '을'} 골라요!</button>`;
     return;
   }
-  const more = myDuties.length < dutyCount() ? `<button class="duty-cta" onclick="openDutyPick()">${BADGE_SVG} 반장 하나 더 골라요!</button>` : '';
+  const more = myDuties.length < dutyCount(child.id) ? `<button class="duty-cta" onclick="openDutyPick()">${BADGE_SVG} 반장 하나 더 골라요!</button>` : '';
   document.getElementById('duty-list').innerHTML = more + myDuties.map(d => {
     const e = log[`${child.id}_duty_${d.id}`];
     const done = !!(e && e.done);
@@ -7221,6 +7233,12 @@ function renderChildrenSettings() {
         <label class="form-label">캐릭터</label>
         <select class="input-field" id="cchar-${i}" onchange="updateChild(${i},'characterType',this.value)">
           ${Object.entries(ANIMALS).map(([k,v]) => `<option value="${k}" ${child.characterType===k?'selected':''}>${v.name}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group" style="margin-top:10px;">
+        <label class="form-label">🏅 한 주에 맡는 반장 수</label>
+        <select class="input-field" onchange="updateChild(${i},'dutyN',parseInt(this.value))">
+          ${[1, 2].map(v => `<option value="${v}" ${(child.dutyN || 2) === v ? 'selected' : ''}>${v}개</option>`).join('')}
         </select>
       </div>
       <div class="form-group" style="margin-top:10px;">
