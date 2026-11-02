@@ -682,6 +682,8 @@ input, select, textarea { font-family: inherit; outline: none; }
 @media (max-width: 600px) { .buddy-grid { grid-template-columns:repeat(2,1fr); } .plan-grid { grid-template-columns:1fr; } .pad-grid { grid-template-columns:repeat(2,110px); } .pad { height:110px; } .stop-target { width:160px; height:160px; font-size:5.5rem; } }
 
 /* ===== BADGES / BOX / DECO / TOMORROW / MONTH ===== */
+.badge-prog { align-self:stretch; height:7px; background:#e5e7eb; border-radius:99px; overflow:hidden; margin:6px 4px 2px; }
+.badge-prog i { display:block; height:100%; background:linear-gradient(90deg,#fbbf24,#f472b6); }
 .badge-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
 @media (min-width: 900px) { .badge-grid { grid-template-columns:repeat(6,1fr); } }
 .badge-card { background:#fffbeb; border:2px solid #fde68a; border-radius:18px; padding:12px 6px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:3px; }
@@ -3958,13 +3960,15 @@ function allLogs() {
 }
 
 function childStats(child) {
-  const st = { tasks: 0, brain: 0, calm: 0, mood: 0, notes: 0, duty: 0, social: 0, problem: 0, talk: 0, kept: 0, focusDays: 0 };
+  const st = { tasks: 0, brain: 0, calm: 0, mood: 0, notes: 0, duty: 0, social: 0, problem: 0, talk: 0, kept: 0, explore: 0, must: 0, eve: 0, focusDays: 0 };
   const p = child.id + '_';
   allLogs().forEach(([, log]) => {
     Object.entries(log).forEach(([k, e]) => {
       if (!k.startsWith(p) || !e) return;
       const id = k.slice(p.length);
       if (id === 'brain' && e.ok) st.brain++;
+      else if (id === 'mustbonus') { if (e.ok) st.must++; }
+      else if (id === 'evemission') { if (e.won) st.eve++; }
       else if (id === 'calm') st.calm += e.count || 0;
       else if (id.startsWith('mood_')) st.mood++;
       else if (id === 'note' && e.text) st.notes++;
@@ -3976,6 +3980,7 @@ function childStats(child) {
         if (t && t.type === 'social') st.social++;
         if (t && t.type === 'problem') st.problem++;
         if (t && t.type === 'talk') st.talk++;
+        if (t && t.type === 'explore') st.explore++;
       }
     });
   });
@@ -3983,32 +3988,74 @@ function childStats(child) {
   st.bestStreak = Math.max(child.bestStreak || 0, st.streak);
   st.pets = (child.collection || []).length;
   st.muscle = (child.muscleLog || []).length;
+  const rec = Object.values(child.brainRec || {});
+  st.brainKinds = rec.filter(r => r.plays).length;
+  st.brainTop = Math.max(0, ...rec.filter(r => r.plays).map(r => r.lv));
+  st.gift = (settings.gemGifts || []).filter(g => g.from === child.id && !g.undone).reduce((a, g) => a + g.n, 0);
+  st.jar = (settings.jar ? (settings.jar.contrib[child.id] || 0) + (settings.jar.history || []).reduce((a, h) => a + ((h.contrib || {})[child.id] || 0), 0) : 0);
+  st.deco = ((child.deco || {}).owned || []).length;
+  st.praise = (child.praiseLog || []).length;
   st.level = child.level;
   return st;
 }
 
+// [id, 아이콘, 이름, 설명, 통계 키, 목표] — 잠긴 배지는 진행도(예: 7/10)가 보여요
+const B = (id, ic, name, desc, key, n) => [id, ic, name, desc, st => (st[key] || 0) >= n, key, n];
 const BADGES = [
-  ['first', '🌱', '첫 걸음', '할 일 1개 해내기', s => s.tasks >= 1],
-  ['t100', '💯', '백 개 돌파', '할 일 100개 해내기', s => s.tasks >= 100],
-  ['t500', '🚀', '루틴 로켓', '할 일 500개 해내기', s => s.tasks >= 500],
-  ['t1000', '👑', '루틴 왕', '할 일 1000개 해내기', s => s.tasks >= 1000],
-  ['s3', '🔥', '3일 연속', '3일 연속 절반 넘게 하기', s => s.bestStreak >= 3],
-  ['s7', '🌟', '일주일 연속', '7일 연속 절반 넘게 하기', s => s.bestStreak >= 7],
-  ['s14', '🏆', '2주 연속', '14일 연속 절반 넘게 하기', s => s.bestStreak >= 14],
-  ['s30', '💎', '한 달 연속', '30일 연속 절반 넘게 하기', s => s.bestStreak >= 30],
-  ['pet1', '🐣', '첫 펫 졸업', '펫 한 마리 다 키우기', s => s.pets >= 1],
-  ['pet3', '🦁', '펫 박사', '펫 세 마리 다 키우기', s => s.pets >= 3],
-  ['brain10', '🧠', '두뇌 쑥쑥', '두뇌 게임 10번', s => s.brain >= 10],
-  ['calm5', '🫧', '마음 지킴이', '숨 고르기 5번', s => s.calm >= 5],
-  ['mood14', '🌈', '마음 일기', '기분 체크 14번', s => s.mood >= 14],
-  ['note7', '🌙', '마음 돌아보기', '저녁 마음 돌아보기 7번', s => s.notes >= 7],
-  ['kept7', '🌡️', '약속 지킴이', '마음 온도 약속 7번 지키기', s => s.kept >= 7],
-  ['muscle10', '💪', '마음 근육 왕', '마음 근육 10번', s => s.muscle >= 10],
-  ['talk10', '🗣️', '말로 해요 박사', '말로 해요 10번', s => s.talk >= 10],
-  ['duty7', '🏅', '든든한 반장', '반장 임무 7번', s => s.duty >= 7],
-  ['social10', '💬', '마음 공부 박사', '마음 공부 10번', s => s.social >= 10],
-  ['prob10', '🔍', '문제 탐정', '문제 찾기 10번', s => s.problem >= 10],
+  B('first', '🌱', '첫 걸음', '할 일 1개 해내기', 'tasks', 1),
+  B('t50', '🐾', '쉰 걸음', '할 일 50개 해내기', 'tasks', 50),
+  B('t100', '💯', '백 개 돌파', '할 일 100개 해내기', 'tasks', 100),
+  B('t250', '🎯', '이백오십 달성', '할 일 250개 해내기', 'tasks', 250),
+  B('t500', '🚀', '루틴 로켓', '할 일 500개 해내기', 'tasks', 500),
+  B('t1000', '👑', '루틴 왕', '할 일 1000개 해내기', 'tasks', 1000),
+  B('t2000', '🌌', '루틴 전설', '할 일 2000개 해내기', 'tasks', 2000),
+  B('s3', '🔥', '3일 연속', '3일 연속 절반 넘게 하기', 'bestStreak', 3),
+  B('s7', '🌟', '일주일 연속', '7일 연속 절반 넘게 하기', 'bestStreak', 7),
+  B('s14', '🏆', '2주 연속', '14일 연속 절반 넘게 하기', 'bestStreak', 14),
+  B('s30', '💎', '한 달 연속', '30일 연속 절반 넘게 하기', 'bestStreak', 30),
+  B('s60', '🌠', '두 달 연속', '60일 연속 절반 넘게 하기', 'bestStreak', 60),
+  B('s100', '🎆', '백 일 연속', '100일 연속 절반 넘게 하기', 'bestStreak', 100),
+  B('pet1', '🐣', '첫 펫 졸업', '펫 한 마리 다 키우기', 'pets', 1),
+  B('pet2', '🐥', '펫 친구', '펫 두 마리 다 키우기', 'pets', 2),
+  B('pet3', '🦁', '펫 박사', '펫 세 마리 다 키우기', 'pets', 3),
+  B('pet5', '🦄', '펫 마스터', '펫 다섯 마리 다 키우기', 'pets', 5),
+  B('pet10', '🐉', '펫 대장', '펫 열 마리 다 키우기', 'pets', 10),
+  B('brain10', '🧠', '두뇌 쑥쑥', '두뇌 게임 10번', 'brain', 10),
+  B('brain30', '💡', '두뇌 반짝', '두뇌 게임 30번', 'brain', 30),
+  B('brain100', '🔮', '두뇌 천재', '두뇌 게임 100번', 'brain', 100),
+  B('brainall', '🎮', '게임 탐험가', '두뇌 게임 8가지 모두 해 보기', 'brainKinds', 8),
+  B('brainlv5', '⭐', '만렙 두뇌', '두뇌 게임 하나를 Lv.5까지', 'brainTop', 5),
+  B('calm5', '🫧', '마음 지킴이', '숨 고르기 5번', 'calm', 5),
+  B('calm20', '🌊', '고요한 마음', '숨 고르기 20번', 'calm', 20),
+  B('mood14', '🌈', '마음 일기', '기분 체크 14번', 'mood', 14),
+  B('mood50', '🎨', '마음 화가', '기분 체크 50번', 'mood', 50),
+  B('kept7', '🌡️', '약속 지킴이', '마음 온도 약속 7번 지키기', 'kept', 7),
+  B('kept20', '🧊', '약속 대장', '마음 온도 약속 20번 지키기', 'kept', 20),
+  B('muscle10', '💪', '마음 근육 왕', '마음 근육 10번', 'muscle', 10),
+  B('muscle30', '🏋️', '마음 근육 챔피언', '마음 근육 30번', 'muscle', 30),
+  B('talk10', '🗣️', '말로 해요 박사', '말로 해요 10번', 'talk', 10),
+  B('talk30', '📣', '말로 해요 대장', '말로 해요 30번', 'talk', 30),
+  B('duty7', '🏅', '든든한 반장', '반장 임무 7번', 'duty', 7),
+  B('duty30', '🎖️', '믿음직한 반장', '반장 임무 30번', 'duty', 30),
+  B('duty100', '🏵️', '전설의 반장', '반장 임무 100번', 'duty', 100),
+  B('social10', '💬', '마음 공부 박사', '마음 공부 10번', 'social', 10),
+  B('social30', '📖', '마음 공부 대장', '마음 공부 30번', 'social', 30),
+  B('prob10', '🔍', '문제 탐정', '문제 찾기 10번', 'problem', 10),
+  B('prob30', '🕵️', '명탐정', '문제 찾기 30번', 'problem', 30),
+  B('explore5', '🌍', '세상 탐험가', '세상 탐구 5번', 'explore', 5),
+  B('explore15', '🗺️', '세상 박사', '세상 탐구 15번', 'explore', 15),
+  B('must7', '✅', '꼭 지킴이', '꼭 할 일 7일 다 하기', 'must', 7),
+  B('must30', '🛡️', '꼭 지킴이 왕', '꼭 할 일 30일 다 하기', 'must', 30),
+  B('eve5', '🌙', '잠들기 미션', '잠들기 미션 5번 성공', 'eve', 5),
+  B('eve20', '😴', '꿀잠 챔피언', '잠들기 미션 20번 성공', 'eve', 20),
+  B('gift10', '💝', '나눔 천사', '형제에게 보석 10개 나누기', 'gift', 10),
+  B('jar10', '🏺', '저금통 지킴이', '가족 저금통에 보석 10개 넣기', 'jar', 10),
+  B('deco5', '🎀', '꾸미기 시작', '펫 꾸미기 5개 모으기', 'deco', 5),
+  B('deco15', '👗', '꾸미기 장인', '펫 꾸미기 15개 모으기', 'deco', 15),
+  B('praise10', '👏', '칭찬 부자', '엄마 아빠 칭찬 10번 받기', 'praise', 10),
+  B('note7', '🌙', '마음 돌아보기', '저녁 마음 돌아보기 7번', 'notes', 7),
 ];
+const RETIRED_BADGES = ['note7']; // 더 이상 못 받는 배지 (이미 받은 아이에게만 보여요)
 
 let badgeQueue = [];
 function checkBadges(child) {
@@ -4018,7 +4065,7 @@ function checkBadges(child) {
   child.badges = child.badges || {};
   let changed = false;
   BADGES.forEach(([id, ic, name, desc, ok]) => {
-    if (!child.badges[id] && ok(st)) {
+    if (!child.badges[id] && !RETIRED_BADGES.includes(id) && ok(st)) {
       child.badges[id] = ymd(new Date());
       badgeQueue.push({ child, ic, name, desc });
       changed = true;
@@ -4036,11 +4083,19 @@ function flushBadges() {
 }
 function renderBadges(child) {
   const got = child.badges || {};
-  const n = BADGES.filter(b => got[b[0]]).length;
-  document.getElementById('badge-summary').textContent = `${child.name}가 모은 배지 ${n} / ${BADGES.length}`;
-  document.getElementById('badge-grid').innerHTML = BADGES.map(([id, ic, name, desc]) => got[id]
-    ? `<div class="badge-card"><div class="badge-ic">${ic}</div><div class="dex-name">${name}</div><div class="dex-sub">${desc}</div><div class="dex-sub">${got[id].slice(5).replace('-', '/')} 받음</div></div>`
-    : `<div class="badge-card locked"><div class="badge-ic">🔒</div><div class="dex-name">???</div><div class="dex-sub">${desc}</div></div>`).join('');
+  const st = childStats(child);
+  const list = BADGES.filter(b => !RETIRED_BADGES.includes(b[0]) || got[b[0]]);
+  const n = list.filter(b => got[b[0]]).length;
+  document.getElementById('badge-summary').textContent = `${withGa(child.name)} 모은 배지 ${n} / ${list.length}`;
+  // 받은 배지 먼저, 그다음 거의 다 된 배지 순서
+  const near = b => Math.min(1, (st[b[5]] || 0) / b[6]);
+  const sorted = list.slice().sort((a, b) => (got[b[0]] ? 1 : 0) - (got[a[0]] ? 1 : 0) || (got[a[0]] ? 0 : near(b) - near(a)));
+  document.getElementById('badge-grid').innerHTML = sorted.map(([id, ic, name, desc, , key, goal]) => {
+    if (got[id]) return `<div class="badge-card"><div class="badge-ic">${ic}</div><div class="dex-name">${name}</div><div class="dex-sub">${desc}</div><div class="dex-sub">${got[id].slice(5).replace('-', '/')} 받음</div></div>`;
+    const cur = Math.min(goal, st[key] || 0);
+    return `<div class="badge-card locked"><div class="badge-ic">🔒</div><div class="dex-name">${name}</div><div class="dex-sub">${desc}</div>
+      <div class="badge-prog"><i style="width:${Math.round(cur / goal * 100)}%"></i></div><div class="dex-sub"><b>${cur} / ${goal}</b></div></div>`;
+  }).join('');
 }
 
 // ---------- mystery box ----------
@@ -7653,7 +7708,7 @@ function spawnConfetti() {
 // BOOT
 // =====================================================================
 // 새 버전 자동 반영: 아이패드가 예전 화면을 붙잡고 있지 않게, 앱이 다시 보일 때와 30분마다 새 버전이 있는지 확인
-const APP_VERSION = '2026-11-02b';
+const APP_VERSION = '2026-11-02c';
 let lastVersionCheck = 0;
 async function checkNewVersion() {
   if (Date.now() - lastVersionCheck < 5 * 60000 || location.protocol === 'file:') return;
