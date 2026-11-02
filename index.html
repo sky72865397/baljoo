@@ -664,7 +664,8 @@ input, select, textarea { font-family: inherit; outline: none; }
 .rule-banner.color { background:#fce7f3; color:#be185d; }
 .rule-banner.changed { animation:popIn .4s; outline:3px solid #f59e0b; }
 .switch-card { font-size:6rem; line-height:1; }
-.listen-ear { font-size:5rem; animation:pulse 1.2s infinite; }
+.listen-show { font-size:5rem; min-height:7rem; display:flex; align-items:center; justify-content:center; }
+.listen-pic { font-size:6rem; animation:popIn .3s; }
 .listen-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; width:100%; max-width:480px; }
 .listen-opt { background:#fff; border:3px solid #c7d2fe; border-radius:18px; padding:10px; font-weight:800; display:flex; flex-direction:column; align-items:center; color:var(--text); }
 .listen-opt span { font-size:2.2rem; }
@@ -5044,12 +5045,12 @@ function savePlan() {
 let brainTimer = null, brain = null;
 const BRAIN_INFO = {
   seq:    { name: '🔢 순서 기억하기', skill: '기억력', how: '펫이 반짝이는 순서를 잘 보고 똑같이 눌러요!' },
-  listen: { name: '👂 듣고 기억하기', skill: '기억력', how: '들려주는 낱말을 잘 듣고, 들은 순서대로 눌러요!' },
+  listen: { name: '👂 듣고 기억하기', skill: '기억력', how: '나오는 낱말을 잘 듣고 기억해요! 처음엔 그림도 같이 나오고, 잘하면 소리만 들려요. 한 번 더 듣기도 있어요.' },
   pair:   { name: '🃏 짝 맞추기', skill: '기억력', how: '카드를 두 장씩 뒤집어 같은 그림 짝을 찾아요!' },
   stop:   { name: '🛑 멈춰! 게임', skill: '참기', how: '초록 친구가 나오면 빨리 누르고, 🛑 빨간 멈춤이 나오면 꾹 참아요!' },
   color:  { name: '🎨 색깔 말하기', skill: '참기', how: '글자를 읽지 말고, 글자의 <b>색깔</b>을 골라요! "빨강"이 파란색이면 → 파랑!' },
   switch: { name: '🔄 규칙 바꾸기', skill: '생각 전환', how: '위에 나온 규칙대로 골라요. <b>모양</b>일 땐 모양, <b>색깔</b>일 땐 색깔! 규칙이 갑자기 바뀌어요.' },
-  odd:    { name: '🎯 다른 하나 찾기', skill: '집중', how: '똑같아 보이는 그림 중에 <b>하나만 다른 것</b>을 찾아 눌러요!' },
+  odd:    { name: '🎯 다른 하나 찾기', skill: '집중', how: '똑같아 보이는 그림 중에 <b>하나만 다른 것</b>을 찾아요! 반대로 보거나, 기울어졌거나, 색이 살짝 다를 수도 있어요. 잘 봐요!' },
   trace:  { name: '🐢 천천히 길 따라가기', skill: '속도 조절', how: '손가락으로 🐢를 끌어서 길 밖으로 나가지 않게 <b>천천히</b> 깃발까지 가요!' },
 };
 const BRAIN_GAMES = Object.keys(BRAIN_INFO);
@@ -5230,49 +5231,70 @@ function switchFeedback(ok, msg) {
   brainTimer = setTimeout(switchNext, 800);
 }
 
-// 6) 듣고 기억하기
+// 6) 듣고 기억하기 — 레벨별로 쉬워지게: 그림 보여 주기 / 순서 상관없음 / 다시 듣기 한 번
 const LISTEN_WORDS = [['🍎', '사과'], ['🐶', '강아지'], ['🚗', '자동차'], ['⭐', '별'], ['🌙', '달'], ['🐟', '물고기'], ['🎈', '풍선'], ['🌸', '꽃'], ['🍌', '바나나'], ['🐱', '고양이'], ['🚌', '버스'], ['☂️', '우산']];
+// [낱말 수, 그림도 보여 주기, 순서대로 눌러야 함]
+const LISTEN_LV = { 1: [2, true, false], 2: [3, true, false], 3: [3, true, true], 4: [4, false, true], 5: [5, false, true] };
 function listenStart() {
-  brain.round = 0; brain.ok = 0; brain.len = Math.min(6, 1 + brain.lv);
+  brain.round = 0; brain.ok = 0;
+  [brain.len, brain.show, brain.order] = LISTEN_LV[brain.lv] || LISTEN_LV[1];
   listenRound();
 }
 function listenRound() {
-  if (brain.round >= 3) { brainFinish(brain.ok / 3, `3번 중 <b>${brain.ok}번</b> 들은 순서대로 맞혔어요! 귀가 쫑긋!`); return; }
+  if (brain.round >= 3) { brainFinish(brain.ok / 3, `3번 중 <b>${brain.ok}번</b> 맞혔어요! 귀가 쫑긋!`); return; }
   const pool = LISTEN_WORDS.slice().sort(() => Math.random() - 0.5);
   brain.seq = pool.slice(0, brain.len);
-  brain.opts = pool.slice(0, Math.min(pool.length, brain.len + 3)).sort(() => Math.random() - 0.5);
+  brain.opts = pool.slice(0, Math.min(pool.length, brain.len + 2)).sort(() => Math.random() - 0.5);
   brain.input = [];
+  brain.replay = 1;
+  listenPlay();
+}
+function listenPlay() {
   const canSpeak = !!window.speechSynthesis;
   document.getElementById('game-body').innerHTML = `
-    <div class="text-sm color-muted">${brain.round + 1} / 3 · ${brain.len}개 기억하기</div>
-    <div class="listen-ear">👂</div>
+    <div class="text-sm color-muted">${brain.round + 1} / 3 · ${brain.len}개 기억하기${brain.order ? ' · 순서대로' : ''}</div>
+    <div class="listen-show" id="listen-show">👂</div>
     <div class="calm-say" id="listen-say">잘 들어요…</div>`;
   let i = 0;
   const next = () => {
-    if (i >= brain.seq.length) { brainTimer = setTimeout(listenDraw, 700); return; }
+    const show = document.getElementById('listen-show'), say = document.getElementById('listen-say');
+    if (i >= brain.seq.length) { brainTimer = setTimeout(() => listenDraw(), 600); return; }
     const [e, w] = brain.seq[i];
-    const el = document.getElementById('listen-say');
-    if (el) el.innerHTML = canSpeak ? `🔊 ${i + 1}번째` : `${e} ${w}`;
+    if (show) show.innerHTML = brain.show || !canSpeak ? `<span class="listen-pic">${e}</span>` : '👂';
+    if (say) say.innerHTML = brain.show || !canSpeak ? `<b>${w}</b> (${i + 1}/${brain.seq.length})` : `🔊 ${i + 1}번째`;
     if (canSpeak) speak(w);
     i++;
-    brainTimer = setTimeout(next, 1400);
+    brainTimer = setTimeout(() => {
+      if (show) show.innerHTML = '👂';
+      brainTimer = setTimeout(next, 350);
+    }, 1300);
   };
-  brainTimer = setTimeout(next, 600);
+  brainTimer = setTimeout(next, 500);
+}
+function listenAgain() {
+  if (brain.replay <= 0) return;
+  brain.replay--;
+  brain.input = [];
+  listenPlay();
 }
 function listenDraw(msg) {
+  const done = !!msg;
   document.getElementById('game-body').innerHTML = `
-    <div class="text-sm color-muted">${brain.round + 1} / 3 · 들은 순서대로 눌러요</div>
-    <div class="calm-say">${msg || '어떤 순서였지?'}</div>
-    <div class="listen-grid">${brain.opts.map(([e, w], k) => `<button class="listen-opt${brain.input.includes(k) ? ' on' : ''}" onclick="listenTap(${k})" ${msg ? 'disabled' : ''}><span>${e}</span>${w}</button>`).join('')}</div>
-    <div class="text-sm">${brain.input.map(k => brain.opts[k][0]).join(' → ')}</div>`;
+    <div class="text-sm color-muted">${brain.round + 1} / 3 · ${brain.order ? '들은 <b>순서대로</b> 눌러요' : `들은 것 <b>${brain.len}개</b>를 골라요 (순서는 상관없어요)`}</div>
+    <div class="calm-say">${msg || (brain.order ? '어떤 순서였지?' : '뭐가 나왔지?')}</div>
+    <div class="listen-grid">${brain.opts.map(([e, w], k) => `<button class="listen-opt${brain.input.includes(k) ? ' on' : ''}" onclick="listenTap(${k})" ${done ? 'disabled' : ''}><span>${e}</span>${w}</button>`).join('')}</div>
+    <div class="text-sm">${brain.input.map(k => brain.opts[k][0]).join(brain.order ? ' → ' : ' ')}</div>
+    ${!done && brain.replay > 0 && !brain.input.length ? '<button class="btn-ghost btn-sm" onclick="listenAgain()">🔊 한 번 더 듣기</button>' : ''}`;
 }
 function listenTap(k) {
   if (brain.input.includes(k)) return;
   brain.input.push(k);
   const i = brain.input.length - 1;
-  if (brain.opts[k][1] !== brain.seq[i][1]) {
+  const w = brain.opts[k][1];
+  const wrong = brain.order ? w !== brain.seq[i][1] : !brain.seq.some(x => x[1] === w);
+  if (wrong) {
     brain.round++;
-    listenDraw(`아쉬워! 정답은 ${brain.seq.map(x => x[0]).join(' → ')} 💪`);
+    listenDraw(`아쉬워! 정답은 ${brain.seq.map(x => x[0]).join(brain.order ? ' → ' : ' ')} 💪`);
     brainTimer = setTimeout(listenRound, 2200);
     return;
   }
@@ -5280,30 +5302,44 @@ function listenTap(k) {
   listenDraw();
 }
 
-// 7) 다른 하나 찾기
-const ODD_PAIRS = [['🐱', '🐯'], ['⭐', '🌟'], ['🌸', '🌺'], ['🍎', '🍅'], ['🐥', '🐤'], ['😊', '🙂'], ['🍊', '🍑'], ['🔵', '🟣'], ['🐶', '🐕'], ['🌕', '🌝'], ['🍀', '☘️'], ['🚗', '🚙']];
+// 7) 다른 하나 찾기 — 레벨이 오를수록 차이가 작아져요
+// 1: 아주 닮은 그림 · 2: 하나만 좌우 반대 · 3: 하나만 살짝 기울어짐 · 4: 하나만 색이 살짝 다름 · 5: 섞어서 더 많이
+const ODD_PAIRS = [['🐱', '🐯'], ['🌸', '🌺'], ['🍎', '🍅'], ['🐶', '🐕'], ['🚗', '🚙'], ['🍊', '🍑']];
+const ODD_CLOSE = [['😀', '😃'], ['😊', '🙂'], ['🌕', '🌖'], ['🕐', '🕑'], ['📗', '📘'], ['🐥', '🐤'], ['😺', '😸'], ['🌝', '🌞'], ['🍏', '🍐'], ['⭐', '🌟']];
+const ODD_ASYM = ['🐟', '🐌', '🦒', '🚗', '🐤', '🦖', '🐘', '🦔', '🚲', '🐢', '🦕', '🐿️'];
+const ODD_PLAIN = ['🍎', '🍓', '🌷', '🍀', '🎈', '🐙', '🍇', '🦋', '🍄', '🐳'];
+const ODD_LV = { 1: [16, 'close'], 2: [25, 'mirror'], 3: [25, 'tilt'], 4: [36, 'hue'], 5: [49, 'mix'] };
 function oddStart() {
   brain.n = 0; brain.total = 6; brain.correct = 0;
-  brain.size = [9, 16, 20, 25, 30][brain.lv - 1];
-  brain.time = Math.max(6000, 12000 - brain.lv * 1000);
+  [brain.size, brain.mode] = ODD_LV[brain.lv] || ODD_LV[1];
+  brain.time = [10000, 12000, 12000, 14000, 16000][brain.lv - 1] || 10000;
   oddNext();
 }
 function oddNext() {
   if (brain.n >= brain.total) { brainFinish(brain.correct / brain.total, `${brain.total}번 중 <b>${brain.correct}번</b> 다른 하나를 찾았어요! 눈이 반짝!`); return; }
   brain.n++;
-  const [a, b] = ODD_PAIRS[Math.floor(Math.random() * ODD_PAIRS.length)].slice().sort(() => Math.random() - 0.5);
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+  if (brain.lv >= 5) brain.mode = pick(['mirror', 'tilt', 'hue']);
+  let a, b, style = '';
+  if (brain.mode === 'pair' || brain.mode === 'close') {
+    [a, b] = pick(brain.mode === 'pair' ? ODD_PAIRS : ODD_CLOSE).slice().sort(() => Math.random() - 0.5);
+  } else {
+    a = b = pick(brain.mode === 'mirror' ? ODD_ASYM : ODD_PLAIN);
+    style = { mirror: 'transform:scaleX(-1)', tilt: `transform:rotate(${Math.random() < 0.5 ? -18 : 18}deg)`, hue: 'filter:hue-rotate(35deg) saturate(1.3)' }[brain.mode];
+  }
   brain.oddAt = Math.floor(Math.random() * brain.size);
   brain.answered = false;
   const cols = Math.ceil(Math.sqrt(brain.size));
+  const hint = { pair: '닮은 그림 중 다른 하나', close: '아주 닮은 그림 중 다른 하나', mirror: '하나만 <b>반대쪽</b>을 보고 있어요', tilt: '하나만 <b>살짝 기울어져</b> 있어요', hue: '하나만 <b>색이 살짝</b> 달라요' }[brain.mode];
   document.getElementById('game-body').innerHTML = `
-    <div class="text-sm color-muted">${brain.n} / ${brain.total} · 하나만 다른 걸 찾아요</div>
-    <div class="odd-grid" style="grid-template-columns:repeat(${cols},1fr)">${Array.from({ length: brain.size }, (_, i) => `<button class="odd-cell" onclick="oddTap(${i})">${i === brain.oddAt ? b : a}</button>`).join('')}</div>
+    <div class="text-sm color-muted">${brain.n} / ${brain.total} · ${hint}</div>
+    <div class="odd-grid" style="grid-template-columns:repeat(${cols},1fr)">${Array.from({ length: brain.size }, (_, i) => `<button class="odd-cell" onclick="oddTap(${i})"><span style="display:inline-block;${i === brain.oddAt ? style : ''}">${i === brain.oddAt ? b : a}</span></button>`).join('')}</div>
     <div class="time-bar"><i style="animation-duration:${brain.time}ms"></i></div>`;
   brainTimer = setTimeout(() => oddFeedback('⏰ 시간이 지났어요!'), brain.time);
 }
 function oddTap(i) {
   if (brain.answered) return;
-  if (i !== brain.oddAt) { const c = document.querySelectorAll('.odd-cell')[i]; c.classList.add('miss'); return; }
+  if (i !== brain.oddAt) { const c = document.querySelectorAll('.odd-cell')[i]; c.classList.add('miss'); brain.miss = (brain.miss || 0) + 1; return; }
   clearTimeout(brainTimer);
   brain.correct++;
   oddFeedback('찾았다! 🎯');
@@ -5314,7 +5350,7 @@ function oddFeedback(msg) {
   if (c) c.classList.add('hit');
   const say = document.createElement('div'); say.className = 'calm-say'; say.innerHTML = msg;
   document.getElementById('game-body').appendChild(say);
-  brainTimer = setTimeout(oddNext, 1000);
+  brainTimer = setTimeout(oddNext, 1200);
 }
 
 // 8) 천천히 길 따라가기
@@ -7708,7 +7744,7 @@ function spawnConfetti() {
 // BOOT
 // =====================================================================
 // 새 버전 자동 반영: 아이패드가 예전 화면을 붙잡고 있지 않게, 앱이 다시 보일 때와 30분마다 새 버전이 있는지 확인
-const APP_VERSION = '2026-11-02c';
+const APP_VERSION = '2026-11-02d';
 let lastVersionCheck = 0;
 async function checkNewVersion() {
   if (Date.now() - lastVersionCheck < 5 * 60000 || location.protocol === 'file:') return;
