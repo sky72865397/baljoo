@@ -1568,6 +1568,7 @@ input, select, textarea { font-family: inherit; outline: none; }
       <div id="gemgift-list"></div>
     </div>
     <!-- Redeem requests -->
+    <div class="text-xs color-muted" style="text-align:center;" id="app-version"></div>
     <div id="redeem-section">
       <div class="section-label" style="padding-left:4px;">💎 보석 사용 (교환 요청 · 펫 꾸미기)</div>
       <div class="text-xs color-muted" style="padding-left:4px;margin:-4px 0 6px;">잘못 쓴 건 <b>취소</b>를 누르면 보석이 아이에게 돌아가요. 최근 7일 기록이에요. 여기 없는 건 <b>설정 → 보석</b>에서 직접 더해 주세요.</div>
@@ -7048,6 +7049,7 @@ function renderParentDashboard() {
   document.getElementById('parent-calm-btns').innerHTML = settings.children.map(c => `<button class="btn-ghost btn-sm" onclick="openCalm('${c.id}')">${c.name}와 숨 고르기</button>`).join('');
   renderWeeklyReport();
   renderGemGifts();
+  document.getElementById('app-version').innerHTML = `앱 버전 ${APP_VERSION} · <a href="#" onclick="location.reload();return false;">새로고침</a>`;
   renderJarParent();
   const log = loadLog();
   const overview = document.getElementById('parent-child-overview');
@@ -7650,6 +7652,24 @@ function spawnConfetti() {
 // =====================================================================
 // BOOT
 // =====================================================================
+// 새 버전 자동 반영: 아이패드가 예전 화면을 붙잡고 있지 않게, 앱이 다시 보일 때와 30분마다 새 버전이 있는지 확인
+const APP_VERSION = '2026-11-02b';
+let lastVersionCheck = 0;
+async function checkNewVersion() {
+  if (Date.now() - lastVersionCheck < 5 * 60000 || location.protocol === 'file:') return;
+  lastVersionCheck = Date.now();
+  try {
+    const res = await fetch(location.pathname + '?v=' + Date.now(), { cache: 'no-store' });
+    const html = await res.text();
+    const m = html.match(/const APP_VERSION = '([^']+)'/);
+    const busy = document.querySelector('.pop-overlay:not(.hidden)') || !document.getElementById('game-screen').classList.contains('hidden') || document.getElementById('screen-social').classList.contains('active');
+    if (m && m[1] !== APP_VERSION && !busy) location.reload();
+  } catch (e) {}
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) checkNewVersion(); });
+window.addEventListener('focus', checkNewVersion);
+setInterval(checkNewVersion, 30 * 60000);
+
 init();
 </script>
 </body>
