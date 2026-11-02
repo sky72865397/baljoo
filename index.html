@@ -1570,7 +1570,7 @@ input, select, textarea { font-family: inherit; outline: none; }
     <!-- Redeem requests -->
     <div id="redeem-section">
       <div class="section-label" style="padding-left:4px;">💎 보석 사용 (교환 요청 · 펫 꾸미기)</div>
-      <div class="text-xs color-muted" style="padding-left:4px;margin:-4px 0 6px;">잘못 쓴 건 <b>취소</b>를 누르면 보석이 아이에게 돌아가요. 최근 7일 기록이에요.</div>
+      <div class="text-xs color-muted" style="padding-left:4px;margin:-4px 0 6px;">잘못 쓴 건 <b>취소</b>를 누르면 보석이 아이에게 돌아가요. 최근 7일 기록이에요. 여기 없는 건 <b>설정 → 보석</b>에서 직접 더해 주세요.</div>
       <div id="redeem-list"></div>
     </div>
 
@@ -4257,7 +4257,22 @@ function renderJarParent() {
       <input class="input-field" id="jar-target" type="number" min="5" max="500" value="${j.target}" style="flex:1;">
       <button class="btn-ghost btn-sm" onclick="saveJar()">저장</button>
     </div>
+    ${Object.entries(j.contrib).filter(([, n]) => n > 0).map(([cid, n]) => `<div class="flex-between text-sm"><span>${escText((settings.children.find(c => c.id === cid) || {}).name || '')}가 넣은 보석 💎${n}</span><button class="btn-ghost btn-sm" onclick="jarRefund('${cid}')">돌려주기</button></div>`).join('')}
     ${j.history.length ? `<div class="text-xs color-muted">지난 성공: ${j.history.slice(-4).map(h => `${escText(h.name)} (${h.date.slice(5).replace('-', '/')})`).join(' · ')}</div>` : ''}`;
+}
+function jarRefund(cid) {
+  const j = jar();
+  const c = settings.children.find(x => x.id === cid);
+  const n = j.contrib[cid] || 0;
+  if (!c || !n || !confirm(`${c.name}가 저금통에 넣은 보석 ${n}개를 돌려줄까요?`)) return;
+  j.contrib[cid] = 0;
+  j.saved = Math.max(0, j.saved - n);
+  if (j.done && j.saved < j.target) delete j.done;
+  c.points += n;
+  c.praiseQueue = (c.praiseQueue || []).concat([{ kind: 'refund', gems: n, reason: '저금통에 넣은 보석을 돌려받았어요' }]);
+  saveSettings();
+  renderJarParent();
+  toast(`${c.name}에게 보석 ${n}개를 돌려줬어요`);
 }
 function saveJar() {
   const j = jar();
@@ -7133,7 +7148,8 @@ function renderRedeemList() {
     .filter(x => !x.r.canceled && (!x.r.ack || x.ts > week))
     .concat(spendLog().map((d, i) => ({ kind: 'deco', i, ts: d.ts, d })).filter(x => !x.d.canceled && x.ts > week))
     .sort((a, b) => (a.kind === 'redeem' && !a.r.ack ? 0 : 1) - (b.kind === 'redeem' && !b.r.ack ? 0 : 1) || b.ts - a.ts);
-  if (!rows.length) { section.classList.add('hidden'); return; }
+  section.classList.remove('hidden');
+  if (!rows.length) { list.innerHTML = '<div class="text-sm color-muted" style="padding:4px;">최근 7일 동안 보석을 쓴 기록이 없어요.</div>'; return; }
   section.classList.remove('hidden');
   const when = ts => { const d = new Date(ts); return `${d.getMonth() + 1}/${d.getDate()}`; };
   list.innerHTML = rows.map(x => x.kind === 'redeem' ? `
@@ -7546,8 +7562,11 @@ function renderPointsSettings() {
 function adjustPoints(idx) {
   const val = parseInt(document.getElementById(`pts-${idx}`).value);
   if (isNaN(val)) { alert('숫자를 입력해 주세요'); return; }
-  settings.children[idx].points = Math.max(0, settings.children[idx].points + val);
+  const c = settings.children[idx];
+  c.points = Math.max(0, c.points + val);
+  if (val > 0) c.praiseQueue = (c.praiseQueue || []).concat([{ kind: 'refund', gems: val, reason: '엄마 아빠가 보석을 돌려줬어요' }]);
   saveSettings();
+  toast(`${c.name} 보석 ${val > 0 ? '+' : ''}${val} → 지금 ${c.points}개`);
   renderPointsSettings();
 }
 
