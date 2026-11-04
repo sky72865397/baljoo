@@ -676,6 +676,12 @@ input, select, textarea { font-family: inherit; outline: none; }
 .odd-cell.hit { background:#bbf7d0; outline:3px solid #16a34a; }
 .trace-cv { background:#fff; border-radius:20px; touch-action:none; max-width:100%; }
 @media (max-width: 600px) { .brain-picks:not(.all) { flex-direction:column; } .ink-btn { min-width:80px; } }
+.coop-btn { width:100%; max-width:640px; background:linear-gradient(135deg,#fde68a,#fbcfe8); border-radius:20px; padding:14px; font-size:1.15rem; font-weight:900; color:#1e1b4b; display:flex; flex-direction:column; gap:2px; box-shadow:0 5px 0 rgba(0,0,0,.08); }
+.coop-btn small { font-weight:600; font-size:.85rem; color:#6b7280; }
+.coop-pets { display:flex; align-items:center; gap:10px; justify-content:center; }
+.br-row { border-top:1px solid var(--border); padding:8px 0; }
+.br-head { display:flex; justify-content:space-between; gap:8px; }
+.br-met { font-size:.9rem; margin-top:2px; }
 .brain-hud { display:flex; align-items:center; gap:10px; width:100%; max-width:640px; background:rgba(255,255,255,.85); border-radius:22px; padding:8px 12px; box-shadow:0 4px 14px rgba(55,48,163,.12); }
 .brain-hud.hidden { display:none; }
 .bh-pet { width:64px; height:64px; flex:0 0 64px; display:flex; align-items:center; justify-content:center; font-size:2.6rem; }
@@ -1570,6 +1576,9 @@ input, select, textarea { font-family: inherit; outline: none; }
     <div class="section-label" style="padding-left:4px;margin-top:6px;">📊 이번 주 리포트</div>
     <div class="text-xs color-muted" style="padding-left:4px;margin-top:-6px;">점: 연한 초록 = 그 시간대 절반 이상 · 진한 초록 = 전부 했어요</div>
     <div style="display:flex;flex-direction:column;gap:12px;" id="weekly-report"></div>
+
+    <div class="section-label" style="padding-left:4px;margin-top:6px;">🧠 두뇌 리포트 (이번 주 vs 지난주)</div>
+    <div style="display:flex;flex-direction:column;gap:12px;" id="brain-report"></div>
 
     <div class="section-label" style="padding-left:4px;margin-top:6px;">📅 한 달 리포트</div>
     <div class="card" style="display:flex;flex-direction:column;gap:10px;">
@@ -2665,6 +2674,10 @@ function showPraiseQueue(child) {
   const item = q.shift();
   saveSettings();
   const photo = item.photo ? `<img class="praise-pop-photo" src="${item.photo}" alt="">` : '';
+  if (item.kind === 'coopxp') {
+    showPop({ kind: 'right', icon: '👫', title: '협동 판 성공!', text: `${escText(item.with)}랑 같이 두뇌 게임 ${item.score}점!<br><b style="color:#059669">+10 XP</b>를 받았어요.`, button: '최고 팀! 🤝', onClose: () => { renderHomeScreen(); showPraiseQueue(child); } }, child);
+    return;
+  }
   if (item.kind === 'refund') {
     showPop({ kind: 'right', icon: '💎', title: '보석이 돌아왔어요', text: `${escText(item.reason)}<br><b style="color:#0284c7">💎 보석 ${item.gems}개</b>를 다시 받았어요.`, button: '알겠어요', onClose: () => { renderHomeScreen(); showPraiseQueue(child); } }, child);
     return;
@@ -5139,6 +5152,7 @@ function openBrain() {
     <div class="calm-say"><b>하고 싶은 게임</b>을 골라요! 여러 개 해도 돼요</div>
     <div class="brain-picks all">${BRAIN_GAMES.map(card).join('')}</div>
     ${brainDone(child) ? '<div class="text-sm color-muted">오늘 XP는 이미 받았어요. 다른 것도 연습으로 해 봐요!</div>' : '<div class="text-sm color-muted">하나 끝까지 하면 +15 XP!</div>'}
+    ${settings.children.length > 1 ? '<button class="coop-btn" onclick="openCoopBrain()">👫 형제랑 같이 하기 <small>번갈아 풀고 점수를 합쳐요</small></button>' : ''}
     <button class="btn-ghost btn-sm" onclick="showBrainRecords()">📊 내 두뇌 기록</button>
     <button class="btn-ghost btn-sm" onclick="closeGame()">닫기</button>`;
   document.getElementById('game-screen').classList.remove('hidden');
@@ -5191,11 +5205,12 @@ function brainHud(msg) {
   if (!brain || !brain.g || !el) return;
   const prev = brainPrev(brain.child, brain.g);
   el.classList.remove('hidden');
-  el.innerHTML = `<div class="bh-pet">${getPetEmoji(brain.child)}</div>
+  const who = brain.coop ? brain.coop.players[brain.coop.turn] : brain.child;
+  el.innerHTML = `<div class="bh-pet">${getPetEmoji(who)}</div>
     <div class="bh-talk">${msg || brain.cheer || '같이 해 보자! 💪'}</div>
     <div class="bh-side">
       <div class="bh-combo${brain.combo >= 3 ? ' hot' : ''}">🔥 ${brain.combo || 0}</div>
-      <div class="bh-prev">${prev === null ? '첫 도전!' : `지난번 ${prev}점`}</div>
+      <div class="bh-prev">${brain.coop ? brain.coop.players.map((c, i) => `${escText(c.name)} ${brain.coop.pts[i]}`).join(' · ') : prev === null ? '첫 도전!' : `지난번 ${prev}점`}</div>
       <button class="bh-mute" onclick="settings.brainMute=!settings.brainMute;saveSettings();brainHud()">${settings.brainMute ? '🔇' : '🔊'}</button>
     </div>`;
 }
@@ -5212,10 +5227,106 @@ function brainHit(ok) {
     brainBeep('bad');
     brain.cheer = ['괜찮아, 다시! 💪', '천천히 해 보자 🐢', '할 수 있어! 🍀'][Math.floor(Math.random() * 3)];
   }
+  if (brain.coop) {
+    const c = brain.coop;
+    if (ok) c.pts[c.turn]++;
+    c.turn = 1 - c.turn;
+    brain.cheer = `${ok ? '좋아! ' : ''}다음은 <b>${escText(coopTurnName())}</b> 차례!`;
+  }
   brainHud();
   const pet = document.querySelector('#brain-hud .bh-pet');
   if (pet) { pet.classList.remove('jump', 'shake'); void pet.offsetWidth; pet.classList.add(ok ? 'jump' : 'shake'); }
 }
+// ---------- 🧠 부모용 두뇌 리포트: 점수와 실수 유형을 이번 주/지난주로 비교 ----------
+const BRAIN_METRICS = {
+  stop: [['falseTap', '🛑 참아야 할 때 누름'], ['slow', '🐢 놓친 초록']],
+  color: [['fooled', '🔤 글자에 속음']],
+  switch: [['switchMiss', '🔄 규칙 바뀐 직후 실수']],
+  trace: [['exits', '↩️ 길 밖으로 나감'], ['fast', '🐇 너무 빨리 감']],
+};
+function renderBrainReport() {
+  const el = document.getElementById('brain-report');
+  if (!el) return;
+  const now = weekDays().map(ymd), last = weekDays(-1).map(ymd);
+  const avg = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
+  const fmt = v => v === null ? '–' : (Math.round(v * 10) / 10).toString();
+  const arrow = (a, b, lowerBetter) => a === null || b === null || a === b ? '' : (a < b) === lowerBetter ? ' <b style="color:#16a34a">좋아짐</b>' : ' <b style="color:#d97706">늘었어요</b>';
+  el.innerHTML = settings.children.map(c => {
+    const rows = BRAIN_GAMES.map(g => {
+      const h = ((c.brainRec || {})[g] || {}).hist || [];
+      const A = h.filter(x => now.includes(x.d)), Bh = h.filter(x => last.includes(x.d));
+      if (!A.length && !Bh.length) return '';
+      const sa = avg(A.map(x => x.s)), sb = avg(Bh.map(x => x.s));
+      const mets = (BRAIN_METRICS[g] || []).map(([k, label]) => {
+        const ma = avg(A.filter(x => x.m).map(x => x.m[k] || 0)), mb = avg(Bh.filter(x => x.m).map(x => x.m[k] || 0));
+        return ma === null && mb === null ? '' : `<div class="br-met">${label}: 평균 ${fmt(mb)}번 → <b>${fmt(ma)}번</b>${arrow(ma, mb, true)}</div>`;
+      }).join('');
+      return `<div class="br-row"><div class="br-head"><b>${BRAIN_INFO[g].name}</b><span class="text-xs color-muted">${BRAIN_INFO[g].skill} · 이번 주 ${A.length}판</span></div>
+        <div class="br-met">점수: 지난주 ${fmt(sb)}점 → <b>${fmt(sa)}점</b>${arrow(sa, sb, false)}</div>${mets}</div>`;
+    }).filter(Boolean);
+    return `<div class="card report-card"><div class="report-head">${avatarHTML(c)}${escText(c.name)}</div>
+      ${rows.length ? rows.join('') : '<div class="text-sm color-muted">이번 주·지난주에 한 두뇌 게임이 없어요.</div>'}
+      ${rows.length ? '<div class="text-xs color-muted" style="margin-top:6px;">실수 횟수는 이번 업데이트부터 쌓여요. 🛑 참아야 할 때 누름이 줄면 충동 조절이 좋아지고 있다는 뜻이에요.</div>' : ''}</div>`;
+  }).join('');
+}
+
+// ---------- 👫 형제 협동 판: 한 문제씩 번갈아 풀고 점수를 합쳐서 목표 넘기기 ----------
+const COOP_GAMES = ['odd', 'stop', 'color', 'switch'];
+const COOP_GOAL = 0.7;
+function openCoopBrain(partnerId) {
+  const child = brain.child;
+  const others = settings.children.filter(c => c.id !== child.id);
+  const done = (loadLog()[`${child.id}_brainco`] || {}).ok;
+  document.getElementById('game-title').textContent = '👫 형제 협동 판';
+  document.getElementById('game-body').innerHTML = !partnerId
+    ? `<div class="calm-say">누구랑 같이 할까?</div>
+       <div class="share-kids">${others.map(c => `<button class="share-kid" onclick="openCoopBrain('${c.id}')"><span style="font-size:2.2rem">${getPetEmoji(c)}</span><span>${escText(c.name)}</span></button>`).join('')}</div>
+       <div class="text-sm color-muted">한 문제씩 번갈아 풀어요. 둘이 합쳐서 ${Math.round(COOP_GOAL * 100)}점을 넘으면 <b>둘 다 +10 XP</b>${done ? ' (오늘 보너스는 받았어요. 연습으로 해요!)' : ''}</div>
+       <button class="btn-ghost btn-sm" onclick="openBrain()">← 돌아가기</button>`
+    : `<div class="calm-say">어떤 게임을 같이 할까?</div>
+       <div class="brain-picks all" style="grid-template-columns:repeat(2,1fr);max-width:560px;">${COOP_GAMES.map(g => `<button class="brain-pick" onclick="startCoop('${partnerId}','${g}')"><span class="bp-name">${BRAIN_INFO[g].name}</span><span class="bp-skill">${BRAIN_INFO[g].skill}</span></button>`).join('')}</div>
+       <button class="btn-ghost btn-sm" onclick="openCoopBrain()">← 다른 친구 고르기</button>`;
+}
+function startCoop(partnerId, g) {
+  const a = brain.child, b = settings.children.find(c => c.id === partnerId);
+  const lv = Math.min(brainRec(a, g).lv, brainRec(b, g).lv);
+  brain = { g, child: a, lv, coop: { players: [a, b], turn: 0, pts: [0, 0] } };
+  document.getElementById('game-title').textContent = `👫 ${a.name} + ${b.name} · ${BRAIN_INFO[g].name}`;
+  startBrain();
+}
+function coopTurnName() { const c = brain.coop; return c.players[c.turn].name; }
+function finishCoop(score) {
+  const { players, pts } = brain.coop;
+  const team = Math.round(score * 100);
+  const win = score >= COOP_GOAL;
+  const log = loadLog();
+  const fresh = players.filter(c => !(log[`${c.id}_brainco`] || {}).ok);
+  if (win) {
+    fresh.forEach(c => { log[`${c.id}_brainco`] = { ok: true, with: players.map(x => x.id), score: team }; });
+    saveLog(log);
+    fresh.forEach(c => {
+      if (c.id === brain.child.id) return;
+      awardXPParent(c.id, 10);
+      c.praiseQueue = (c.praiseQueue || []).concat([{ kind: 'coopxp', with: brain.child.name, score: team }]);
+    });
+    saveSettings();
+  }
+  document.getElementById('brain-hud').classList.add('hidden');
+  brainBeep(win ? 'combo' : 'ok');
+  const me = brain.child;
+  const myXp = win && fresh.some(c => c.id === me.id);
+  document.getElementById('game-body').innerHTML = `
+    <div class="coop-pets">${players.map(c => `<div class="finish-pet" style="width:110px;height:110px;">${getPetEmoji(c)}</div>`).join('<div style="font-size:2rem">🤝</div>')}</div>
+    <div class="pop-title">${win ? '협동 성공!' : '아깝다! 다음에 또 해 보자'}</div>
+    <div class="score-cmp">팀 점수 <b class="${win ? 'up' : ''}">${team}점</b> / 목표 ${Math.round(COOP_GOAL * 100)}점</div>
+    <div class="calm-say">${players.map((c, i) => `${escText(c.name)} ${pts[i]}개`).join(' · ')} 맞혔어요!<br>${win ? (fresh.length ? `<b>${fresh.map(c => escText(c.name)).join('·')} +10 XP</b> 🎉` : '오늘 보너스는 이미 받았어요. 그래도 최고 팀워크! 👍') : '서로 응원하면서 다시 도전해요 💪'}</div>
+    <button class="focus-done" id="brain-ok" style="max-width:300px;">확인 ✓</button>`;
+  if (win) spawnConfetti();
+  if (me.speak) speak(win ? '협동 성공! 둘이 같이 해냈어!' : '아깝다! 다음에 또 해 보자');
+  document.getElementById('brain-ok').onclick = () => { closeGame(); if (myXp) awardXP(me.id, 10, 'brainco'); else renderHomeScreen(); };
+}
+
+function brainM(k, n = 1) { brain.m = brain.m || {}; brain.m[k] = (brain.m[k] || 0) + n; }
 function brainPrev(child, g) {
   const h = (brainRec(child, g).hist || []);
   return h.length ? h[h.length - 1].s : null;
@@ -5223,11 +5334,11 @@ function brainPrev(child, g) {
 function startBrain() {
   brain.combo = 0; brain.bestCombo = 0; brain.cheer = '';
   document.getElementById('game-screen').className = `calm-screen game theme-${brain.g}`;
-  brainHud('준비~');
+  brainHud(brain.coop ? `먼저 <b>${escText(coopTurnName())}</b> 차례!` : '준비~');
   let n = 3;
   const tick = () => {
     if (!brain) return;
-    if (n === 0) { brainBeep('go'); brainHud('시작! 💪'); runBrain(); return; }
+    if (n === 0) { brainBeep('go'); brainHud(brain.coop ? `<b>${escText(coopTurnName())}</b> 차례! 💪` : '시작! 💪'); runBrain(); return; }
     brainBeep('tick');
     document.getElementById('game-body').innerHTML = `<div class="brain-count">${n}</div><div class="calm-say">${BRAIN_INFO[brain.g].name}</div>`;
     n--;
@@ -5239,6 +5350,7 @@ function runBrain() {
   ({ seq: seqStart, stop: stopStart, pair: pairStart, color: colorStart, switch: switchStart, listen: listenStart, odd: oddStart, trace: traceStart })[brain.g]();
 }
 function brainFinish(score, msg) {
+  if (brain.coop) { finishCoop(score); return; }
   const child = brain.child;
   const first = !brainDone(child);
   const log = loadLog();
@@ -5253,7 +5365,7 @@ function brainFinish(score, msg) {
   const newBest = score > r.best && r.plays > 0;
   r.best = Math.max(r.best, score);
   r.plays++;
-  r.hist = (r.hist || []).concat([{ d: ymd(new Date()), lv: r.lv, s: Math.round(score * 100) }]).slice(-60);
+  r.hist = (r.hist || []).concat([{ d: ymd(new Date()), lv: r.lv, s: Math.round(score * 100), m: brain.m || {} }]).slice(-60);
   saveSettings();
   if (child.speak) speak('두뇌 게임 끝! 머리가 반짝반짝해졌어!');
   const extra = (r.lv > before ? `<br>🎉 <b>Lv.${r.lv}</b>로 올라갔어요! ${stars(r.lv)}` : '') + (newBest ? '<br>🏆 <b>최고 기록</b>을 깼어요!' : '');
@@ -5285,7 +5397,7 @@ function colorNext() {
   const w = Math.floor(Math.random() * 4);
   let ink = Math.floor(Math.random() * 4);
   if (Math.random() < 0.75) while (ink === w) ink = Math.floor(Math.random() * 4);
-  brain.ink = ink; brain.answered = false;
+  brain.ink = ink; brain.word = w; brain.answered = false;
   document.getElementById('game-body').innerHTML = `
     <div class="text-sm color-muted">${brain.n} / ${brain.total} · 글자의 <b>색깔</b>은?</div>
     <div class="stroop-word" style="color:${INKS[ink][1]}">${INKS[w][0]}</div>
@@ -5297,6 +5409,7 @@ function colorTap(i) {
   if (brain.answered) return;
   clearTimeout(brainTimer);
   if (i === brain.ink) brain.correct++;
+  else if (i === brain.word && brain.word !== brain.ink) brainM('fooled');
   brainHit(i === brain.ink);
   colorFeedback(i === brain.ink ? '딩동댕! 🎉' : `앗, 색깔은 <b style="color:${INKS[brain.ink][1]}">${INKS[brain.ink][0]}</b>이었어요!`);
 }
@@ -5318,7 +5431,8 @@ function switchNext() {
   if (brain.n >= brain.total) { brainFinish(brain.correct / brain.total, `${brain.total}번 중 <b>${brain.correct}번</b> 맞혔어요! 규칙이 바뀌어도 척척!`); return; }
   brain.n++;
   let changed = false;
-  if (--brain.runLeft < 0) { brain.rule = brain.rule === 'shape' ? 'color' : 'shape'; brain.runLeft = 2 + Math.floor(Math.random() * Math.max(1, 5 - brain.lv)); changed = true; }
+  brain.justChanged = false;
+  if (--brain.runLeft < 0) { brain.rule = brain.rule === 'shape' ? 'color' : 'shape'; brain.runLeft = 2 + Math.floor(Math.random() * Math.max(1, 5 - brain.lv)); changed = true; brain.justChanged = true; }
   brain.shape = Math.random() < 0.5 ? 0 : 1;
   brain.col = Math.random() < 0.5 ? 0 : 1;
   brain.answered = false;
@@ -5337,6 +5451,7 @@ function switchTap(i) {
   if (brain.answered) return;
   clearTimeout(brainTimer);
   const ok = i === (brain.rule === 'shape' ? brain.shape : brain.col);
+  if (!ok && brain.justChanged) brainM('switchMiss');
   switchFeedback(ok, ok ? '딩동댕! 🎉' : `앗, 지금은 <b>${brain.rule === 'shape' ? '모양' : '색깔'}</b> 규칙이에요!`);
 }
 function switchFeedback(ok, msg) {
@@ -5539,6 +5654,7 @@ function traceDone() {
   const sc = Math.max(0, 1 - brain.exits * 0.15 - Math.min(10, brain.fast) * 0.04);
   brainHit(sc >= 0.7);
   brain.scores.push(sc);
+  brainM('exits', brain.exits); brainM('fast', Math.min(10, brain.fast));
   brain.round++;
   const say = document.getElementById('trace-say');
   if (say) say.innerHTML = `🏁 도착! 길 밖 ${brain.exits}번 · 너무 빠름 ${Math.min(10, brain.fast)}번`;
@@ -5599,6 +5715,7 @@ function stopNext() {
     if (brain.tapped) return;
     brain.tapped = true; // 시간이 지난 뒤 빈 화면을 눌러도 점수가 바뀌지 않게
     if (!brain.go) brain.correct++;
+    else brainM('slow');
     brainHit(!brain.go);
     stopFeedback(!brain.go ? '잘 참았어! 👍' : '앗, 놓쳤다!');
   }, brain.speed);
@@ -5608,6 +5725,7 @@ function stopTap() {
   brain.tapped = true;
   clearTimeout(brainTimer);
   if (brain.go) brain.correct++;
+  else brainM('falseTap');
   brainHit(brain.go);
   stopFeedback(brain.go ? '빠르다! ⚡' : '앗, 멈춤이었어! 🛑');
 }
@@ -7264,6 +7382,7 @@ function renderParentDashboard() {
   document.getElementById('parent-calm-btns').innerHTML = settings.children.map(c => `<button class="btn-ghost btn-sm" onclick="openCalm('${c.id}')">${c.name}와 숨 고르기</button>`).join('');
   renderWeeklyReport();
   renderGemGifts();
+  renderBrainReport();
   document.getElementById('app-version').innerHTML = `앱 버전 ${APP_VERSION} · <a href="#" onclick="location.reload();return false;">새로고침</a>`;
   renderJarParent();
   const log = loadLog();
@@ -7868,7 +7987,7 @@ function spawnConfetti() {
 // BOOT
 // =====================================================================
 // 새 버전 자동 반영: 아이패드가 예전 화면을 붙잡고 있지 않게, 앱이 다시 보일 때와 30분마다 새 버전이 있는지 확인
-const APP_VERSION = '2026-11-02e';
+const APP_VERSION = '2026-11-04a';
 let lastVersionCheck = 0;
 async function checkNewVersion() {
   if (Date.now() - lastVersionCheck < 5 * 60000 || location.protocol === 'file:') return;
