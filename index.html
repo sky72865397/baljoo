@@ -2567,7 +2567,7 @@ function showPop({ kind, icon, title, text, button, action, onClose }, child) {
   // 아이들이 읽지 않고 바로 누르지 않게: 글 길이만큼 잠깐 기다렸다가 버튼이 켜짐
   const btn = wrap.querySelector('.pop-btn');
   const plain = String(text).replace(/<[^>]+>/g, '');
-  const wait = plain.length < 12 ? 0 : Math.min(4, Math.max(2, Math.round(plain.length / 18)));
+  const wait = 0; // '읽어 봐요' 기다림은 엄마 요청으로 끔
   if (wait) {
     let n = wait;
     btn.disabled = true;
@@ -8223,7 +8223,7 @@ function spawnConfetti() {
 // BOOT
 // =====================================================================
 // 새 버전 자동 반영: 아이패드가 예전 화면을 붙잡고 있지 않게, 앱이 다시 보일 때와 30분마다 새 버전이 있는지 확인
-const APP_VERSION = '2026-11-04c';
+const APP_VERSION = '2026-11-04d';
 let lastVersionCheck = 0;
 async function checkNewVersion() {
   if (Date.now() - lastVersionCheck < 5 * 60000 || location.protocol === 'file:') return;
