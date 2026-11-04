@@ -636,7 +636,7 @@ input, select, textarea { font-family: inherit; outline: none; }
 .stop-target.blank { background:transparent; }
 .brain-picks { display:flex; gap:14px; width:100%; max-width:640px; }
 .brain-pick { flex:1; display:flex; flex-direction:column; align-items:center; gap:6px; background:#fff; border:3px solid #c7d2fe; border-radius:24px; padding:18px 10px; color:var(--text); }
-.brain-picks.all { display:grid; grid-template-columns:repeat(4,1fr); width:min(920px, 94vw); max-width:none; gap:10px; }
+.brain-picks.all { display:grid; grid-template-columns:repeat(5,1fr); width:min(920px, 94vw); max-width:none; gap:10px; }
 .brain-picks.all .brain-pick { padding:12px 6px; gap:4px; position:relative; }
 .brain-picks.all .bp-name { font-size:1.05rem; }
 .brain-pick.played { border-color:#86efac; background:#f0fdf4; }
@@ -676,6 +676,22 @@ input, select, textarea { font-family: inherit; outline: none; }
 .odd-cell.hit { background:#bbf7d0; outline:3px solid #16a34a; }
 .trace-cv { background:#fff; border-radius:20px; touch-action:none; max-width:100%; }
 @media (max-width: 600px) { .brain-picks:not(.all) { flex-direction:column; } .ink-btn { min-width:80px; } }
+.time-goal { font-size:1.6rem; }
+.time-count { font-size:6rem; font-weight:900; color:#6366f1; line-height:1.1; min-height:7rem; }
+.time-count small { font-size:2rem; margin-left:4px; }
+.time-btn { min-width:220px; padding:22px 30px; border-radius:26px; font-size:1.8rem; font-weight:900; color:#fff; background:#6366f1; box-shadow:0 6px 0 rgba(0,0,0,.15); }
+.time-btn.stop { background:#ef4444; }
+.time-btn:active { transform:translateY(3px); box-shadow:0 3px 0 rgba(0,0,0,.15); }
+.time-fx { position:relative; height:0; width:100%; }
+.time-fx.pop { animation:fxFloat 1.2s ease-out forwards; position:absolute; font-size:3rem; top:40%; }
+@keyframes fxFloat { from { opacity:1; transform:translateY(0) scale(.6); } to { opacity:0; transform:translateY(-120px) scale(1.3); } }
+.order-grid { display:grid; gap:8px; width:100%; max-width:480px; }
+.order-cell { aspect-ratio:1; border-radius:16px; font-size:clamp(1.3rem,5vw,2rem); font-weight:900; color:#1e1b4b; box-shadow:0 4px 0 rgba(0,0,0,.12); }
+.order-cell.done { opacity:.25; transform:scale(.9); }
+.order-cell.miss { animation:shake .35s; outline:3px solid #ef4444; }
+.calm-screen.game.theme-rev { background:linear-gradient(180deg,#fef9c3,#e9d5ff); }
+.calm-screen.game.theme-order { background:linear-gradient(180deg,#e0f2fe,#fef3c7); }
+.calm-screen.game.theme-time { background:linear-gradient(180deg,#ede9fe,#c7d2fe); }
 .coop-btn { width:100%; max-width:640px; background:linear-gradient(135deg,#fde68a,#fbcfe8); border-radius:20px; padding:14px; font-size:1.15rem; font-weight:900; color:#1e1b4b; display:flex; flex-direction:column; gap:2px; box-shadow:0 5px 0 rgba(0,0,0,.08); }
 .coop-btn small { font-weight:600; font-size:.85rem; color:#6b7280; }
 .coop-pets { display:flex; align-items:center; gap:10px; justify-content:center; }
@@ -4076,7 +4092,7 @@ const BADGES = [
   B('brain10', '🧠', '두뇌 쑥쑥', '두뇌 게임 10번', 'brain', 10),
   B('brain30', '💡', '두뇌 반짝', '두뇌 게임 30번', 'brain', 30),
   B('brain100', '🔮', '두뇌 천재', '두뇌 게임 100번', 'brain', 100),
-  B('brainall', '🎮', '게임 탐험가', '두뇌 게임 7가지 모두 해 보기', 'brainKinds', 7),
+  B('brainall', '🎮', '게임 탐험가', '두뇌 게임 10가지 모두 해 보기', 'brainKinds', 10),
   B('brainlv5', '⭐', '만렙 두뇌', '두뇌 게임 하나를 Lv.5까지', 'brainTop', 5),
   B('calm5', '🫧', '마음 지킴이', '숨 고르기 5번', 'calm', 5),
   B('calm20', '🌊', '고요한 마음', '숨 고르기 20번', 'calm', 20),
@@ -5105,9 +5121,12 @@ const BRAIN_INFO = {
   color:  { name: '🎨 색깔 말하기', skill: '참기', how: '글자를 읽지 말고, 글자의 <b>색깔</b>을 골라요! "빨강"이 파란색이면 → 파랑!' },
   switch: { name: '🔄 규칙 바꾸기', skill: '생각 전환', how: '위에 나온 규칙대로 골라요. <b>모양</b>일 땐 모양, <b>색깔</b>일 땐 색깔! 규칙이 갑자기 바뀌어요.' },
   odd:    { name: '🎯 다른 하나 찾기', skill: '집중', how: '똑같아 보이는 그림 중에 <b>하나만 다른 것</b>을 찾아요! 반대로 보거나, 기울어졌거나, 색이 살짝 다를 수도 있어요. 잘 봐요!' },
+  rev:    { name: '🔁 거꾸로 기억하기', skill: '기억력', how: '그림이 하나씩 나와요. 다 나오면 <b>마지막에 나온 것부터 거꾸로</b> 눌러요!' },
+  order:  { name: '🔢 숫자 순서대로', skill: '집중', how: '흩어진 숫자를 <b>1부터 순서대로</b> 최대한 빨리 눌러요!' },
+  time:   { name: '⏱️ 시간 감각', skill: '시간 감각', how: '처음 몇 초는 같이 세고, 그다음엔 <b>마음속으로</b> 세요. 목표 초가 됐다 싶으면 멈춰! 시계는 안 보여요.' },
 };
 const BRAIN_GAMES = Object.keys(BRAIN_INFO);
-const BRAIN_SKILLS = ['기억력', '참기', '생각 전환', '집중']; // 거북이 길 따라가기는 엄마 요청으로 뺌
+const BRAIN_SKILLS = ['기억력', '참기', '생각 전환', '집중', '시간 감각']; // 거북이 길 따라가기는 엄마 요청으로 뺌
 function brainDayNum() {
   const d = new Date();
   return Math.floor((d.getTime() - d.getTimezoneOffset() * 60000) / 86400000);
@@ -5248,7 +5267,8 @@ const BRAIN_METRICS = {
   stop: [['falseTap', '🛑 참아야 할 때 누름'], ['slow', '🐢 놓친 초록']],
   color: [['fooled', '🔤 글자에 속음']],
   switch: [['switchMiss', '🔄 규칙 바뀐 직후 실수']],
-  trace: [['exits', '↩️ 길 밖으로 나감'], ['fast', '🐇 너무 빨리 감']],
+  time: [['timeErr', '⏱️ 목표와 차이(초)']],
+  order: [['orderMiss', '🔢 잘못 누름']],
 };
 // 아이별로 아직 안 푼 문제가 몇 개 남았는지, 며칠 치인지 (하루에 푸는 양 기준)
 function renderContentLeft() {
@@ -5295,7 +5315,7 @@ function renderBrainReport() {
 }
 
 // ---------- 👫 형제 협동 판: 한 문제씩 번갈아 풀고 점수를 합쳐서 목표 넘기기 ----------
-const COOP_GAMES = ['odd', 'stop', 'color', 'switch'];
+const COOP_GAMES = ['odd', 'stop', 'color', 'switch', 'order', 'time'];
 const COOP_GOAL = 0.7;
 function openCoopBrain(partnerId) {
   const child = brain.child;
@@ -5371,7 +5391,7 @@ function startBrain() {
   tick();
 }
 function runBrain() {
-  ({ seq: seqStart, stop: stopStart, pair: pairStart, color: colorStart, switch: switchStart, listen: listenStart, odd: oddStart, trace: traceStart })[brain.g]();
+  ({ seq: seqStart, stop: stopStart, pair: pairStart, color: colorStart, switch: switchStart, listen: listenStart, odd: oddStart, trace: traceStart, rev: revStart, order: orderStart, time: timeStart })[brain.g]();
 }
 function brainFinish(score, msg) {
   if (brain.coop) { finishCoop(score); return; }
@@ -5610,7 +5630,168 @@ function oddFeedback(msg) {
   brainTimer = setTimeout(oddNext, 1200);
 }
 
-// 8) 천천히 길 따라가기
+// 9) ⏱️ 시간 감각: 처음 몇 초는 같이 세고, 그다음엔 마음속으로 세다가 목표 초에 멈추기
+// [목표 초, 같이 세 주는 초, 방해 그림]
+const TIME_LV = { 1: [5, 3, false], 2: [10, 3, false], 3: [10, 2, false], 4: [20, 2, true], 5: [30, 1, true] };
+function timeStart() {
+  brain.round = 0; brain.scores = []; brain.errs = [];
+  [brain.target, brain.helpSec, brain.distract] = TIME_LV[brain.lv] || TIME_LV[1];
+  timeRound();
+}
+function timeRound() {
+  if (brain.round >= 3) {
+    const sc = brain.scores.reduce((a, b) => a + b, 0) / brain.scores.length;
+    const avg = brain.errs.reduce((a, b) => a + b, 0) / brain.errs.length;
+    brainM('timeErr', Math.round(avg * 10) / 10);
+    brainFinish(sc, `${brain.target}초 맞히기 3번! 평균 <b>${avg.toFixed(1)}초</b> 차이였어요. ⏱️`);
+    return;
+  }
+  brain.running = false;
+  document.getElementById('game-body').innerHTML = `
+    <div class="text-sm color-muted">${brain.round + 1} / 3</div>
+    <div class="time-goal">⏱️ <b>${brain.target}초</b>에 멈춰요!</div>
+    <div class="calm-say">처음 ${brain.helpSec}초는 같이 세고, 그다음엔 <b>마음속으로</b> 세요</div>
+    <button class="time-btn" onclick="timeGo()">시작!</button>`;
+}
+function timeGo() {
+  brain.running = true;
+  brain.t0 = performance.now();
+  let n = 0;
+  document.getElementById('game-body').innerHTML = `
+    <div class="text-sm color-muted">${brain.round + 1} / 3 · 목표 ${brain.target}초</div>
+    <div class="time-count" id="time-count">0</div>
+    <div class="calm-say" id="time-say">같이 세요!</div>
+    <div class="time-fx" id="time-fx"></div>
+    <button class="time-btn stop" onclick="timeStop()">멈춰! ✋</button>`;
+  const step = () => {
+    if (!brain || !brain.running) return;
+    n++;
+    const el = document.getElementById('time-count'), say = document.getElementById('time-say');
+    if (n <= brain.helpSec) { brainBeep('tick'); if (el) el.textContent = n; if (brain.child.speak) speak(String(n)); }
+    else if (el) { el.textContent = '🤫'; if (say) say.innerHTML = '이제 마음속으로 세요… 🤫'; }
+    if (brain.distract && n > brain.helpSec && Math.random() < 0.5) {
+      const fx = document.getElementById('time-fx');
+      if (fx) { fx.textContent = ['🎈', '🦋', '⭐', '🐟', '🍭', '🚀'][Math.floor(Math.random() * 6)]; fx.style.left = Math.round(10 + Math.random() * 80) + '%'; fx.classList.remove('pop'); void fx.offsetWidth; fx.classList.add('pop'); }
+    }
+    brainTimer = setTimeout(step, 1000);
+  };
+  brainTimer = setTimeout(step, 1000);
+}
+function timeStop() {
+  if (!brain.running) return;
+  brain.running = false;
+  clearTimeout(brainTimer);
+  const t = (performance.now() - brain.t0) / 1000;
+  const err = Math.abs(t - brain.target);
+  const sc = Math.max(0, 1 - err / Math.max(2, brain.target * 0.3));
+  brain.scores.push(sc); brain.errs.push(err);
+  brainHit(sc >= 0.7);
+  brain.round++;
+  const msg = err < 0.3 ? '🎯 딱 맞았어! 대단해!' : err < 1 ? '😆 거의 맞았어!' : t < brain.target ? '🐇 조금 빨랐어요' : '🐢 조금 늦었어요';
+  document.getElementById('game-body').innerHTML = `
+    <div class="text-sm color-muted">${brain.round} / 3</div>
+    <div class="time-count">${t.toFixed(1)}<small>초</small></div>
+    <div class="calm-say">${msg}<br>목표 ${brain.target}초와 <b>${err.toFixed(1)}초</b> 차이</div>`;
+  brainTimer = setTimeout(timeRound, 2200);
+}
+
+// 10) 🔁 거꾸로 기억하기: 나온 순서의 반대로 누르기
+const REV_ITEMS = ['🍎', '🐶', '⭐', '🚗', '🌙', '🐟', '🎈', '🌸', '🍌'];
+function revStart() {
+  brain.round = 0; brain.ok = 0; brain.len = Math.min(6, 2 + brain.lv);
+  revRound();
+}
+function revRound() {
+  if (brain.round >= 3) { brainFinish(brain.ok / 3, `3번 중 <b>${brain.ok}번</b> 거꾸로 맞혔어요! 머릿속에서 뒤집기 성공! 🔁`); return; }
+  brain.seq = REV_ITEMS.slice().sort(() => Math.random() - 0.5).slice(0, brain.len);
+  brain.input = [];
+  let i = 0;
+  const show = () => {
+    const el = document.getElementById('rev-show');
+    if (i >= brain.seq.length) { brainTimer = setTimeout(() => revDraw(), 500); return; }
+    if (el) { el.innerHTML = `<span class="listen-pic">${brain.seq[i]}</span>`; }
+    document.getElementById('rev-step').textContent = `${i + 1} / ${brain.seq.length}`;
+    brainBeep('tick');
+    i++;
+    brainTimer = setTimeout(() => { if (el) el.innerHTML = ''; brainTimer = setTimeout(show, 300); }, 900);
+  };
+  document.getElementById('game-body').innerHTML = `
+    <div class="text-sm color-muted">${brain.round + 1} / 3 · ${brain.len}개 기억하기</div>
+    <div class="listen-show" id="rev-show"></div>
+    <div class="calm-say">잘 봐요… 👀 <span id="rev-step"></span></div>`;
+  brainTimer = setTimeout(show, 500);
+}
+function revDraw(msg) {
+  const done = !!msg;
+  document.getElementById('game-body').innerHTML = `
+    <div class="text-sm color-muted">${brain.round + 1} / 3 · <b>마지막에 나온 것부터</b> 거꾸로 눌러요</div>
+    <div class="calm-say">${msg || '🔁 거꾸로! 마지막 것부터~'}</div>
+    <div class="listen-grid">${REV_ITEMS.map((e, k) => `<button class="listen-opt${brain.input.includes(e) ? ' on' : ''}" onclick="revTap(${k})" ${done ? 'disabled' : ''}><span>${e}</span></button>`).join('')}</div>
+    <div class="text-sm">${brain.input.join(' ← ')}</div>`;
+}
+function revTap(k) {
+  const e = REV_ITEMS[k];
+  if (brain.input.includes(e)) return;
+  brain.input.push(e);
+  const want = brain.seq[brain.seq.length - brain.input.length];
+  if (e !== want) {
+    brainHit(false); brain.round++;
+    revDraw(`아쉬워! 거꾸로 하면 ${brain.seq.slice().reverse().join(' → ')} 💪`);
+    brainTimer = setTimeout(revRound, 2200);
+    return;
+  }
+  if (brain.input.length === brain.seq.length) { brainHit(true); brain.ok++; brain.round++; revDraw('딩동댕! 🎉'); brainTimer = setTimeout(revRound, 1200); return; }
+  revDraw();
+}
+
+// 11) 🔢 숫자 순서대로 누르기: 흩어진 1~N을 빨리 순서대로
+const ORDER_LV = { 1: 8, 2: 12, 3: 16, 4: 20, 5: 25 };
+function orderStart() {
+  brain.round = 0; brain.scores = []; brain.mistakes = 0;
+  brain.max = ORDER_LV[brain.lv] || 8;
+  orderRound();
+}
+function orderRound() {
+  if (brain.round >= 2) {
+    const sc = brain.scores.reduce((a, b) => a + b, 0) / brain.scores.length;
+    brainM('orderMiss', brain.mistakes);
+    brainFinish(sc, `1부터 ${brain.max}까지 2번! 잘못 누른 건 <b>${brain.mistakes}번</b>이에요. 🔢`);
+    return;
+  }
+  brain.next = 1; brain.t0 = performance.now(); brain.roundMiss = 0;
+  const cols = brain.max <= 8 ? 4 : brain.max <= 12 ? 4 : 5;
+  const cells = Math.ceil(brain.max / cols) * cols;
+  const nums = Array.from({ length: cells }, (_, i) => i < brain.max ? i + 1 : 0).sort(() => Math.random() - 0.5);
+  const colors = ['#fde68a', '#bfdbfe', '#fbcfe8', '#bbf7d0', '#ddd6fe', '#fed7aa'];
+  document.getElementById('game-body').innerHTML = `
+    <div class="text-sm color-muted">${brain.round + 1} / 2 · 다음 숫자: <b id="order-next">1</b></div>
+    <div class="order-grid" style="grid-template-columns:repeat(${cols},1fr)">${nums.map(n => n ? `<button class="order-cell" id="oc${n}" style="background:${colors[n % colors.length]}" onclick="orderTap(${n})">${n}</button>` : '<span></span>').join('')}</div>
+    <div class="calm-say" id="order-say">1부터 순서대로 빨리 눌러요!</div>`;
+}
+function orderTap(n) {
+  const el = document.getElementById('oc' + n);
+  if (n !== brain.next) {
+    brain.mistakes++; brain.roundMiss++;
+    brainBeep('bad');
+    if (el) { el.classList.remove('miss'); void el.offsetWidth; el.classList.add('miss'); }
+    return;
+  }
+  if (el) el.classList.add('done');
+  brain.next++;
+  brainHit(true);
+  const nx = document.getElementById('order-next');
+  if (nx) nx.textContent = brain.next <= brain.max ? brain.next : '끝!';
+  if (brain.next > brain.max) {
+    const sec = (performance.now() - brain.t0) / 1000;
+    const goal = brain.max * 1.1;
+    brain.scores.push(Math.max(0, Math.min(1, goal / sec) - brain.roundMiss * 0.05));
+    brain.round++;
+    document.getElementById('order-say').innerHTML = `🏁 <b>${sec.toFixed(1)}초</b> 만에 다 눌렀어요!`;
+    brainTimer = setTimeout(orderRound, 1800);
+  }
+}
+
+// 8) 천천히 길 따라가기 (지금은 안 씀)
 function traceStart() {
   brain.round = 0; brain.scores = [];
   brain.band = [34, 30, 26, 22, 18][brain.lv - 1];
@@ -8042,7 +8223,7 @@ function spawnConfetti() {
 // BOOT
 // =====================================================================
 // 새 버전 자동 반영: 아이패드가 예전 화면을 붙잡고 있지 않게, 앱이 다시 보일 때와 30분마다 새 버전이 있는지 확인
-const APP_VERSION = '2026-11-04b';
+const APP_VERSION = '2026-11-04c';
 let lastVersionCheck = 0;
 async function checkNewVersion() {
   if (Date.now() - lastVersionCheck < 5 * 60000 || location.protocol === 'file:') return;
