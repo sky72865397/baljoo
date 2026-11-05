@@ -6472,7 +6472,8 @@ const TALKS = [
   ["t85", "both", "🎤 😳", "노래방에서 노래하는데 형제가 마이크를 뺏어 갔어요.", "\"내 차례 끝나고 줄게\"", "\"한 소절씩 번갈아 부르자\"", "마이크를 다시 확 뺏는다", "번갈아 하자고 말하면 둘 다 부를 수 있어요."],
 ].map(([id, who, scene, situation, g1, g2, bad, explain]) => ({ id, who, scene, situation, g1, g2, bad, explain }));
 
-const TALK_IMG = TALKS.map(t => t.id).filter(id => +id.slice(1) <= 55); // img/talk-NN.jpg 있는 상황 // img/talk-NN.jpg 있는 상황 // img/talk-NN.jpg 있는 상황
+const TALK_NO_IMG = [72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85]; // 아직 그림이 없는 말로 해요 번호
+const TALK_IMG = TALKS.map(t => t.id).filter(id => !TALK_NO_IMG.includes(+id.slice(1))); // img/talk-NN.jpg 있는 상황 // img/talk-NN.jpg 있는 상황
 
 function talkPool(childId) {
   const child = settings.children.find(c => c.id === childId);
