@@ -1769,13 +1769,13 @@ input, select, textarea { font-family: inherit; outline: none; }
         <div class="text-xs color-muted" id="backup-info"></div>
       </div>
       <div class="card" style="display:flex;flex-direction:column;gap:10px;margin-bottom:12px;">
-        <div style="font-weight:800;">☁️ 구글 자동 백업</div>
-        <div class="text-sm color-secondary">한 번만 연결해 두면 하루 한 번 자동으로 엄마 구글 드라이브에 기록이 저장되고, 구글 시트에 아이별 기록이 한 줄씩 쌓여요.</div>
+        <div style="font-weight:800;">☁️ 구글 연동 (여러 기기에서 같이 쓰기)</div>
+        <div class="text-sm color-secondary">연결해 두면 체크할 때마다 구글에 저장되고, <b>앱을 열 때마다 최신 기록을 받아와요.</b> 패드·휴대폰 어디서 체크해도 같이 맞춰져요. 구글 시트에는 날짜별 아이 기록이 쌓여요.</div>
         <input class="input-field" id="sheet-url" placeholder="웹 앱 주소 붙여넣기 (https://script.google.com/macros/s/.../exec)">
         <div class="flex-row" style="gap:8px;">
           <button class="btn-primary btn-sm" style="flex:1;" onclick="saveSheetUrl()">연결 저장</button>
-          <button class="btn-ghost btn-sm" style="flex:1;" onclick="cloudBackup(true)">☁️ 지금 백업</button>
-          <button class="btn-ghost btn-sm" style="flex:1;" onclick="cloudRestore()">⬇️ 구글에서 불러오기</button>
+          <button class="btn-ghost btn-sm" style="flex:1;" onclick="cloudSyncNow()">🔄 지금 맞추기</button>
+          <button class="btn-ghost btn-sm" style="flex:1;" onclick="cloudRestore()">⬇️ 구글 기록으로 덮어쓰기</button>
         </div>
         <div class="text-xs color-muted" id="cloud-info"></div>
         <details class="gas-help">
@@ -1790,40 +1790,86 @@ input, select, textarea { font-family: inherit; outline: none; }
           </ol>
           <button class="btn-ghost btn-sm" onclick="copyGas()">📋 코드 복사</button>
           <pre class="gas-code" id="gas-code">const FOLDER_NAME = &#x27;오늘의루틴 백업&#x27;;
-const KEEP = 30;
+const KEEP_DAYS = 30;
 
+// 여러 기기에서 같이 쓰기: 최신 기록 1개(state.json) + 하루 1개 백업 + 시트 요약
 function doPost(e) {
-  const text = e.postData.contents;
-  const body = JSON.parse(text);
-  if (body.app !== &#x27;routinepet&#x27;) return ContentService.createTextOutput(&#x27;skip&#x27;);
-  const folder = getFolder_();
-  const stamp = Utilities.formatDate(new Date(), &#x27;Asia/Seoul&#x27;, &#x27;yyyy-MM-dd_HHmm&#x27;);
-  folder.createFile(&#x27;backup_&#x27; + stamp + &#x27;.json&#x27;, text, MimeType.PLAIN_TEXT);
-  const files = [];
-  const it = folder.getFiles();
-  while (it.hasNext()) files.push(it.next());
-  files.sort((a, b) =&gt; b.getDateCreated() - a.getDateCreated());
-  files.slice(KEEP).forEach(f =&gt; f.setTrashed(true));
-  const sh = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
-  if (sh.getLastRow() === 0) sh.appendRow([&#x27;백업 시각&#x27;, &#x27;아이&#x27;, &#x27;레벨&#x27;, &#x27;보석&#x27;, &#x27;오늘 해낸 할 일&#x27;, &#x27;연속 기록(일)&#x27;, &#x27;키우는 펫&#x27;, &#x27;오늘 기분&#x27;]);
-  (body.summary || []).forEach(r =&gt; sh.appendRow([new Date()].concat(r)));
-  return ContentService.createTextOutput(&#x27;ok&#x27;);
+  const body = JSON.parse(e.postData.contents);
+  if (body.app !== &#x27;routinepet&#x27;) return out_({ ok: false });
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    const folder = getFolder_();
+    const cur = readState_(folder);
+    if (body.op === &#x27;sync&#x27; &amp;&amp; cur.rev &amp;&amp; body.baseRev !== cur.rev) {
+      return out_({ ok: false, conflict: true, latest: cur });
+    }
+    const rev = body.rev || String(Date.now());
+    const state = { app: &#x27;routinepet&#x27;, rev: rev, at: new Date().toISOString(), data: body.data };
+    writeFile_(folder, &#x27;state.json&#x27;, JSON.stringify(state));
+    const day = Utilities.formatDate(new Date(), &#x27;Asia/Seoul&#x27;, &#x27;yyyy-MM-dd&#x27;);
+    writeFile_(folder, &#x27;backup_&#x27; + day + &#x27;.json&#x27;, JSON.stringify(state));
+    cleanup_(folder);
+    writeSummary_(day, body.summary || []);
+    return out_({ ok: true, rev: rev });
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function doGet() {
-  const it = getFolder_().getFiles();
+  return out_(readState_(getFolder_()));
+}
+
+function readState_(folder) {
+  let it = folder.getFilesByName(&#x27;state.json&#x27;);
+  if (it.hasNext()) return JSON.parse(it.next().getBlob().getDataAsString() || &#x27;{}&#x27;);
+  // 예전 방식 백업이 있으면 그걸 돌려줌
+  it = folder.getFiles();
   let latest = null;
   while (it.hasNext()) {
     const f = it.next();
-    if (!latest || f.getDateCreated() &gt; latest.getDateCreated()) latest = f;
+    if (f.getName().indexOf(&#x27;backup_&#x27;) === 0 &amp;&amp; (!latest || f.getDateCreated() &gt; latest.getDateCreated())) latest = f;
   }
-  const out = latest ? latest.getBlob().getDataAsString() : &#x27;{}&#x27;;
-  return ContentService.createTextOutput(out).setMimeType(ContentService.MimeType.JSON);
+  return latest ? JSON.parse(latest.getBlob().getDataAsString()) : {};
+}
+
+function writeFile_(folder, name, text) {
+  const it = folder.getFilesByName(name);
+  if (it.hasNext()) it.next().setContent(text);
+  else folder.createFile(name, text, MimeType.PLAIN_TEXT);
+}
+
+function cleanup_(folder) {
+  const files = [];
+  const it = folder.getFiles();
+  while (it.hasNext()) { const f = it.next(); if (f.getName().indexOf(&#x27;backup_&#x27;) === 0) files.push(f); }
+  files.sort(function (a, b) { return b.getName() &lt; a.getName() ? -1 : 1; });
+  files.slice(KEEP_DAYS).forEach(function (f) { f.setTrashed(true); });
+}
+
+// 시트: 날짜·아이마다 한 줄 (같은 날은 덮어쓰기)
+function writeSummary_(day, rows) {
+  const sh = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
+  if (sh.getLastRow() === 0) sh.appendRow([&#x27;날짜&#x27;, &#x27;아이&#x27;, &#x27;레벨&#x27;, &#x27;보석&#x27;, &#x27;오늘 해낸 할 일&#x27;, &#x27;연속 기록(일)&#x27;, &#x27;키우는 펫&#x27;, &#x27;오늘 기분&#x27;, &#x27;마지막 저장&#x27;]);
+  const n = sh.getLastRow();
+  const keys = n &gt; 1 ? sh.getRange(2, 1, n - 1, 2).getDisplayValues().map(function (r) { return r[0] + &#x27;|&#x27; + r[1]; }) : [];
+  const now = Utilities.formatDate(new Date(), &#x27;Asia/Seoul&#x27;, &#x27;HH:mm&#x27;);
+  rows.forEach(function (r) {
+    const line = [day].concat(r).concat([now]);
+    const i = keys.indexOf(day + &#x27;|&#x27; + r[0]);
+    if (i &gt;= 0) sh.getRange(i + 2, 1, 1, line.length).setValues([line]);
+    else { sh.appendRow(line); keys.push(day + &#x27;|&#x27; + r[0]); }
+  });
 }
 
 function getFolder_() {
   const it = DriveApp.getFoldersByName(FOLDER_NAME);
   return it.hasNext() ? it.next() : DriveApp.createFolder(FOLDER_NAME);
+}
+
+function out_(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
 }
 </pre>
           <div class="text-xs color-muted">⚠️ 웹 앱 주소를 아는 사람은 백업을 볼 수 있어요. 주소는 다른 사람에게 알려주지 마세요.</div>
@@ -6813,21 +6859,15 @@ function saveSheetUrl() {
   settings.sheetUrl = url;
   saveSettings();
   renderCloudInfo();
-  if (url) cloudBackup(true);
+  if (url) { localStorage.removeItem(SYNC_REV); syncPull({ force: true, manual: true, manualMsg: true }); }
 }
 
-async function cloudBackup(manual) {
-  const url = settings.sheetUrl;
-  if (!url) { if (manual) alert('먼저 웹 앱 주소를 연결해 주세요.'); return; }
-  try {
-    await fetch(url, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(backupPayload()) });
-    settings.lastCloud = new Date().toISOString();
-    saveSettings();
-    if (manual) toast('☁️ 구글에 백업을 보냈어요!');
-  } catch (e) {
-    if (manual) alert('백업을 보내지 못했어요. 인터넷 연결을 확인해 주세요.');
-  }
-  renderCloudInfo();
+async function cloudBackup(manual) { await cloudSyncNow(manual); }
+async function cloudSyncNow(manual = true) {
+  if (!settings.sheetUrl) { if (manual) alert('먼저 웹 앱 주소를 연결해 주세요.'); return; }
+  await syncPull({ force: true, manualMsg: manual });
+  if (syncGet(SYNC_DIRTY, false)) await syncPush();
+  if (manual) toast('☁️ 구글과 맞췄어요!');
 }
 
 async function cloudRestore() {
@@ -6841,6 +6881,7 @@ async function cloudRestore() {
   Object.keys(localStorage).filter(k => k.startsWith('routinepet_')).forEach(k => localStorage.removeItem(k));
   Object.entries(obj.data).forEach(([k, v]) => { if (k.startsWith('routinepet_')) localStorage.setItem(k, v); });
   try { const st = JSON.parse(localStorage.getItem('routinepet_settings')); st.sheetUrl = keepUrl; localStorage.setItem('routinepet_settings', JSON.stringify(st)); } catch (e) {}
+  localStorage.setItem(SYNC_BASE, JSON.stringify(obj.data)); localStorage.setItem(SYNC_REV, JSON.stringify(obj.rev || 'legacy')); localStorage.setItem(SYNC_DIRTY, 'false');
   alert('구글에서 기록을 불러왔어요! 앱을 다시 시작할게요.');
   location.reload();
 }
@@ -6850,8 +6891,10 @@ function renderCloudInfo() {
   if (!el) return;
   const inp = document.getElementById('sheet-url');
   if (inp && document.activeElement !== inp) inp.value = settings.sheetUrl || '';
+  const last = syncGet(SYNC_LAST, null);
   el.textContent = !settings.sheetUrl ? '아직 연결하지 않았어요.'
-    : settings.lastCloud ? `연결됨 · 마지막 자동 백업: ${new Date(settings.lastCloud).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}` : '연결됨 · 아직 백업 전이에요.';
+    : syncGet(SYNC_REV, null) === null ? '연결 중이에요… (처음 한 번은 확인 창이 떠요)'
+    : `연결됨 · ${syncGet(SYNC_DIRTY, false) ? '올릴 기록이 있어요' : '구글과 맞춰져 있어요'}${last ? ` · 마지막 확인 ${new Date(last).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}` : ''}`;
 }
 
 function copyGas() {
@@ -6863,13 +6906,233 @@ function copyGas() {
   });
 }
 
-function autoCloudBackup() {
-  if (!settings.sheetUrl) return;
-  const last = settings.lastCloud ? new Date(settings.lastCloud) : null;
-  if (!last || ymd(last) !== ymd(new Date()) || Date.now() - last > 6 * 3600000) cloudBackup(false);
+// ---------- ☁️ 여러 기기 같이 쓰기 (구글 연동) ----------
+// 기기마다 기록(localStorage의 routinepet_*)을 구글에 올리고, 앱을 열 때마다 최신 기록을 받아와요.
+// 두 기기에서 따로 바꾼 것은 마지막으로 맞춘 기록(base)과 비교해서 합쳐요 (3-way merge).
+const SYNC_BASE = 'rpsync_base', SYNC_REV = 'rpsync_rev', SYNC_DIRTY = 'rpsync_dirty', SYNC_LAST = 'rpsync_last';
+let syncApplying = false, syncBusy = false, syncPushTimer = null, syncPending = false;
+
+(function hookStorage() {
+  const set = Storage.prototype.setItem, del = Storage.prototype.removeItem;
+  Storage.prototype.setItem = function (k, v) {
+    set.call(this, k, v);
+    if (this === localStorage && !syncApplying && String(k).startsWith('routinepet_')) syncMarkDirty();
+  };
+  Storage.prototype.removeItem = function (k) {
+    del.call(this, k);
+    if (this === localStorage && !syncApplying && String(k).startsWith('routinepet_')) syncMarkDirty();
+  };
+})();
+
+function syncOn() { return !!(settings && settings.sheetUrl) && location.protocol !== 'file:'; }
+function syncData() {
+  const d = {};
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith('routinepet_')) d[k] = localStorage.getItem(k);
+  }
+  return d;
 }
-setTimeout(() => { try { autoCloudBackup(); } catch (e) {} }, 5000);
-setInterval(() => { try { autoCloudBackup(); } catch (e) {} }, 30 * 60000);
+function syncGet(k, def) { try { const v = localStorage.getItem(k); return v === null ? def : JSON.parse(v); } catch (e) { return def; } }
+function syncSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+function syncMarkDirty() {
+  if (!syncOn()) return;
+  syncSet(SYNC_DIRTY, true);
+  clearTimeout(syncPushTimer);
+  syncPushTimer = setTimeout(syncPush, 3000);
+}
+
+function merge3(b, l, r, field) {
+  if (l === r) return l;
+  if (l === b) return r;
+  if (r === b) return l;
+  if (l === undefined || r === undefined) return l === undefined ? r : l;
+  return field(b, l, r);
+}
+function mergeLog(b, l, r) {
+  const B = JSON.parse(b || '{}'), L = JSON.parse(l), R = JSON.parse(r), out = {};
+  new Set([...Object.keys(L), ...Object.keys(R)]).forEach(k => {
+    const v = merge3(JSON.stringify(B[k]), JSON.stringify(L[k]), JSON.stringify(R[k]), (bb, ll, rr) => {
+      const x = JSON.parse(ll), y = JSON.parse(rr);
+      return ((x && x.ts) || 0) >= ((y && y.ts) || 0) ? ll : rr;
+    });
+    if (v !== undefined) out[k] = JSON.parse(v);
+  });
+  return JSON.stringify(out);
+}
+function mergeChild(b, l, r) {
+  const B = b || {}, out = {};
+  new Set([...Object.keys(l), ...Object.keys(r)]).forEach(f => {
+    const v = merge3(JSON.stringify(B[f]), JSON.stringify(l[f]), JSON.stringify(r[f]), (bb, ll) => ll);
+    if (v !== undefined) out[f] = JSON.parse(v);
+  });
+  // 보석은 양쪽에서 늘고 준 만큼 더해요
+  if (typeof l.points === 'number' && typeof r.points === 'number') out.points = Math.max(0, r.points + l.points - (B.points || 0));
+  // 레벨·경험치는 더 많이 자란 쪽을 따라요
+  const grow = c => (c.level || 0) * 1e6 + (c.xp || 0);
+  const g = grow(l) >= grow(r) ? l : r;
+  out.level = g.level; out.xp = g.xp;
+  return out;
+}
+function mergeSettings(b, l, r) {
+  const B = JSON.parse(b || '{}'), L = JSON.parse(l), R = JSON.parse(r), out = {};
+  new Set([...Object.keys(L), ...Object.keys(R)]).forEach(f => {
+    if (f === 'children') return;
+    const v = merge3(JSON.stringify(B[f]), JSON.stringify(L[f]), JSON.stringify(R[f]), (bb, ll) => ll);
+    if (v !== undefined) out[f] = JSON.parse(v);
+  });
+  const bc = Object.fromEntries((B.children || []).map(c => [c.id, c]));
+  const lc = Object.fromEntries((L.children || []).map(c => [c.id, c]));
+  const rc = Object.fromEntries((R.children || []).map(c => [c.id, c]));
+  const order = (L.children || R.children || []).map(c => c.id).concat((R.children || []).map(c => c.id)).filter((id, i, a) => a.indexOf(id) === i);
+  out.children = order.map(id => {
+    const v = merge3(JSON.stringify(bc[id]), JSON.stringify(lc[id]), JSON.stringify(rc[id]), (bb, ll, rr) => JSON.stringify(mergeChild(bc[id], JSON.parse(ll), JSON.parse(rr))));
+    return v === undefined ? null : JSON.parse(v);
+  }).filter(Boolean);
+  return JSON.stringify(out);
+}
+function mergeList(b, l, r) {
+  const L = JSON.parse(l), R = JSON.parse(r);
+  if (!Array.isArray(L) || !Array.isArray(R)) return l;
+  const seen = new Set(L.map(x => JSON.stringify(x)));
+  return JSON.stringify(L.concat(R.filter(x => !seen.has(JSON.stringify(x)))));
+}
+function syncMerge(base, local, remote) {
+  const out = {};
+  new Set([...Object.keys(base), ...Object.keys(local), ...Object.keys(remote)]).forEach(k => {
+    const field = k.startsWith('routinepet_log_') ? mergeLog
+      : k === 'routinepet_settings' ? mergeSettings
+      : k === 'routinepet_redeems' ? mergeList
+      : (bb, ll) => ll;
+    const v = merge3(base[k], local[k], remote[k], field);
+    if (v !== undefined) out[k] = v;
+  });
+  return out;
+}
+
+function syncBusyScreen() {
+  // 게임·문제 푸는 중에는 기다렸다가 받아와요 (팝업은 상관없어요)
+  return !document.getElementById('game-screen').classList.contains('hidden') || !document.getElementById('emo-overlay').classList.contains('hidden')
+    || ['screen-social', 'screen-reaction', 'screen-levelup', 'screen-eggpick', 'screen-dutypick'].some(id => document.getElementById(id).classList.contains('active'))
+    || !document.getElementById('timer-screen').classList.contains('hidden');
+}
+// 합친 기록을 이 기기에 넣고 화면을 다시 그려요
+function syncApply(data) {
+  const cur = syncData();
+  if (JSON.stringify(cur) === JSON.stringify(data)) return;
+  const keepUrl = settings.sheetUrl;
+  const oldVer = settings.dataVersion;
+  syncApplying = true;
+  try {
+    Object.keys(cur).forEach(k => { if (!(k in data)) localStorage.removeItem(k); });
+    Object.entries(data).forEach(([k, v]) => localStorage.setItem(k, v));
+  } finally { syncApplying = false; }
+  try { settings = JSON.parse(localStorage.getItem('routinepet_settings')) || settings; } catch (e) {}
+  if (!settings.sheetUrl) settings.sheetUrl = keepUrl;
+  if (settings.dataVersion !== oldVer) { location.reload(); return; }
+  try { tasks = JSON.parse(localStorage.getItem('routinepet_tasks')) || tasks; } catch (e) {}
+  try { rewards = JSON.parse(localStorage.getItem('routinepet_rewards')) || rewards; } catch (e) {}
+  const act = (document.querySelector('.screen.active') || {}).id;
+  try {
+    if (act === 'screen-home' && getChild()) renderHomeScreen();
+    else if (act === 'screen-welcome') renderWelcome();
+    else if (act === 'screen-parent') renderParentDashboard();
+    else if (act === 'screen-shop' && getChild()) renderShopScreen();
+    else if (act === 'screen-dex') renderDex();
+    else if (act === 'screen-settings') switchSettingsTab(currentSettingsTab);
+  } catch (e) {}
+}
+
+async function syncFetchRemote() {
+  const res = await fetch(settings.sheetUrl + (settings.sheetUrl.includes('?') ? '&' : '?') + 't=' + Date.now(), { cache: 'no-store' });
+  return await res.json();
+}
+
+// 받아오기: 앱을 열 때, 다시 볼 때, 2분마다
+async function syncPull(opts = {}) {
+  if (!syncOn() || syncBusy) return;
+  if (!opts.force && syncBusyScreen()) return;
+  syncBusy = true;
+  try {
+    const remote = await syncFetchRemote();
+    const myRev = syncGet(SYNC_REV, null);
+    const hasRemote = remote && remote.app === 'routinepet' && remote.data;
+    if (!myRev) {
+      // 이 기기가 처음 연결될 때
+      if (hasRemote) {
+        if (opts.manual === false || confirm('구글에 저장된 기록으로 이 기기를 맞출까요?\n(이 기기에서만 한 기록은 없어져요)')) {
+          syncApply(remote.data);
+          syncSet(SYNC_BASE, remote.data); syncSet(SYNC_REV, remote.rev || 'legacy'); syncSet(SYNC_DIRTY, false);
+          if (!remote.rev) { syncBusy = false; await syncPush(); return; }
+          toast('☁️ 구글 기록을 받아왔어요!');
+        }
+      } else if (confirm('이 기기의 기록을 구글에 처음 올릴까요?\n아이들 기록이 들어 있는 기기(패드)에서 눌러 주세요.')) {
+        syncSet(SYNC_BASE, {}); syncSet(SYNC_REV, ''); syncSet(SYNC_DIRTY, true);
+        syncBusy = false; await syncPush(); return;
+      }
+      return;
+    }
+    if (!hasRemote || remote.rev === myRev) { syncSet(SYNC_LAST, Date.now()); return; }
+    const base = syncGet(SYNC_BASE, {});
+    const local = syncData();
+    const merged = syncMerge(base, local, remote.data);
+    syncApply(merged);
+    syncSet(SYNC_BASE, remote.data); syncSet(SYNC_REV, remote.rev);
+    const changedLocally = JSON.stringify(merged) !== JSON.stringify(remote.data);
+    syncSet(SYNC_DIRTY, changedLocally);
+    syncSet(SYNC_LAST, Date.now());
+    if (changedLocally) { syncBusy = false; await syncPush(); return; }
+  } catch (e) {
+    if (opts.manualMsg) alert('구글에서 기록을 가져오지 못했어요. 인터넷 연결과 주소를 확인해 주세요.');
+  } finally { syncBusy = false; renderCloudInfo(); }
+}
+
+// 올리기: 바뀐 뒤 3초 뒤에 (구글에 더 새 기록이 있으면 합쳐서 다시 올려요)
+async function syncPush() {
+  if (!syncOn()) return;
+  if (syncBusy) { syncPending = true; return; }
+  if (!syncGet(SYNC_DIRTY, false)) return;
+  if (syncGet(SYNC_REV, null) === null) return;
+  syncBusy = true;
+  const rev = Date.now() + '-' + Math.random().toString(36).slice(2, 7);
+  const data = syncData();
+  const body = JSON.stringify(Object.assign(backupPayload(), { op: 'sync', baseRev: syncGet(SYNC_REV, '') || undefined, rev, data }));
+  try {
+    let res = null;
+    try { res = await (await fetch(settings.sheetUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body })).json(); }
+    catch (e) {
+      await fetch(settings.sheetUrl, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body });
+      const check = await syncFetchRemote();
+      res = check && check.rev === rev ? { ok: true, rev } : { ok: false, conflict: true, latest: check };
+    }
+    if (res && res.ok) {
+      syncSet(SYNC_BASE, data); syncSet(SYNC_REV, res.rev || rev);
+      if (JSON.stringify(syncData()) === JSON.stringify(data)) syncSet(SYNC_DIRTY, false);
+      syncSet(SYNC_LAST, Date.now());
+    } else if (res && res.conflict && res.latest && res.latest.data) {
+      const merged = syncMerge(syncGet(SYNC_BASE, {}), syncData(), res.latest.data);
+      if (!syncBusyScreen()) syncApply(merged);
+      syncSet(SYNC_BASE, res.latest.data); syncSet(SYNC_REV, res.latest.rev);
+      syncBusy = false;
+      setTimeout(syncPush, 500);
+      return;
+    }
+  } catch (e) {
+  } finally {
+    syncBusy = false;
+    renderCloudInfo();
+    if (syncPending) { syncPending = false; setTimeout(syncPush, 500); }
+  }
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (!syncOn()) return;
+  if (document.hidden) { if (syncGet(SYNC_DIRTY, false)) syncPush(); }
+  else syncPull();
+});
+window.addEventListener('focus', () => syncPull());
+setInterval(() => { if (!document.hidden) syncPull(); }, 2 * 60000);
+setTimeout(() => syncPull({ manual: false }), 1500);
 
 // ---------- backup ----------
 function backupData() {
@@ -8255,7 +8518,7 @@ function spawnConfetti() {
 // BOOT
 // =====================================================================
 // 새 버전 자동 반영: 아이패드가 예전 화면을 붙잡고 있지 않게, 앱이 다시 보일 때와 30분마다 새 버전이 있는지 확인
-const APP_VERSION = '2026-11-13h';
+const APP_VERSION = '2026-11-13i';
 let lastVersionCheck = 0;
 async function checkNewVersion() {
   if (Date.now() - lastVersionCheck < 5 * 60000 || location.protocol === 'file:') return;
