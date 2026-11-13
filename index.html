@@ -1590,23 +1590,6 @@ input, select, textarea { font-family: inherit; outline: none; }
         <div class="say-card no"><b>피하면 좋은 말</b>✗ "동생이 그럴 리가 없어" · ✗ "네가 잘못 본 거야" · ✗ "별거 아닌데 왜 화를 내"</div>
       </div>
     </div>
-    <div class="card" style="display:flex;flex-direction:column;gap:8px;">
-      <div style="font-weight:800;">💪 아이가 "힘센 게 최고야!" 할 때</div>
-      <div class="text-sm color-secondary">"그건 틀렸어" 대신, 먼저 인정하고 질문으로 스스로 생각하게 해요. "센 것"의 뜻을 <b>참는 힘</b>으로 옮겨 주는 게 핵심이에요.</div>
-      <button class="btn-ghost btn-sm" onclick="document.getElementById('strong-talk').classList.toggle('hidden')">💬 질문 카드 보기</button>
-      <div id="strong-talk" class="hidden">
-        <div class="say-card"><b>1 · 먼저 인정하기</b>"힘세고 돈 많으면 좋아 보이지. 게임에서도 그렇잖아. 엄마도 이해해."</div>
-        <div class="say-card"><b>2 · 질문 ①</b>"제일 좋아하는 친구는 힘이 세서 좋아, 아니면 같이 놀면 재밌어서 좋아?"</div>
-        <div class="say-card"><b>2 · 질문 ②</b>"게임에서 졌다고 친구가 화내면, 그 친구랑 또 놀고 싶어?"</div>
-        <div class="say-card"><b>2 · 질문 ③</b>"힘은 엄청 센데 아무도 같이 안 놀아 주면 어떨 것 같아?"</div>
-        <div class="say-card"><b>2 · 질문 ④</b>"돈으로 살 수 없는 건 뭐가 있을까?"</div>
-        <div class="say-card"><b>3 · 진짜 센 사람 다시 말해 주기</b>"엄마가 생각하는 진짜 센 사람은 화날 때 참을 수 있는 사람이야. 그건 힘센 것보다 훨씬 어려운 거거든."</div>
-        <div class="say-card"><b>4 · 졌을 때 바로 칭찬</b>"방금 졌는데 화 안 냈네! 그게 진짜 센 거야." → 그 자리에서 💪 마음 근육 버튼 누르기</div>
-        <div class="say-card"><b>5 · 엄마가 먼저 지는 모습 보이기</b>"아, 엄마 졌다. 아쉽지만 재밌었어. 한 판 더 하자!"</div>
-        <div class="say-card no"><b>피하면 좋은 말</b>✗ "그건 나쁜 생각이야" · ✗ "또 이기려고 그러지" · ✗ "형이 져 줘야지"</div>
-        <div class="text-xs color-muted">💡 정답을 말해 주지 말고 아이 입으로 답이 나오게 하는 게 핵심이에요. 치호에게는 마음 공부·말로 해요·세상 탐구에 "진짜 센 사람" 이야기가 먼저 나와요.</div>
-      </div>
-    </div>
     <!-- Child overview -->
     <div class="card" id="parent-child-overview"></div>
 
@@ -8272,7 +8255,7 @@ function spawnConfetti() {
 // BOOT
 // =====================================================================
 // 새 버전 자동 반영: 아이패드가 예전 화면을 붙잡고 있지 않게, 앱이 다시 보일 때와 30분마다 새 버전이 있는지 확인
-const APP_VERSION = '2026-11-13c';
+const APP_VERSION = '2026-11-13d';
 let lastVersionCheck = 0;
 async function checkNewVersion() {
   if (Date.now() - lastVersionCheck < 5 * 60000 || location.protocol === 'file:') return;
