@@ -3223,6 +3223,11 @@ function init() {
     settings.dutyTwoFrom = weekIndex();
     settings.dataVersion = 36;
   }
+  if (settings.dataVersion === 36) {
+    // 엄마 요청: 치호 게임 선물 잠깐 멈춤 (부모 모드 > 선물에서 다시 열 수 있음)
+    rewards.filter(r => r.name.includes('게임')).forEach(r => { r.paused = (r.paused || []).filter(x => x !== 'c2').concat('c2'); });
+    settings.dataVersion = 37;
+  }
 
   saveSettings();
   saveTasks();
@@ -7348,7 +7353,7 @@ function renderShopScreen() {
   if (!document.getElementById('shop-deco').classList.contains('hidden')) renderDecoShop(child);
 
   const grid = document.getElementById('shop-grid');
-  grid.innerHTML = rewards.filter(r => !r.for || r.for.includes(child.id)).sort((a, b) => a.cost - b.cost).map(r => {
+  grid.innerHTML = rewards.filter(r => (!r.for || r.for.includes(child.id)) && !(r.paused || []).includes(child.id)).sort((a, b) => a.cost - b.cost).map(r => {
     const canAfford = child.points >= r.cost;
     return `<div class="reward-card">
       <div class="reward-emoji">${r.emoji}</div>
@@ -8093,10 +8098,18 @@ function renderRewardsSettings() {
     <div class="card-sm flex-between">
       <div>
         <div style="font-weight:700;">${r.emoji} ${r.name}</div>
-        <div class="text-xs color-muted">💎 보석 ${r.cost}개${r.for ? ` · ${r.for.map(id => (settings.children.find(c => c.id === id) || {}).name).join('/')}만` : ''}</div>
+        <div class="text-xs color-muted">💎 보석 ${r.cost}개${r.for ? ` · ${r.for.map(id => (settings.children.find(c => c.id === id) || {}).name).join('/')}만` : ''}${(r.paused || []).length ? ` · <b style="color:#b45309">⏸ ${r.paused.map(id => (settings.children.find(c => c.id === id) || {}).name).join('/')} 잠깐 멈춤</b>` : ''}</div>
+        <div class="flex-row" style="gap:4px;margin-top:4px;flex-wrap:wrap;">${settings.children.filter(c => !r.for || r.for.includes(c.id)).map(c => `<button class="btn-ghost btn-sm" style="padding:2px 8px;font-size:.8rem;" onclick="toggleRewardPause(${i},'${c.id}')">${(r.paused || []).includes(c.id) ? '▶ ' + escText(c.name) + ' 다시 열기' : '⏸ ' + escText(c.name) + ' 멈춤'}</button>`).join('')}</div>
       </div>
       <button class="btn-danger btn-sm" onclick="deleteReward(${i})">삭제</button>
     </div>`).join('');
+}
+// 선물을 지우지 않고 아이별로 잠깐 숨기기 (예: 치호 게임 30분)
+function toggleRewardPause(idx, cid) {
+  const r = rewards[idx];
+  r.paused = (r.paused || []).includes(cid) ? r.paused.filter(x => x !== cid) : (r.paused || []).concat(cid);
+  saveRewards();
+  renderRewardsSettings();
 }
 function deleteReward(idx) {
   if (!confirm('이 선물을 삭제할까요?')) return;
@@ -8224,7 +8237,7 @@ function spawnConfetti() {
 // BOOT
 // =====================================================================
 // 새 버전 자동 반영: 아이패드가 예전 화면을 붙잡고 있지 않게, 앱이 다시 보일 때와 30분마다 새 버전이 있는지 확인
-const APP_VERSION = '2026-11-04d';
+const APP_VERSION = '2026-11-13a';
 let lastVersionCheck = 0;
 async function checkNewVersion() {
   if (Date.now() - lastVersionCheck < 5 * 60000 || location.protocol === 'file:') return;
