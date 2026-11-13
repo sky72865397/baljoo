@@ -2142,13 +2142,13 @@ function exploreForToday() {
   saveSettings();
   return next || null;
 }
-const EXPLORE_IMG = ['ts1', 'ts2', 'ts3', 'ts4', 'ts5', 'ts6', 'ts7', 'ts8', 'x10', 'x11', 'x12', 'x13', 'x14', 'x15', 'x9', 'x36', 'x37', 'x38']; // img/explore-<id>.jpg 있는 사건
+const EXPLORE_IMG = ['ts1', 'ts2', 'ts3', 'ts4', 'ts5', 'ts6', 'ts7', 'ts8', 'x10', 'x11', 'x12', 'x13', 'x14', 'x15', 'x9', 'x36', 'x37', 'x38', 'x34', 'x33', 'x27', 'x35', 'x31', 'x32', 'x20', 'x29', 'x26', 'x28', 'x30', 'x17', 'x25', 'x16']; // img/explore-<id>.jpg 있는 사건
 function buildExplore(e) {
   return { type: 'explore', id: e.id, title: e.title, tag: e.tag, scene: e.scene, know: e.know, event: e.event, img: e.img || (EXPLORE_IMG.includes(e.id) ? `img/explore-${e.id}.jpg` : ''),
     questions: e.qs.map((q, i) => Object.assign({ num: i + 1 }, q)) };
 }
 
-const PROB_NO_IMG = [67, 70, 89]; // 그림이 없는 문제 번호 (이모지로 표시)
+const PROB_NO_IMG = [70, 89]; // 그림이 없는 문제 번호 (이모지로 표시)
 
 function problemSetForToday(childId) {
   settings.problemsDone = settings.problemsDone || {};
@@ -8255,7 +8255,7 @@ function spawnConfetti() {
 // BOOT
 // =====================================================================
 // 새 버전 자동 반영: 아이패드가 예전 화면을 붙잡고 있지 않게, 앱이 다시 보일 때와 30분마다 새 버전이 있는지 확인
-const APP_VERSION = '2026-11-13e';
+const APP_VERSION = '2026-11-13f';
 let lastVersionCheck = 0;
 async function checkNewVersion() {
   if (Date.now() - lastVersionCheck < 5 * 60000 || location.protocol === 'file:') return;
